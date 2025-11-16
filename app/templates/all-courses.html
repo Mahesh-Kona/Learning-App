@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Management - School ERP</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            margin-left: 420px; /* reserve space for 400px sidebar + 20px gap */
+        }
+
+        /* Header */
+        .page-header {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-content h1 {
+            font-size: 2.2rem;
+            color: #10b981;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-content h1::before {
+            content: "📚";
+            font-size: 2rem;
+        }
+
+        .header-content p {
+            color: #64748b;
+            font-size: 1.05rem;
+        }
+
+        .btn-add {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-add:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-add::before {
+            content: "+";
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        /* Courses Section */
+        .courses-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #10b981;
+            margin-bottom: 25px;
+            font-weight: 700;
+        }
+
+        /* Course Card */
+        .course-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-left: 5px solid #10b981;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .course-card:hover {
+            border-left-color: #059669;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateX(3px);
+        }
+
+        .course-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .course-info {
+            flex: 1;
+        }
+
+        .course-name {
+            font-size: 1.4rem;
+            color: #1e293b;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .course-description {
+            color: #64748b;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .course-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .meta-item::before {
+            font-size: 1rem;
+        }
+
+        .meta-duration::before {
+            content: "⏱️";
+        }
+
+        .meta-level::before {
+            content: "📊";
+        }
+
+        .meta-lessons::before {
+            content: "📝";
+        }
+
+        .level-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .level-beginner {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .level-intermediate {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .level-advanced {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Course Badge */
+        .course-badge {
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-align: center;
+            min-width: 180px;
+        }
+
+        .course-code {
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .course-label {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Action Buttons */
+        .course-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+
+        .btn-view {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .btn-edit {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 35px;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .modal-header h2 {
+            color: #1e293b;
+            font-size: 1.7rem;
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #64748b;
+            line-height: 1;
+            transition: all 0.3s ease;
+        }
+
+        .btn-close:hover {
+            color: #ef4444;
+            transform: rotate(90deg);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .btn-save {
+            background: #10b981;
+            color: white;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-save:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .btn-cancel {
+            background: #64748b;
+            color: white;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cancel:hover {
+            background: #475569;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #1e293b;
+        }
+
+        /* Search and Filter */
+        .controls-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-group select {
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+            }
+
+            .course-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .course-actions {
+                width: 100%;
+            }
+
+            .btn {
+                flex: 1;
+            }
+
+            .course-badge {
+                width: 100%;
+            }
+        }
+
+        .page-sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 400px;
+            height: 100%;
+            background-color: #2E8B57;
+            padding-top: 20px;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.12);
+        }
+
+        /* Responsive: collapse sidebar into page flow on small screens */
+        @media (max-width: 900px) {
+            .page-sidebar { position: static; width: 100%; height: auto; box-shadow: none; }
+            .container { margin-left: 0; padding: 12px; }
+        }
+        
+    </style>
+</head>
+<body>
+<body>
+
+    <div class="page-sidebar">
+        {% include 'admin_sidebar.html' %}
+    </div>
+
+    <div class="container">
+
+        <!-- Header -->
+        <div class="page-header">
+            <div class="header-content">
+                <h1>Course Management</h1>
+                <p>Create and manage courses and their lessons.</p>
+            </div>
+            <a class="btn-add" href="{{ url_for('admin_bp.create_course_page') }}">Add Course</a>
+        </div>
+
+        <!-- Main Content -->
+        <div class="courses-section">
+            <h2 class="section-title">All Courses</h2>
+
+            <!-- Search and Filter -->
+            <div class="controls-bar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search courses..." onkeyup="searchCourses()">
+                </div>
+                <div class="filter-group">
+                    <select id="levelFilter" onchange="filterCourses()">
+                        <option value="">All Levels</option>
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Courses List -->
+            <div id="coursesList"></div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Course Modal -->
+    <div id="courseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Course</h2>
+                <button class="btn-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="courseForm">
+                <input type="hidden" id="courseId">
+                
+                <div class="form-group">
+                    <label for="courseName">Course Name *</label>
+                    <input type="text" id="courseName" required placeholder="e.g., Introduction to Mathematics">
+                </div>
+
+                <div class="form-group">
+                    <label for="courseCode">Course Code *</label>
+                    <input type="text" id="courseCode" required placeholder="e.g., MATH101">
+                </div>
+
+                <div class="form-group">
+                    <label for="courseDescription">Description</label>
+                    <textarea id="courseDescription" placeholder="Brief description of the course..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="courseDuration">Duration (minutes)</label>
+                    <input type="number" id="courseDuration" placeholder="e.g., 45" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="courseLevel">Level *</label>
+                    <select id="courseLevel" required>
+                        <option value="">Select Level</option>
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="courseLessons">Number of Lessons</label>
+                    <input type="number" id="courseLessons" placeholder="e.g., 10" min="0" value="0">
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-save">Save Course</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script id="courses-data" type="application/json">{{ courses|default([])|tojson|safe }}</script>
+
+    <script>
+        // client state (will be populated from `#courses-data`)
+        let courses = [];
+        let editingId = null;
+
+        function loadServerCourses() {
+            try {
+                const el = document.getElementById('courses-data');
+                if (el && el.textContent) {
+                    courses = JSON.parse(el.textContent) || [];
+                } else {
+                    courses = [];
+                }
+            } catch (err) {
+                console.error('Failed to parse server courses JSON', err);
+                courses = [];
+            }
+            console.debug('courses loaded', courses);
+        }
+
+        // Render courses
+        function renderCourses(coursesToRender = courses) {
+            const coursesList = document.getElementById('coursesList');
+            
+            if (coursesToRender.length === 0) {
+                coursesList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📚</div>
+                        <h3>No courses found</h3>
+                        <p>Start by adding your first course!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            coursesList.innerHTML = coursesToRender.map(course => `
+                <div class="course-card">
+                    <div class="course-content">
+                        <div class="course-info">
+                            <div class="course-name">${course.name}</div>
+                            <div class="course-description">${course.description || 'No description provided'}</div>
+                            <div class="course-meta">
+                                <span class="meta-item meta-duration">
+                                    ${course.duration ? course.duration + ' minutes' : 'N/A minutes'}
+                                </span>
+                                <span class="meta-item meta-level">
+                                    <span class="level-badge level-${course.level}">${capitalizeFirst(course.level || 'N/A')}</span>
+                                </span>
+                                <span class="meta-item meta-lessons">
+                                    ${course.lessons} ${course.lessons === 1 ? 'lesson' : 'lessons'}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="course-badge">
+                            <div class="course-label">⚡ Course</div>
+                            <div class="course-code">${course.code}</div>
+                        </div>
+                        
+                        <div class="course-actions">
+                            <button class="btn btn-view" data-course-id="${course.id}" title="View Lessons">View Lessons</button>
+                            <button class="btn btn-edit" data-course-id="${course.id}" title="Edit Course">Edit</button>
+                            <button class="btn btn-delete" data-course-id="${course.id}" title="Delete Course">Delete</button>
+                        </div>
+                        <div class="course-lessons" id="course-lessons-${course.id}" style="display:none; margin-top:16px; padding-top:12px; border-top:1px dashed #e2e8f0;"></div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Attach explicit listeners to action buttons (works even if delegated handler misses)
+            attachCourseListeners();
+        }
+
+        function attachCourseListeners() {
+            const viewBtns = document.querySelectorAll('.btn.btn-view[data-course-id]');
+            viewBtns.forEach(b => {
+                b.removeEventListener('click', viewBtnHandler);
+                b.addEventListener('click', viewBtnHandler);
+            });
+            const editBtns = document.querySelectorAll('.btn.btn-edit[data-course-id]');
+            editBtns.forEach(b => {
+                b.removeEventListener('click', editBtnHandler);
+                b.addEventListener('click', editBtnHandler);
+            });
+            const delBtns = document.querySelectorAll('.btn.btn-delete[data-course-id]');
+            delBtns.forEach(b => {
+                b.removeEventListener('click', deleteBtnHandler);
+                b.addEventListener('click', deleteBtnHandler);
+            });
+        }
+
+        function viewBtnHandler(e) {
+            const id = e.currentTarget.getAttribute('data-course-id');
+            console.debug('viewBtnHandler', id);
+            viewLessons(id);
+        }
+
+        function editBtnHandler(e) {
+            const id = e.currentTarget.getAttribute('data-course-id');
+            console.debug('editBtnHandler', id);
+            editCourse(id);
+        }
+
+        function deleteBtnHandler(e) {
+            const id = e.currentTarget.getAttribute('data-course-id');
+            console.debug('deleteBtnHandler', id);
+            deleteCourse(id);
+        }
+
+        // Open add modal
+        function openAddModal() {
+            editingId = null;
+            document.getElementById('modalTitle').textContent = 'Add New Course';
+            document.getElementById('courseForm').reset();
+            document.getElementById('courseId').value = '';
+            document.getElementById('courseModal').classList.add('active');
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('courseModal').classList.remove('active');
+            document.getElementById('courseForm').reset();
+            editingId = null;
+        }
+
+        // Edit course
+        function editCourse(id) {
+            console.debug('editCourse called with id', id);
+            const idStr = String(id);
+            const course = courses.find(c => String(c.id) === idStr);
+            if (!course) { alert('Course not found'); return; }
+
+            // preserve the original stored id type for updates
+            editingId = course.id;
+            document.getElementById('modalTitle').textContent = 'Edit Course';
+            document.getElementById('courseId').value = course.id;
+            document.getElementById('courseName').value = course.name;
+            document.getElementById('courseCode').value = course.code;
+            document.getElementById('courseDescription').value = course.description || '';
+            document.getElementById('courseDuration').value = course.duration || '';
+            document.getElementById('courseLevel').value = course.level || '';
+            document.getElementById('courseLessons').value = course.lessons || 0;
+            document.getElementById('courseModal').classList.add('active');
+        }
+
+        // Delete course
+        async function deleteCourse(id) {
+            console.debug('deleteCourse called with id', id);
+            if (!confirm('Are you sure you want to delete this course? This action cannot be undone.')) return;
+            try {
+                const resp = await fetch('{{ url_for("admin_bp.delete_course") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ id: id })
+                });
+                const data = await resp.json().catch(() => ({}));
+                console.debug('delete response', resp.status, data);
+
+                if (resp.ok) {
+                    // remove locally and re-render
+                    const idStr = String(id);
+                    courses = courses.filter(c => String(c.id) !== idStr);
+                    if (editingId && String(editingId) === idStr) {
+                        editingId = null;
+                        document.getElementById('courseForm').reset();
+                    }
+                    renderCourses();
+                    return;
+                }
+
+                // If server says not found (404) but the row was likely removed by a concurrent request,
+                // treat this as a successful idempotent delete and remove locally for UX.
+                if (resp.status === 404 && data && typeof data.error === 'string' && data.error.toLowerCase().includes('not found')) {
+                    console.warn('Delete returned 404 (not found) — removing locally for idempotency');
+                    const idStr = String(id);
+                    courses = courses.filter(c => String(c.id) !== idStr);
+                    if (editingId && String(editingId) === idStr) {
+                        editingId = null;
+                        document.getElementById('courseForm').reset();
+                    }
+                    renderCourses();
+                    return;
+                }
+
+                const msg = data && data.error ? data.error : 'Failed to delete course';
+                alert(msg);
+            } catch (err) {
+                console.error('Delete request failed', err);
+                alert('Failed to delete course (network error)');
+            }
+        }
+
+        // View lessons
+        function renderLessonsForCourse(id, lessons) {
+            const container = document.getElementById('course-lessons-' + id);
+            if (!container) return;
+            if (!lessons || lessons.length === 0) {
+                container.innerHTML = `<div class="empty-state" style="padding:12px; text-align:left;">No lessons found for this course.</div>`;
+                return;
+            }
+            // Render as a vertical list: one lesson per row
+            container.innerHTML = `
+                <div class="lesson-list" style="display:flex;flex-direction:column;gap:10px;">
+                    ${lessons.map(l => `
+                        <div class="lesson-row" style="padding:12px; background:#fff; border:1px solid #eef2f7; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                            <div style="flex:1; min-width:0">
+                                <div style="font-weight:700; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${l.title}</div>
+                                <div style="color:#64748b; font-size:0.95rem; margin-top:6px; white-space:normal">${l.description || ''}</div>
+                            </div>
+                            <div style="text-align:right; min-width:120px; margin-left:12px">
+                                <div style="font-weight:600">${l.duration ? l.duration + ' min' : ''}</div>
+                                <div style="color:#64748b">${l.level || ''}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        async function viewLessons(id) {
+            console.debug('viewLessons called with id', id);
+            const idStr = String(id);
+            const container = document.getElementById('course-lessons-' + idStr);
+            if (!container) {
+                console.warn('No lessons container found for course', id);
+                return;
+            }
+
+            // Toggle: if already visible, hide it
+            if (container.style.display && container.style.display !== 'none') {
+                container.style.display = 'none';
+                return;
+            }
+
+            // Fetch lessons for course
+            try {
+                const resp = await fetch('/admin/course_lessons?id=' + encodeURIComponent(id));
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    const msg = data && data.error ? data.error : 'Failed to load lessons';
+                    alert(msg);
+                    return;
+                }
+                renderLessonsForCourse(idStr, data.lessons || []);
+                container.style.display = 'block';
+            } catch (err) {
+                console.error('Failed to fetch lessons', err);
+                alert('Failed to load lessons (network error)');
+            }
+        }
+
+        // Save course (persist edits to server when editing)
+        document.getElementById('courseForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const courseData = {
+                name: document.getElementById('courseName').value,
+                code: document.getElementById('courseCode').value,
+                description: document.getElementById('courseDescription').value,
+                duration: document.getElementById('courseDuration').value ? parseInt(document.getElementById('courseDuration').value) : null,
+                level: document.getElementById('courseLevel').value,
+                lessons: parseInt(document.getElementById('courseLessons').value) || 0
+            };
+
+            if (editingId) {
+                // Persist update to server
+                try {
+                    const resp = await fetch('/admin/update_course', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify({
+                            id: editingId,
+                            title: courseData.name,
+                            description: courseData.description,
+                            duration: courseData.duration,
+                            level: courseData.level,
+                            lessons: courseData.lessons
+                        })
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok) {
+                        const msg = data && data.error ? data.error : 'Failed to update course';
+                        alert(msg);
+                        return;
+                    }
+
+                    // Merge server-updated values into local state
+                    const idStr = String(editingId);
+                    const idx = courses.findIndex(c => String(c.id) === idStr);
+                    if (idx !== -1) {
+                        courses[idx] = {
+                            ...courses[idx],
+                            name: data.name || courseData.name,
+                            description: data.description || courseData.description,
+                            duration: data.duration !== undefined ? data.duration : courseData.duration,
+                            level: data.level || courseData.level,
+                            lessons: data.lessons !== undefined ? data.lessons : courseData.lessons
+                        };
+                    }
+
+                    renderCourses();
+                    closeModal();
+                } catch (err) {
+                    console.error('Update request failed', err);
+                    alert('Failed to update course (network error)');
+                }
+            } else {
+                // Add new course locally (creation endpoint exists but adding locally for now)
+                const newId = Math.max(...courses.map(c => c.id), 0) + 1;
+                courses.push({ id: newId, ...courseData });
+                renderCourses();
+                closeModal();
+            }
+        });
+
+        // Search courses
+        function searchCourses() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const level = document.getElementById('levelFilter').value;
+            
+            let filtered = courses.filter(course => {
+                const matchesSearch = course.name.toLowerCase().includes(searchTerm) ||
+                                     course.code.toLowerCase().includes(searchTerm) ||
+                                     (course.description && course.description.toLowerCase().includes(searchTerm));
+                const matchesLevel = !level || course.level === level;
+                return matchesSearch && matchesLevel;
+            });
+
+            renderCourses(filtered);
+        }
+
+        // Filter courses
+        function filterCourses() {
+            searchCourses();
+        }
+
+        // Helper function
+        function capitalizeFirst(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        // Initialize after DOM ready: load courses, render, and register delegated handlers
+        document.addEventListener('DOMContentLoaded', function () {
+            loadServerCourses();
+            renderCourses();
+
+            // Close modal on outside click (guarded)
+            const modalEl = document.getElementById('courseModal');
+            if (modalEl) {
+                modalEl.addEventListener('click', function(e) {
+                    if (e.target === this) closeModal();
+                });
+            }
+
+            // Delegated click handler for course action buttons (works even if inline onclick fails)
+            document.addEventListener('click', function (e) {
+                const btn = e.target.closest('button[data-course-id]');
+                if (!btn) return;
+                const id = parseInt(btn.getAttribute('data-course-id'));
+                if (btn.classList.contains('btn-view')) return viewLessons(id);
+                if (btn.classList.contains('btn-edit')) return editCourse(id);
+                if (btn.classList.contains('btn-delete')) return deleteCourse(id);
+            });
+        });
+    </script>
+</body>
+</html>

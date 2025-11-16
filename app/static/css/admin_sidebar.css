@@ -1,5 +1,4 @@
-/* Admin sidebar specific styles - override/ensure consistent sidebar across admin pages */
-.sidebar{width:260px;background:var(--primary);color:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:22px 18px;position:fixed;left:0;top:0;bottom:0;overflow-y:auto;box-shadow:2px 0 8px rgba(15,23,42,0.06);z-index:100}
+.sidebar{font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; width:260px;background:var(--primary);color:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:22px 18px;position:fixed;left:0;top:0;bottom:0;overflow-y:auto;box-shadow:2px 0 8px rgba(15,23,42,0.06);z-index:100}
 .brand{display:flex;align-items:center;gap:10px}
 .brand i{font-size:26px;color:#fff}
 .brand h2{font-size:18px;margin:0}

@@ -205,6 +205,180 @@ def create_topic_page():
     return render_template('create_topic.html', user=user, active='create_topic', lessons=lessons, selected_lesson=selected_lesson)
 
 
+@admin_bp.route('/all_courses', methods=['GET'])
+def all_courses_page():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    try:
+        courses_q = Course.query.order_by(Course.title).all()
+        courses = []
+        for c in courses_q:
+            try:
+                lessons_count = c.lessons.count() if hasattr(c, 'lessons') else Lesson.query.filter_by(course_id=c.id).count()
+            except Exception:
+                lessons_count = 0
+            courses.append({
+                'id': c.id,
+                'name': c.title,
+                'code': f'COURSE{c.id}',
+                'description': c.description or '',
+                'duration': None,
+                'level': c.difficulty or '',
+                'lessons': lessons_count
+            })
+    except Exception:
+        courses = []
+
+    return render_template('all-courses.html', user=user, active='all_courses', courses=courses)
+
+
+@admin_bp.route('/category-management', methods=['GET'])
+def category_management():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    # Render the category management template. Template will include sidebar and handle content.
+    return render_template('category-management.html', user=user, active='categories')
+
+
+@admin_bp.route('/all_topics', methods=['GET'])
+def all_topics_page():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    try:
+        topics_q = Topic.query.order_by(Topic.created_at.desc()).all()
+        topics = []
+        lesson_cache = {}
+        for t in topics_q:
+            data = t.data_json or {}
+            # resolve lesson title
+            lid = t.lesson_id
+            lesson_title = ''
+            try:
+                if lid in lesson_cache:
+                    lesson_title = lesson_cache[lid]
+                else:
+                    l = Lesson.query.get(lid)
+                    lesson_title = l.title if l else ''
+                    lesson_cache[lid] = lesson_title
+            except Exception:
+                lesson_title = ''
+
+            topics.append({
+                'id': t.id,
+                'name': t.title or '',
+                'lesson': lesson_title,
+                'lesson_id': lid,
+                'description': data.get('description') if isinstance(data, dict) else '',
+                'duration': data.get('duration') if isinstance(data, dict) else None,
+                'estimated_time': data.get('estimated_time') if isinstance(data, dict) else data.get('estimatedTime') if isinstance(data, dict) else None,
+                'difficulty': data.get('difficulty') if isinstance(data, dict) else None,
+                'type': data.get('type') if isinstance(data, dict) else None,
+                'order': data.get('order') if isinstance(data, dict) else None
+            })
+    except Exception:
+        topics = []
+    # Also provide a lessons list for the lesson filter (id + name)
+    try:
+        lessons_q = Lesson.query.order_by(Lesson.title).all()
+        lessons = [{'id': l.id, 'name': l.title or ''} for l in lessons_q]
+    except Exception:
+        lessons = []
+
+    return render_template('all-topics.html', user=user, active='all_topics', topics=topics, lessons=lessons)
+
+
+@admin_bp.route('/delete_course', methods=['POST', 'DELETE'])
+def delete_course():
+    """Delete a course by id. Accepts query param `id` or JSON body {id: ...}.
+    Returns JSON for XHR or redirects back to All Courses page for normal requests.
+    """
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    cid = request.args.get('id')
+    if not cid:
+        try:
+            data = request.get_json(silent=True) or {}
+            cid = data.get('id')
+        except Exception:
+            cid = None
+
+    try:
+        cid = int(cid)
+    except Exception:
+        cid = None
+
+    if not cid:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return {"success": False, "error": "missing or invalid id"}, 400
+        flash('Missing course id for deletion', 'error')
+        return redirect(url_for('admin_bp.all_courses_page'))
+
+    try:
+        course = Course.query.get(cid)
+        if not course:
+            if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return {"success": False, "error": "course not found"}, 404
+            flash('Course not found', 'error')
+            return redirect(url_for('admin_bp.all_courses_page'))
+
+        # Optionally: handle cascade of lessons/assets if not handled by DB foreign keys
+        db.session.delete(course)
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to delete course %s', cid)
+        try:
+            db.session.rollback()
+        except Exception:
+            current_app.logger.exception('rollback failed after delete failure')
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return {"success": False, "error": "failed to delete course"}, 500
+        flash('Failed to delete course', 'error')
+        return redirect(url_for('admin_bp.all_courses_page'))
+
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return {"success": True, "id": cid}, 200
+
+    flash('Course deleted', 'success')
+    return redirect(url_for('admin_bp.all_courses_page'))
+
+
 @admin_bp.route('/create_topic', methods=['POST'])
 def create_topic_post():
     """Create a topic from the admin UI. Accepts JSON or form data.
@@ -243,17 +417,48 @@ def create_topic_post():
         except Exception:
             # leave as raw string fallback
             data_json = raw
+        # If a dict was supplied, merge optional metadata fields if present
+        try:
+            if isinstance(data_json, dict):
+                # prefer explicit keys from JSON payload, else look in top-level data/form
+                est = None
+                diff = None
+                if isinstance(data, dict):
+                    est = data.get('estimated_time') or data.get('estimatedTime')
+                    diff = data.get('difficulty') or data.get('topicDifficulty') or data.get('topic_difficulty')
+                try:
+                    if hasattr(request, 'form') and request.form:
+                        est = est or request.form.get('estimated_time') or request.form.get('estimatedTime')
+                        diff = diff or request.form.get('difficulty') or request.form.get('topicDifficulty')
+                except Exception:
+                    pass
+
+                if est is not None and est != '':
+                    try:
+                        data_json['estimated_time'] = int(est)
+                    except Exception:
+                        data_json['estimated_time'] = est
+                if diff:
+                    data_json['difficulty'] = diff
+        except Exception:
+            # merging metadata should not block topic creation
+            current_app.logger.exception('Failed to merge metadata into provided data_json')
     else:
         # Try to assemble from common fields: description, objectives, cards
         description = None
         objectives = None
         cards = None
+        estimated_time = None
+        difficulty = None
 
         # JSON request body case: data is already a dict
         if isinstance(data, dict):
             description = data.get('description') or data.get('topicDescription')
             objectives = data.get('objectives')
             cards = data.get('cards')
+            # capture optional metadata fields from JSON
+            estimated_time = data.get('estimated_time') or data.get('estimatedTime')
+            difficulty = data.get('difficulty') or data.get('topicDifficulty')
 
         # Form-encoded case: use getlist for repeated fields or named inputs
         try:
@@ -271,6 +476,9 @@ def create_topic_post():
                         cards = json.loads(raw_cards)
                     except Exception:
                         cards = raw_cards
+                # metadata fields
+                estimated_time = estimated_time or request.form.get('estimated_time') or request.form.get('estimatedTime')
+                difficulty = difficulty or request.form.get('difficulty') or request.form.get('topicDifficulty')
         except Exception:
             pass
 
@@ -281,6 +489,24 @@ def create_topic_post():
             payload['objectives'] = objectives
         if cards:
             payload['cards'] = cards
+        if estimated_time is not None and estimated_time != '':
+            # try to coerce to int when possible
+            try:
+                payload['estimated_time'] = int(estimated_time)
+            except Exception:
+                payload['estimated_time'] = estimated_time
+        if difficulty:
+            payload['difficulty'] = difficulty
+
+        # If the incoming JSON included additional keys besides title/lesson_id, merge them too
+        if isinstance(data, dict):
+            for k, v in data.items():
+                if k in ('title', 'lesson_id', 'lessonId', 'data_json', 'dataJson'):
+                    continue
+                # avoid overwriting explicit payload fields
+                if k in payload:
+                    continue
+                payload[k] = v
 
         if payload:
             data_json = payload
@@ -306,6 +532,173 @@ def create_topic_post():
 
     # Redirect back to lesson page so admin can see the topic listed
     return redirect(url_for('admin_bp.lesson_page') + f'?lesson_id={topic.lesson_id}')
+
+
+@admin_bp.route('/get_topic', methods=['GET'])
+def get_topic():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    tid = request.args.get('id')
+    try:
+        tid = int(tid)
+    except Exception:
+        tid = None
+
+    if not tid:
+        return {"success": False, "error": "missing or invalid id"}, 400
+
+    try:
+        topic = Topic.query.get(tid)
+        if not topic:
+            return {"success": False, "error": "topic not found"}, 404
+
+        data = topic.data_json if isinstance(topic.data_json, dict) else (topic.data_json or {})
+        payload = {
+            'id': topic.id,
+            'title': topic.title,
+            'lesson_id': topic.lesson_id,
+            'description': data.get('description') if isinstance(data, dict) else '',
+            'duration': data.get('duration') if isinstance(data, dict) else None,
+            'estimated_time': data.get('estimated_time') if isinstance(data, dict) else data.get('estimatedTime') if isinstance(data, dict) else None,
+            'difficulty': data.get('difficulty') if isinstance(data, dict) else None,
+            'type': data.get('type') if isinstance(data, dict) else None,
+            'order': data.get('order') if isinstance(data, dict) else None
+        }
+        return {"success": True, "topic": payload}, 200
+    except Exception:
+        current_app.logger.exception('Failed to load topic %s', tid)
+        return {"success": False, "error": "failed to load topic"}, 500
+
+
+@admin_bp.route('/update_topic', methods=['POST'])
+def update_topic():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    data = request.get_json(silent=True) or {}
+    tid = data.get('id')
+    try:
+        tid = int(tid)
+    except Exception:
+        tid = None
+
+    if not tid:
+        return {"success": False, "error": "missing or invalid id"}, 400
+
+    try:
+        topic = Topic.query.get(tid)
+        if not topic:
+            return {"success": False, "error": "topic not found"}, 404
+
+        # update title if provided
+        title = data.get('title')
+        if title is not None:
+            topic.title = title.strip()
+
+        # update data_json fields (description, estimated_time, duration, difficulty, type, order)
+        existing = topic.data_json if isinstance(topic.data_json, dict) else (topic.data_json or {})
+        if not isinstance(existing, dict):
+            existing = {}
+
+        for key in ('description', 'estimated_time', 'duration', 'difficulty', 'type', 'order'):
+            if key in data:
+                existing[key] = data.get(key)
+
+        topic.data_json = existing
+
+        db.session.add(topic)
+        db.session.commit()
+
+        return {"success": True, "topic": {'id': topic.id, 'title': topic.title, 'data_json': topic.data_json}}, 200
+    except Exception:
+        current_app.logger.exception('Failed to update topic %s', tid)
+        try:
+            db.session.rollback()
+        except Exception:
+            current_app.logger.exception('rollback failed after topic update failure')
+        return {"success": False, "error": "failed to update topic"}, 500
+
+
+@admin_bp.route('/delete_topic', methods=['POST', 'DELETE'])
+def delete_topic():
+    """Delete a topic by id. Accepts query param `id` or JSON body {id: ...}.
+    Returns JSON for XHR or redirects back to All Topics page for normal requests.
+    """
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    # id can come from query string or JSON body
+    tid = request.args.get('id')
+    if not tid:
+        try:
+            data = request.get_json(silent=True) or {}
+            tid = data.get('id')
+        except Exception:
+            tid = None
+
+    try:
+        tid = int(tid)
+    except Exception:
+        tid = None
+
+    if not tid:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return {"success": False, "error": "missing or invalid id"}, 400
+        flash('Missing topic id for deletion', 'error')
+        return redirect(url_for('admin_bp.all_topics_page'))
+
+    try:
+        topic = Topic.query.get(tid)
+        if not topic:
+            if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return {"success": False, "error": "topic not found"}, 404
+            flash('Topic not found', 'error')
+            return redirect(url_for('admin_bp.all_topics_page'))
+
+        db.session.delete(topic)
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to delete topic %s', tid)
+        try:
+            db.session.rollback()
+        except Exception:
+            current_app.logger.exception('rollback failed after delete failure')
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return {"success": False, "error": "failed to delete topic"}, 500
+        flash('Failed to delete topic', 'error')
+        return redirect(url_for('admin_bp.all_topics_page'))
+
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return {"success": True, "id": tid}, 200
+
+    flash('Topic deleted', 'success')
+    return redirect(url_for('admin_bp.all_topics_page'))
 
 
 # Serve the topic-editor React app (best-effort). This will serve files from the
@@ -507,12 +900,101 @@ def create_course_post():
         flash('Failed to create course', 'error')
         return redirect(url_for('admin_bp.create_course_page'))
 
-    # If Ajax/fetch caller, return JSON with new id
-    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept', '').startswith('application/json'):
-        return {"success": True, "id": course.id}, 201
+@admin_bp.route('/update_course', methods=['POST'])
+def update_course():
+    """Update an existing course. Accepts JSON or form data.
+    Expects: id (required), title/name, description, duration (optional), level (difficulty), and other optional fields.
+    Returns JSON for XHR callers.
+    """
+    # detect XHR callers
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.headers.get('Accept', '').startswith('application/json')
 
-    # Otherwise, redirect to lesson page and include course_id as query param
-    return redirect(url_for('admin_bp.lesson_page') + f'?course_id={course.id}')
+    uid = session.get('admin_user_id')
+    if not uid:
+        if is_xhr:
+            return {"success": False, "error": "not authenticated"}, 401
+        return redirect(url_for('admin_bp.admin_login_get'))
+
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            if is_xhr:
+                return {"success": False, "error": "not authorized"}, 403
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    data = request.get_json(silent=True) or request.form or {}
+    cid = data.get('id') or request.args.get('id')
+    if not cid:
+        if is_xhr:
+            return {"success": False, "error": "missing course id"}, 400
+        return redirect(url_for('admin_bp.all_courses_page'))
+
+    try:
+        cid = int(cid)
+    except Exception:
+        if is_xhr:
+            return {"success": False, "error": "invalid course id"}, 400
+        return redirect(url_for('admin_bp.all_courses_page'))
+
+    try:
+        course = Course.query.get(cid)
+        if not course:
+            if is_xhr:
+                return {"success": False, "error": "course not found"}, 404
+            flash('Course not found', 'error')
+            return redirect(url_for('admin_bp.all_courses_page'))
+
+        # Map incoming fields to model columns (be permissive)
+        title = data.get('title') or data.get('name') or data.get('courseName')
+        description = data.get('description') or data.get('courseDescription')
+        duration = data.get('duration')
+        level = data.get('level') or data.get('difficulty')
+        lessons = data.get('lessons')
+
+        if title is not None:
+            course.title = str(title).strip()
+        if description is not None:
+            course.description = description
+        if level is not None:
+            if level in ('beginner', 'intermediate', 'advanced'):
+                course.difficulty = level
+            else:
+                course.difficulty = None
+        if duration is not None and duration != '':
+            try:
+                course.duration_weeks = int(duration)
+            except Exception:
+                pass
+
+        db.session.add(course)
+        db.session.commit()
+
+        # return the updated representation used by the UI
+        lessons_count = course.lessons.count() if hasattr(course, 'lessons') else (int(lessons) if lessons else 0)
+        payload = {
+            'success': True,
+            'id': course.id,
+            'name': course.title,
+            'code': f'COURSE{course.id}',
+            'description': course.description or '',
+            'duration': course.duration_weeks,
+            'level': course.difficulty or '',
+            'lessons': lessons_count
+        }
+        return payload, 200
+    except Exception:
+        current_app.logger.exception('Failed to update course %s', cid)
+        try:
+            db.session.rollback()
+        except Exception:
+            current_app.logger.exception('rollback failed after update failure')
+        if is_xhr:
+            return {"success": False, "error": "failed to update course"}, 500
+        flash('Failed to update course', 'error')
+        return redirect(url_for('admin_bp.all_courses_page'))
 
 
 @admin_bp.route('/lesson', methods=['GET'])
@@ -590,6 +1072,48 @@ def lesson_page():
         topics = []
 
     return render_template('lesson.html', user=user, active='lesson', courses=courses, categories=categories, lessons=lessons, topics=topics)
+
+
+@admin_bp.route('/course_lessons', methods=['GET'])
+def course_lessons():
+    """Return JSON list of lessons for a given course id.
+    Query param: id (course id)
+    Returns: { success: True, lessons: [ {id, title, description, duration, level} ] }
+    """
+    uid = session.get('admin_user_id')
+    if not uid:
+        return {"success": False, "error": "not authenticated"}, 401
+
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return {"success": False, "error": "not authorized"}, 403
+
+    cid = request.args.get('id') or request.args.get('course_id')
+    try:
+        cid = int(cid)
+    except Exception:
+        return {"success": False, "error": "invalid course id"}, 400
+
+    try:
+        lessons_q = Lesson.query.filter_by(course_id=cid).order_by(Lesson.created_at.desc()).all()
+        lessons_list = [
+            {
+                'id': l.id,
+                'title': l.title,
+                'description': l.description or '',
+                'duration': l.duration,
+                'level': l.level or ''
+            }
+            for l in lessons_q
+        ]
+        return {"success": True, "lessons": lessons_list}, 200
+    except Exception:
+        current_app.logger.exception('Failed to load lessons for course %s', cid)
+        return {"success": False, "error": "failed to load lessons"}, 500
 
 
 @admin_bp.route('/create_lesson', methods=['POST'])

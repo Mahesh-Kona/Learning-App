@@ -4,14 +4,49 @@
     <h2>EduSaint</h2>
   </div>
 
+  <style>
+    /* Submenu styling for Courses/Topics dropdown on hover */
+    .menu { list-style: none; padding: 0; margin: 0; }
+    .menu .has-children { position: relative; }
+    .menu .has-children > a { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .menu .submenu { display: none; list-style: none; padding-left: 0; margin: 6px 0 0 0; }
+    .menu .submenu .submenu-item a { display: block; padding: 8px 18px; color: inherit; text-decoration: none; font-size: 0.95rem; }
+    .menu .submenu .submenu-item a:hover { background: rgba(0,0,0,0.04); }
+    /* reveal on hover for pointer devices */
+    .menu .has-children:hover > .submenu { display: block; }
+    /* small caret indicator */
+    .menu .has-children > a::after { content: '\25BE'; margin-left: auto; font-size: 0.7rem; opacity: 0.8; }
+    .menu .has-children .submenu .submenu-item.active a { font-weight: 700; color: var(--accent, #32CD32); }
+    /* make sidebar submenu look nested */
+    .menu .submenu { background: rgba(59, 53, 53, 0.02); border-left: 3px solid rgba(0,0,0,0.03); border-radius: 6px; margin-left: 8px; }
+    @media (max-width: 768px) {
+      /* On small screens, allow click-to-toggle via class */
+      .menu .has-children > a::after { content: '\25B8'; }
+      .menu .has-children.open > .submenu { display: block; }
+    }
+  </style>
+
   <nav>
     <ul class="menu">
       <li class="menu-item {% if active == 'dashboard' %}active{% endif %}"><a href="{{ url_for('admin_bp.admin_dashboard') }}"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
       <li class="menu-item {% if active == 'students' %}active{% endif %}"><a href="#"><i class="fas fa-users"></i><span>Students</span></a></li>
       <li class="menu-item {% if active == 'teachers' %}active{% endif %}"><a href="#"><i class="fas fa-chalkboard-teacher"></i><span>Teachers</span></a></li>
-      <li class="menu-item {% if active == 'courses' or active == 'create_course' %}active{% endif %}"><a href="{{ url_for('admin_bp.create_course_page') }}"><i class="fas fa-book-open"></i><span>Courses</span></a></li>
+      <li class="menu-item has-children {% if active in ['courses','create_course','all_courses'] %}active{% endif %}">
+        <a href="#"><i class="fas fa-book-open"></i><span>Courses</span></a>
+        <ul class="submenu">
+          <li class="submenu-item {% if active == 'all_courses' %}active{% endif %}"><a href="{{ url_for('admin_bp.all_courses_page') }}">All Courses</a></li>
+          <li class="submenu-item {% if active == 'create_course' %}active{% endif %}"><a href="{{ url_for('admin_bp.create_course_page') }}">New Course</a></li>
+          <li class="submenu-item {% if active == 'categories' %}active{% endif %}"><a href="{{ url_for('admin_bp.category_management') }}">Categories</a></li>
+        </ul>
+      </li>
       <li class="menu-item {% if active == 'lesson' %}active{% endif %}"><a href="{{ url_for('admin_bp.lesson_page') }}"><i class="fas fa-tasks"></i><span>Lessons</span></a></li>
-      <li class="menu-item {% if active == 'topics' %}active{% endif %}"><a href="{{ url_for('admin_bp.create_topic_page') }}"><i class="fas fa-tags"></i><span>Topics</span></a></li>
+      <li class="menu-item has-children {% if active in ['topics','create_topic','all_topics'] %}active{% endif %}">
+        <a href="#"><i class="fas fa-tags"></i><span>Topics</span></a>
+        <ul class="submenu">
+          <li class="submenu-item {% if active == 'all_topics' %}active{% endif %}"><a href="{{ url_for('admin_bp.all_topics_page') }}">All Topics</a></li>
+          <li class="submenu-item {% if active == 'create_topic' %}active{% endif %}"><a href="{{ url_for('admin_bp.create_topic_page') }}">New Topic</a></li>
+        </ul>
+      </li>
       <li class="menu-item {% if active == 'analytics' %}active{% endif %}"><a href="#"><i class="fas fa-chart-bar"></i><span>Analytics</span></a></li>
       <li class="menu-item {% if active == 'settings' %}active{% endif %}"><a href="#"><i class="fas fa-cog"></i><span>Settings</span></a></li>
     </ul>
@@ -20,4 +55,15 @@
   <div class="sidebar-footer">
     <a href="{{ url_for('admin_bp.admin_logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
   </div>
+  <script>
+    // Enable click-to-toggle for touch devices: toggle .open on parent li
+    document.addEventListener('click', function (e) {
+      const anchor = e.target.closest('.menu .has-children > a');
+      if (!anchor) return;
+      const li = anchor.parentElement;
+      // On pointer devices this will still allow hover to open; on touch this makes it toggle
+      if (li.classList.contains('open')) li.classList.remove('open'); else li.classList.add('open');
+      e.preventDefault();
+    });
+  </script>
 </aside>

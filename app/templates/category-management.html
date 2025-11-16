@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Category - EduSaint</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        /* Mobile Menu Toggle */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: #0d9488;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .mobile-menu-toggle i {
+            font-size: 1.2rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            min-height: 100vh;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .page-header {
+            background: white;
+            padding: 24px 32px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-content {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .header-content h1 {
+            font-size: 2rem;
+            color: #0d9488;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-content h1::before {
+            content: "📁";
+            font-size: 1.8rem;
+        }
+
+        .header-content p {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        .btn-add {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn-add:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-add::before {
+            content: "+";
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        /* Categories Section */
+        .categories-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #0d9488;
+            margin-bottom: 25px;
+            font-weight: 700;
+        }
+
+        /* Search and Filter */
+        .controls-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1 1 300px;
+            min-width: 250px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px 12px 40px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: 12px center;
+            background-size: 18px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group select {
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 140px;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        /* Category Card */
+        .category-card {
+            background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #10b981;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .category-card:hover {
+            border-left-color: #059669;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            transform: translateX(4px);
+        }
+
+        .category-card.has-parent {
+            margin-left: 40px;
+            border-left-color: #3b82f6;
+        }
+
+        .category-card.has-parent:hover {
+            border-left-color: #2563eb;
+        }
+
+        .category-card.has-parent::before {
+            content: "└─";
+            position: absolute;
+            left: -28px;
+            top: 24px;
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        /* Card Content Layout */
+        .category-content {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        /* Icon Container */
+        .category-icon {
+            font-size: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border-radius: 12px;
+            flex-shrink: 0;
+        }
+
+        /* Category Info */
+        .category-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .category-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .category-badges {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge.academic {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge.vocational {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge.extracurricular {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .badge.easy {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge.medium {
+            background: #fed7aa;
+            color: #9a3412;
+        }
+
+        .badge.hard {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .category-description {
+            color: #64748b;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin: 8px 0 12px 0;
+        }
+
+        .category-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .category-meta::before {
+            content: "📚";
+            font-size: 1rem;
+        }
+
+        /* Right Controls */
+        .right-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        /* Course Count Badge */
+        .course-count {
+            background: #10b981;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding: 8px 16px;
+            border-radius: 50px;
+            min-width: 50px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .btn i {
+            font-size: 0.9rem;
+        }
+
+        .btn-sub {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .btn-sub:hover {
+            background: #7c3aed;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-view {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-edit {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .close-modal:hover {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.9rem;
+        }
+
+        .form-group label .required {
+            color: #ef4444;
+            margin-left: 4px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .icon-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .icon-option {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .icon-option:hover {
+            border-color: #10b981;
+            background: #f0fdf4;
+            transform: scale(1.1);
+        }
+
+        .icon-option.selected {
+            border-color: #10b981;
+            background: #d1fae5;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-primary {
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: #059669;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 0.95rem;
+        }
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding-top: 70px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page-header {
+                padding: 20px;
+            }
+
+            .header-content h1 {
+                font-size: 1.5rem;
+            }
+
+            .header-content h1::before {
+                font-size: 1.3rem;
+            }
+
+            .categories-section {
+                padding: 20px;
+            }
+
+            .category-content {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .category-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 2rem;
+            }
+
+            .right-controls {
+                flex-direction: row;
+                justify-content: space-between;
+                width: 100%;
+            }
+
+            .action-buttons {
+                flex-wrap: wrap;
+            }
+
+            .btn {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }
+
+            .category-card.has-parent {
+                margin-left: 20px;
+            }
+
+            .controls-bar {
+                flex-direction: column;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+
+            .filter-group select {
+                flex: 1;
+            }
+        }
+        .sidebar{
+          background-color: #2E8B57;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+<div class="sidebar">  <!-- Sidebar -->
+    {% include 'admin_sidebar.html' %}</div>
+  
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Header -->
+            <div class="page-header">
+                <div class="header-content">
+                    <h1>Manage Category</h1>
+                    <p>Organize courses into categories and sub-categories.</p>
+                </div>
+                <button class="btn-add" onclick="openAddModal()">Add Category</button>
+            </div>
+
+            <!-- Categories Section -->
+            <div class="categories-section">
+                <h2 class="section-title">All Categories</h2>
+
+                <!-- Search and Filters -->
+                <div class="controls-bar">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Search categories..." oninput="searchCategories()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="typeFilter" onchange="filterCategories()">
+                            <option value="">All Types</option>
+                            <option value="academic">Academic</option>
+                            <option value="vocational">Vocational</option>
+                            <option value="extracurricular">Extracurricular</option>
+                        </select>
+                        <select id="difficultyFilter" onchange="filterCategories()">
+                            <option value="">All Levels</option>
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Categories List -->
+                <div id="categoriesList"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Category</h2>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="categoryForm" onsubmit="event.preventDefault(); saveCategory();">
+                <div class="modal-body">
+                    <input type="hidden" id="categoryId">
+                    
+                    <div class="form-group">
+                        <label for="categoryName">Category Name <span class="required">*</span></label>
+                        <input type="text" id="categoryName" required placeholder="e.g., Mathematics">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Select Icon <span class="required">*</span></label>
+                        <input type="hidden" id="selectedIcon" required>
+                        <div class="icon-selector">
+                            <div class="icon-option" onclick="selectIcon(this, '📐')">📐</div>
+                            <div class="icon-option" onclick="selectIcon(this, '🔢')">🔢</div>
+                            <div class="icon-option" onclick="selectIcon(this, '📊')">📊</div>
+                            <div class="icon-option" onclick="selectIcon(this, '🧪')">🧪</div>
+                            <div class="icon-option" onclick="selectIcon(this, '🌍')">🌍</div>
+                            <div class="icon-option" onclick="selectIcon(this, '📚')">📚</div>
+                            <div class="icon-option" onclick="selectIcon(this, '💻')">💻</div>
+                            <div class="icon-option" onclick="selectIcon(this, '🎨')">🎨</div>
+                            <div class="icon-option" onclick="selectIcon(this, '⚽')">⚽</div>
+                            <div class="icon-option" onclick="selectIcon(this, '🎵')">🎵</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="categoryDescription">Description</label>
+                        <textarea id="categoryDescription" placeholder="Brief description of this category"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="subjectType">Subject Type <span class="required">*</span></label>
+                        <select id="subjectType" required>
+                            <option value="">Select Type</option>
+                            <option value="academic">Academic</option>
+                            <option value="vocational">Vocational</option>
+                            <option value="extracurricular">Extracurricular</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="difficultyLevel">Difficulty Level <span class="required">*</span></label>
+                        <select id="difficultyLevel" required>
+                            <option value="">Select Level</option>
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="parentCategory">Parent Category</label>
+                        <select id="parentCategory">
+                            <option value="">None (Main Category)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="displayOrder">Display Order</label>
+                        <input type="number" id="displayOrder" min="1" value="1" placeholder="1">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Sample data
+        let categories = [
+            {
+                id: 1,
+                name: "Mathematics",
+                icon: "📐",
+                description: "Courses related to mathematical concepts and problem solving",
+                subjectType: "academic",
+                difficulty: "medium",
+                parentId: null,
+                order: 1,
+                coursesCount: 50
+            },
+            {
+                id: 2,
+                name: "Algebra",
+                icon: "🔢",
+                description: "Algebraic equations and expressions",
+                subjectType: "academic",
+                difficulty: "medium",
+                parentId: 1,
+                order: 1,
+                coursesCount: 15
+            },
+            {
+                id: 3,
+                name: "Geometry",
+                icon: "📊",
+                description: "Shapes, angles, and spatial reasoning",
+                subjectType: "academic",
+                difficulty: "easy",
+                parentId: 1,
+                order: 2,
+                coursesCount: 20
+            }
+        ];
+
+        let editingId = null;
+
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        // Toggle submenu
+        function toggleSubmenu(element) {
+            element.classList.toggle('open');
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            
+            if (window.innerWidth <= 1024) {
+                if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+
+        // Render categories
+        function renderCategories(filteredCategories = null) {
+            const container = document.getElementById('categoriesList');
+            const categoriesToRender = filteredCategories || categories;
+            
+            if (categoriesToRender.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📂</div>
+                        <h3>No categories found</h3>
+                        <p>Try adjusting your search or filters, or create a new category.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort categories by order
+            const sortedCategories = [...categoriesToRender].sort((a, b) => a.order - b.order);
+            
+            const mainCategories = sortedCategories.filter(c => !c.parentId);
+            
+            let html = '';
+            
+            mainCategories.forEach(category => {
+                html += renderCategoryCard(category);
+                
+                const subCategories = sortedCategories.filter(c => c.parentId === category.id);
+                subCategories.forEach(subCat => {
+                    html += renderCategoryCard(subCat, true);
+                });
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Render single category card
+        function renderCategoryCard(category, isSubCategory = false) {
+            const hasParentClass = isSubCategory ? 'has-parent' : '';
+            
+            return `
+                <div class="category-card ${hasParentClass}">
+                    <div class="category-content">
+                        <div class="category-icon">${category.icon}</div>
+                        
+                        <div class="category-info">
+                            <div class="category-header">
+                                <h3 class="category-name">${category.name}</h3>
+                                <div class="category-badges">
+                                    <span class="badge ${category.subjectType}">${capitalizeFirst(category.subjectType)}</span>
+                                    <span class="badge ${category.difficulty}">${capitalizeFirst(category.difficulty)}</span>
+                                </div>
+                            </div>
+                            <p class="category-description">${category.description || 'No description available'}</p>
+                            <div class="category-meta">Used in ${category.coursesCount} courses</div>
+                        </div>
+                        
+                        <div class="right-controls">
+                            <div class="course-count">${category.coursesCount}</div>
+                            <div class="action-buttons">
+                                ${!isSubCategory ? `<button class="btn btn-sub" onclick="addSubCategory(${category.id})">
+                                    <i class="fas fa-plus"></i> Sub
+                                </button>` : ''}
+                                <button class="btn btn-view" onclick="viewCourses(${category.id})">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                                <button class="btn btn-edit" onclick="editCategory(${category.id})">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button class="btn btn-delete" onclick="deleteCategory(${category.id})">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Populate parent dropdown
+        function populateParentDropdown(excludeId = null) {
+            const parentSelect = document.getElementById('parentCategory');
+            parentSelect.innerHTML = '<option value="">None (Main Category)</option>';
+            
+            const mainCategories = categories.filter(c => !c.parentId && c.id !== excludeId);
+            mainCategories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = `${cat.icon} ${cat.name}`;
+                parentSelect.appendChild(option);
+            });
+        }
+
+        // Open add modal
+        function openAddModal() {
+            editingId = null;
+            document.getElementById('modalTitle').textContent = 'Add New Category';
+            document.getElementById('categoryForm').reset();
+            document.getElementById('categoryId').value = '';
+            document.querySelectorAll('.icon-option').forEach(icon => icon.classList.remove('selected'));
+            populateParentDropdown();
+            document.getElementById('categoryModal').classList.add('active');
+        }
+
+        // Add sub-category
+        function addSubCategory(parentId) {
+            openAddModal();
+            document.getElementById('modalTitle').textContent = 'Add Sub-Category';
+            document.getElementById('parentCategory').value = parentId;
+            
+            const parent = categories.find(c => c.id === parentId);
+            if (parent) {
+                document.getElementById('subjectType').value = parent.subjectType;
+                document.getElementById('difficultyLevel').value = parent.difficulty;
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('categoryModal').classList.remove('active');
+            document.getElementById('categoryForm').reset();
+            editingId = null;
+        }
+
+        // Select icon
+        function selectIcon(element, icon) {
+            document.querySelectorAll('.icon-option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+            document.getElementById('selectedIcon').value = icon;
+        }
+
+        // Edit category
+        function editCategory(id) {
+            const category = categories.find(c => c.id === id);
+            if (!category) return;
+
+            editingId = id;
+            document.getElementById('modalTitle').textContent = 'Edit Category';
+            document.getElementById('categoryId').value = category.id;
+            document.getElementById('categoryName').value = category.name;
+            document.getElementById('categoryDescription').value = category.description || '';
+            document.getElementById('subjectType').value = category.subjectType;
+            document.getElementById('difficultyLevel').value = category.difficulty;
+            document.getElementById('displayOrder').value = category.order;
+            
+            populateParentDropdown(id);
+            document.getElementById('parentCategory').value = category.parentId || '';
+            
+            document.getElementById('selectedIcon').value = category.icon;
+            document.querySelectorAll('.icon-option').forEach(icon => {
+                if (icon.textContent === category.icon) {
+                    icon.classList.add('selected');
+                }
+            });
+            
+            document.getElementById('categoryModal').classList.add('active');
+        }
+
+        // Delete category
+        function deleteCategory(id) {
+            const category = categories.find(c => c.id === id);
+            if (!category) return;
+
+            const hasSubCategories = categories.some(c => c.parentId === id);
+            if (hasSubCategories) {
+                alert('Cannot delete! This category has sub-categories. Please delete or move them first.');
+                return;
+            }
+
+            if (category.coursesCount > 0) {
+                const confirmMsg = `This category has ${category.coursesCount} courses.\n\nAll courses will be moved to "Uncategorized".\n\nAre you sure you want to continue?`;
+                if (!confirm(confirmMsg)) return;
+            } else {
+                if (!confirm(`Delete category "${category.name}"?`)) return;
+            }
+
+            categories = categories.filter(c => c.id !== id);
+            renderCategories();
+        }
+
+        // View courses
+        function viewCourses(id) {
+            const category = categories.find(c => c.id === id);
+            alert(`Viewing courses in: ${category.name}\n\nThis would navigate to courses filtered by this category.`);
+        }
+
+        // Save category
+        function saveCategory() {
+            const form = document.getElementById('categoryForm');
+            if (!form.checkValidity()) {
+                alert('Please fill in all required fields!');
+                form.reportValidity();
+                return;
+            }
+
+            const categoryData = {
+                name: document.getElementById('categoryName').value,
+                icon: document.getElementById('selectedIcon').value || '📁',
+                description: document.getElementById('categoryDescription').value,
+                subjectType: document.getElementById('subjectType').value,
+                difficulty: document.getElementById('difficultyLevel').value,
+                parentId: document.getElementById('parentCategory').value || null,
+                order: parseInt(document.getElementById('displayOrder').value) || 1,
+                coursesCount: 0
+            };
+
+            if (editingId) {
+                const index = categories.findIndex(c => c.id === editingId);
+                const existingCount = categories[index].coursesCount;
+                categories[index] = { ...categories[index], ...categoryData, coursesCount: existingCount };
+            } else {
+                const newId = Math.max(...categories.map(c => c.id), 0) + 1;
+                categories.push({ id: newId, ...categoryData });
+            }
+
+            renderCategories();
+            closeModal();
+        }
+
+        // Search categories
+        function searchCategories() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const type = document.getElementById('typeFilter').value;
+            const difficulty = document.getElementById('difficultyFilter').value;
+            
+            let filtered = categories.filter(category => {
+                const matchesSearch = category.name.toLowerCase().includes(searchTerm) ||
+                                     (category.description && category.description.toLowerCase().includes(searchTerm));
+                const matchesType = !type || category.subjectType === type;
+                const matchesDifficulty = !difficulty || category.difficulty === difficulty;
+                return matchesSearch && matchesType && matchesDifficulty;
+            });
+
+            renderCategories(filtered);
+        }
+
+        // Filter categories
+        function filterCategories() {
+            searchCategories();
+        }
+
+        // Helper function
+        function capitalizeFirst(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        // Close modal on outside click
+        document.getElementById('categoryModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('categoryModal').classList.contains('active')) {
+                closeModal();
+            }
+        });
+
+        // Initial render
+        renderCategories();
+    </script>
+</body>
+</html>

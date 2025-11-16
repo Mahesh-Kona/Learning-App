@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topic Management - School ERP</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}">
+
+    <style>
+        /* Admin sidebar is provided by admin_sidebar.css; keep local page styles below. */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        /* In-flow sidebar grid (keep sidebar non-fixed and next to content) */
+        .page-grid { display: flex; gap: 20px; align-items: stretch; flex-wrap: nowrap; }
+        .page-sidebar { flex: 0 0 240px; }
+        .page-main { flex: 1; min-width: 0; }
+
+       .page-sidebar .sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 260px !important;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+
+        /* Keep the sidebar visually constrained while the rest of the page uses the fixed layout.
+           The parent `.page-sidebar` controls the column width (see .page-grid). */
+
+    /* Prevent horizontal scrolling when sidebar is present */
+    html, body { overflow-x: hidden; }
+    /* ensure main content accounts for fixed sidebar (admin_sidebar.css uses margin-left) */
+    .dashboard .main-content { min-height: 100vh; }
+    /* allow flex children to shrink instead of causing overflow */
+    .topic-content, .topic-info { min-width: 0; }
+
+        /* Header */
+        .page-header {
+            background: white;
+            padding: 14px 20px;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-content h1 {
+            font-size: 1.5rem;
+            color: #10b981;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-content h1::before {
+            content: "📝";
+            font-size: 2rem;
+        }
+
+        .header-content p {
+            color: #64748b;
+            font-size: 1.05rem;
+        }
+
+        .btn-add {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-add:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-add::before {
+            content: "+";
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        /* Topics Section */
+        .topics-section {
+            background: white;
+            padding: 16px;
+            border-radius: 10px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #10b981;
+            margin-bottom: 25px;
+            font-weight: 700;
+        }
+
+        /* Topic Card */
+        .topic-card {
+            background: white;
+            border: 1px solid #e6eef6;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 14px;
+            transition: all 0.18s ease;
+        }
+
+        .topic-card:hover {
+            border-left-color: #059669;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateX(3px);
+        }
+
+        .topic-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .topic-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .topic-name {
+            font-size: 1.05rem;
+            color: #1e293b;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .topic-description {
+            color: #64748b;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .topic-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .meta-item::before {
+            font-size: 1rem;
+        }
+
+        .meta-duration::before {
+            content: "⏱️";
+        }
+
+        .meta-type::before {
+            content: "📌";
+        }
+
+        .meta-order::before {
+            content: "🔢";
+        }
+
+        .type-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .type-theory {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .type-practical {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .type-assessment {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .type-video {
+            background: #e9d5ff;
+            color: #6b21a8;
+        }
+
+        /* Lesson Badge */
+        .lesson-badge {
+            background: #10b981;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-align: center;
+            min-width: 130px;
+        }
+
+        .lesson-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .lesson-label {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Action Buttons */
+        .topic-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            min-width: 84px;
+        }
+
+        .btn-view {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .btn-edit {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #1e293b;
+        }
+
+        /* Search and Filter */
+        .controls-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-group select {
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            flex: 1;
+            min-width: 200px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .topic-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .topic-actions {
+                width: 100%;
+            }
+
+            .btn {
+                flex: 1;
+            }
+
+            .lesson-badge {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page-grid">
+            <div class="page-sidebar">
+                {% include 'admin_sidebar.html' %}
+            </div>
+            <div class="page-main">
+        <!-- Header -->
+        <div class="page-header">
+            <div class="header-content">
+                <h1>Topic Management</h1>
+                <p>Create and manage topics within lessons.</p>
+            </div>
+            <div style="margin-left:12px;color:#475569;font-size:0.95rem;align-self:center;">Topics in DB: {{ topics|length }}</div>
+            <button id="addTopicBtn" class="btn-add" data-create-url="{{ url_for('admin_bp.create_topic_page') }}">Add Topic</button>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-value" id="totalTopics">0</div>
+                <div class="stat-label">Total Topics</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <div class="stat-value" id="totalLessons">0</div>
+                <div class="stat-label">Unique Lessons</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                <div class="stat-value" id="avgDuration">0</div>
+                <div class="stat-label">Avg Duration (min)</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="topics-section">
+            <h2 class="section-title">All Topics</h2>
+
+            <!-- Search and Filter -->
+            <div class="controls-bar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search topics..." onkeyup="searchTopics()">
+                </div>
+                <div class="filter-group">
+                    <select id="lessonFilter" onchange="filterTopics()">
+                        <option value="">All Lessons</option>
+                        {% for l in lessons %}
+                            <option value="{{ l.id }}">{{ l.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Topics List -->
+            <div id="topicsList">
+                {% if topics and topics|length > 0 %}
+                    {% for topic in topics %}
+                        <div class="topic-card">
+                            <div class="topic-content">
+                                <div class="topic-info">
+                                    <div class="topic-name">{{ topic.name|e }}</div>
+                                    <div class="topic-description">{{ (topic.description or '')|e }}</div>
+                                    <div class="topic-meta">
+                                            <span class="meta-item meta-estimated">Estimated: {{ (topic.estimated_time if topic.estimated_time is not none else (topic.duration if topic.duration is not none else 'N/A')) }} min</span>
+                                            <span class="meta-item meta-difficulty">Difficulty: {{ (topic.difficulty or 'N/A')|e }}</span>
+                                            <span class="meta-item meta-type"><span class="type-badge type-{{ (topic.type or 'theory')|e }}">{{ (topic.type or '')|capitalize }}</span></span>
+                                            <span class="meta-item meta-order">Order: {{ topic.order or '' }}</span>
+                                    </div>
+                                </div>
+                                <div class="lesson-badge">
+                                    <div class="lesson-label">📚 Lesson</div>
+                                    <div class="lesson-name">{{ (topic.lesson or '')|e }}</div>
+                                </div>
+                                <div class="topic-actions">
+                                    <button class="btn btn-view" onclick="viewTopic({{ topic.id }})">View Details</button>
+                                    <button class="btn btn-edit" onclick="editTopic({{ topic.id }})">Edit</button>
+                                    <button class="btn btn-delete" onclick="deleteTopic({{ topic.id }})">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <h3>No topics found</h3>
+                        <p>Start by adding your first topic!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Base URLs provided by server
+        const TOPIC_EDITOR_BASE = "{{ url_for('admin_bp.serve_topic_editor') }}";
+        const CREATE_TOPIC_URL = "{{ url_for('admin_bp.create_topic_page') }}";
+        const GET_TOPIC_URL = "{{ url_for('admin_bp.get_topic') }}";
+        const UPDATE_TOPIC_URL = "{{ url_for('admin_bp.update_topic') }}";
+
+    // Topics provided by server (fall back to empty array if null)
+    let topics = ({{ topics | tojson | safe }} ) || [];
+
+        // Populate lesson filter
+        function populateLessonFilter() {
+            const lessonFilter = document.getElementById('lessonFilter');
+            // clear existing options except first
+            lessonFilter.innerHTML = '<option value="">All Lessons</option>';
+            const uniqueLessons = [...new Set((topics || []).map(t => t.lesson).filter(Boolean))];
+
+            uniqueLessons.forEach(lesson => {
+                const option = document.createElement('option');
+                option.value = lesson;
+                option.textContent = lesson;
+                lessonFilter.appendChild(option);
+            });
+        }
+
+        // Update stats
+        function updateStats() {
+            const list = topics || [];
+            document.getElementById('totalTopics').textContent = list.length;
+            const uniqueLessons = new Set(list.map(t => t.lesson).filter(Boolean));
+            document.getElementById('totalLessons').textContent = uniqueLessons.size;
+
+            // prefer estimated_time if present, fall back to duration
+            const avgDuration = list.length ? (list.reduce((sum, t) => sum + (t.estimated_time || t.duration || 0), 0) / list.length) : 0;
+            document.getElementById('avgDuration').textContent = Math.round(avgDuration);
+        }
+
+        // Render topics
+        function renderTopics(topicsToRender = topics) {
+            const topicsList = document.getElementById('topicsList');
+            topicsToRender = topicsToRender || [];
+            
+            if (topicsToRender.length === 0) {
+                topicsList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <h3>No topics found</h3>
+                        <p>Start by adding your first topic!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            topicsList.innerHTML = topicsToRender.map(topic => `
+                <div class="topic-card">
+                    <div class="topic-content">
+                        <div class="topic-info">
+                            <div class="topic-name">${topic.name}</div>
+                            <div class="topic-description">${topic.description || 'No description provided'}</div>
+                            <div class="topic-meta">
+                                <span class="meta-item meta-estimated">
+                                    Estimated: ${(topic.estimated_time || topic.duration) ? (topic.estimated_time || topic.duration) + ' min' : 'N/A'}
+                                </span>
+                                <span class="meta-item meta-difficulty">
+                                    Difficulty: ${topic.difficulty || 'N/A'}
+                                </span>
+                                <span class="meta-item meta-type">
+                                    <span class="type-badge type-${topic.type || 'theory'}">${capitalizeFirst(topic.type || '')}</span>
+                                </span>
+                                <span class="meta-item meta-order">
+                                    Order: ${topic.order}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="lesson-badge">
+                            <div class="lesson-label">📚 Lesson</div>
+                            <div class="lesson-name">${topic.lesson}</div>
+                        </div>
+                        
+                        <div class="topic-actions">
+                            <button class="btn btn-view" onclick="viewTopic(${topic.id})">View Details</button>
+                            <button class="btn btn-edit" onclick="editTopic(${topic.id})">Edit</button>
+                            <button class="btn btn-delete" onclick="deleteTopic(${topic.id})">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Edit topic (quick inline edit prompts + persist)
+        async function editTopic(id) {
+            try {
+                const resp = await fetch(GET_TOPIC_URL + '?id=' + encodeURIComponent(id), { method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    alert('Failed to load topic for editing: ' + (data.error || resp.status));
+                    return;
+                }
+                const topic = data.topic;
+                // Prompt for basic fields (title, description)
+                const newTitle = prompt('Edit topic title:', topic.title || '');
+                if (newTitle === null) return; // cancelled
+                const newDesc = prompt('Edit description (short):', topic.description || '');
+
+                const payload = { id: id, title: newTitle };
+                if (newDesc !== null) payload.description = newDesc;
+
+                const upd = await fetch(UPDATE_TOPIC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(payload) });
+                const updData = await upd.json().catch(() => ({}));
+                if (!upd.ok) {
+                    alert('Failed to update topic: ' + (updData.error || upd.status));
+                    return;
+                }
+
+                // update local topics array and re-render
+                topics = (topics || []).map(t => t.id === id ? Object.assign({}, t, { name: updData.topic.title || t.name, description: (payload.description !== undefined ? payload.description : t.description) }) : t);
+                renderTopics();
+                updateStats();
+                alert('Topic updated');
+            } catch (err) {
+                console.error('editTopic error', err);
+                alert('Failed to edit topic (network error)');
+            }
+        }
+
+        // Delete topic (calls server to persist deletion)
+        async function deleteTopic(id) {
+            if (!confirm('Are you sure you want to delete this topic? This action cannot be undone.')) return;
+
+            const url = "{{ url_for('admin_bp.delete_topic') }}" + '?id=' + encodeURIComponent(id);
+            try {
+                const resp = await fetch(url, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    const msg = data && data.error ? data.error : ('Server responded with ' + resp.status);
+                    alert('Failed to delete topic: ' + msg);
+                    return;
+                }
+
+                // remove from local list and update UI
+                topics = (topics || []).filter(t => t.id !== id);
+                renderTopics();
+                updateStats();
+            } catch (err) {
+                console.error('deleteTopic error', err);
+                alert('Failed to delete topic (network error)');
+            }
+        }
+
+        // View topic (fetch details and show)
+        async function viewTopic(id) {
+            try {
+                const resp = await fetch(GET_TOPIC_URL + '?id=' + encodeURIComponent(id), { method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    alert('Failed to load topic: ' + (data.error || resp.status));
+                    return;
+                }
+                const t = data.topic;
+                const msg = `Title: ${t.title || ''}\nLesson ID: ${t.lesson_id || ''}\nEstimated: ${t.estimated_time || 'N/A'} min\nDifficulty: ${t.difficulty || 'N/A'}\nType: ${t.type || 'N/A'}\nOrder: ${t.order || ''}\n\nDescription:\n${t.description || ''}`;
+                // simple read-only display via alert (quick solution)
+                alert(msg);
+            } catch (err) {
+                console.error('viewTopic error', err);
+                alert('Failed to view topic (network error)');
+            }
+        }
+
+        // Search topics (improved: compare by lesson id when available)
+        function searchTopics() {
+            const searchTerm = (document.getElementById('searchInput').value || '').toString().trim().toLowerCase();
+            const lessonSelected = (document.getElementById('lessonFilter').value || '').toString();
+
+            // Debugging help: inspect topics and selected lesson id in console
+            console.debug('searchTopics: topics.length=', Array.isArray(topics) ? topics.length : 0, 'selectedLessonId=', lessonSelected);
+
+            const filtered = (topics || []).filter(topic => {
+                const name = (topic.name || '').toString();
+                const desc = (topic.description || '').toString();
+                const lessonName = (topic.lesson || '').toString();
+
+                const matchesSearch = [name, desc, lessonName].join(' ').toLowerCase().includes(searchTerm);
+
+                if (!lessonSelected) {
+                    return matchesSearch;
+                }
+
+                // Prefer numeric id comparison if topic contains lesson_id
+                if (topic.lesson_id !== undefined && topic.lesson_id !== null) {
+                    return matchesSearch && String(topic.lesson_id) === String(lessonSelected);
+                }
+
+                // Fallback to comparing lesson names (normalized)
+                return matchesSearch && lessonName.trim().toLowerCase() === lessonSelected.trim().toLowerCase();
+            });
+
+            renderTopics(filtered);
+        }
+
+        // Filter topics
+        function filterTopics() {
+            searchTopics();
+        }
+
+        // Helper function
+        function capitalizeFirst(str) {
+            // Defensive: handle null/undefined and non-string inputs
+            if (str === null || str === undefined) return '';
+            str = String(str);
+            if (str.length === 0) return '';
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        // Hook Add Topic button (avoid inline onclick quoting issues)
+        const addBtn = document.getElementById('addTopicBtn');
+        if (addBtn) {
+            addBtn.addEventListener('click', function () {
+                const url = this.dataset.createUrl || CREATE_TOPIC_URL;
+                window.location.href = url;
+            });
+        }
+
+    // Initialize
+    updateStats();
+    renderTopics();
+    </script>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
