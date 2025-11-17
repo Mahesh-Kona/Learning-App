@@ -19,6 +19,11 @@ def demo():
   <h3>Register</h3>
   <input id="regEmail" placeholder="email"  />
   <input id="regPass" placeholder="password"  />
+  <select id="regRole">
+    <option value="student" selected>Student</option>
+    <option value="teacher">Teacher</option>
+    <option value="admin">Admin</option>
+  </select>
   <button onclick="register()">Register</button>
 
   <h3>Login</h3>
@@ -61,7 +66,8 @@ def demo():
     async function register(){
       const email = document.getElementById('regEmail').value;
       const password = document.getElementById('regPass').value;
-      const r = await fetch('/api/v1/auth/register', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email,password})});
+      const role = (document.getElementById('regRole') && document.getElementById('regRole').value) || 'student';
+      const r = await fetch('/api/v1/auth/register', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email,password,role})});
       const res = await r.json();
       out(res);
       try{
