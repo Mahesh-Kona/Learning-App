@@ -760,16 +760,16 @@
                 <!-- Search and Filters -->
                 <div class="controls-bar">
                     <div class="search-box">
-                        <input type="text" id="searchInput" placeholder="Search categories..." oninput="searchCategories()">
+                        <input type="text" id="searchInput" placeholder="Search categories...">
                     </div>
                     <div class="filter-group">
-                        <select id="typeFilter" onchange="filterCategories()">
+                        <select id="typeFilter">
                             <option value="">All Types</option>
                             <option value="academic">Academic</option>
                             <option value="vocational">Vocational</option>
                             <option value="extracurricular">Extracurricular</option>
                         </select>
-                        <select id="difficultyFilter" onchange="filterCategories()">
+                        <select id="difficultyFilter">
                             <option value="">All Levels</option>
                             <option value="easy">Easy</option>
                             <option value="medium">Medium</option>
@@ -1190,8 +1190,8 @@
             }
         });
 
-        // Initial render
-        renderCategories();
+        // Initial load from server
+        loadCourses();
     </script>
 </body>
 </html>

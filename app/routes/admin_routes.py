@@ -320,6 +320,38 @@ def get_courses():
     return jsonify({'courses': filtered}), 200
 
 
+@admin_bp.route('/get_lessons', methods=['GET'])
+def get_lessons():
+    """Return lessons for a given course_id. Query param: course_id"""
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'error': 'unauthorized'}), 401
+
+    try:
+        cid = int(request.args.get('course_id') or 0)
+    except Exception:
+        cid = 0
+
+    if not cid:
+        return jsonify({'lessons': []}), 200
+
+    try:
+        lessons_q = Lesson.query.filter_by(course_id=cid).order_by(Lesson.title).all()
+        lessons = [{'id': l.id, 'title': l.title or ''} for l in lessons_q]
+    except Exception:
+        lessons = []
+
+    return jsonify({'lessons': lessons}), 200
+
+
 @admin_bp.route('/all_topics', methods=['GET'])
 def all_topics_page():
     uid = session.get('admin_user_id')

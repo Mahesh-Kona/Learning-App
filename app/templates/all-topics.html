@@ -31,9 +31,13 @@
         }
 
         /* In-flow sidebar grid (keep sidebar non-fixed and next to content) */
-        .page-grid { display: flex; gap: 20px; align-items: stretch; flex-wrap: nowrap; }
-        .page-sidebar { flex: 0 0 240px; }
-        .page-main { flex: 1; min-width: 0; }
+        /* Layout: keep sidebar fixed; center remaining page content by using auto margins */
+        .page-grid { display: flex; gap: 20px; align-items: stretch; flex-wrap: nowrap; justify-content: flex-start; }
+        .page-sidebar { flex: 0 0 260px; }
+        /* Shift main content slightly left so it sits closer to the fixed sidebar */
+        .page-main { flex: 1 1 auto; min-width: 0; width: 100%; max-width: 980px; margin: 0 auto; }
+        /* tweak to nudge the centered content left; adjust value as needed */
+        .page-main { margin-right: 100px; margin-right: auto; }
 
        .page-sidebar .sidebar {
     position: fixed !important;
