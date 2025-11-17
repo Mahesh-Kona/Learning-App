@@ -802,6 +802,12 @@
         }
 
         // View lessons
+        // Basic HTML escaper used when rendering lessons
+        function escapeHtml(unsafe) {
+            if (unsafe === null || unsafe === undefined) return '';
+            return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
         function renderLessonsForCourse(id, lessons) {
             const container = document.getElementById('course-lessons-' + id);
             if (!container) return;
@@ -810,17 +816,17 @@
                 return;
             }
             // Render as a vertical list: one lesson per row
-            container.innerHTML = `
+                container.innerHTML = `
                 <div class="lesson-list" style="display:flex;flex-direction:column;gap:10px;">
                     ${lessons.map(l => `
                         <div class="lesson-row" style="padding:12px; background:#fff; border:1px solid #eef2f7; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
                             <div style="flex:1; min-width:0">
-                                <div style="font-weight:700; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${l.title}</div>
-                                <div style="color:#64748b; font-size:0.95rem; margin-top:6px; white-space:normal">${l.description || ''}</div>
+                                    <div style="font-weight:700; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${escapeHtml(l.title)}</div>
+                                    <div style="color:#64748b; font-size:0.95rem; margin-top:6px; white-space:normal">${escapeHtml(l.description || '')}</div>
                             </div>
                             <div style="text-align:right; min-width:120px; margin-left:12px">
-                                <div style="font-weight:600">${l.duration ? l.duration + ' min' : ''}</div>
-                                <div style="color:#64748b">${l.level || ''}</div>
+                                    <div style="font-weight:600">${escapeHtml(l.duration ? l.duration + ' min' : '')}</div>
+                                    <div style="color:#64748b">${escapeHtml(l.level || '')}</div>
                             </div>
                         </div>
                     `).join('')}
@@ -838,15 +844,33 @@
             }
 
             // Toggle: if already visible, hide it
-            if (container.style.display && container.style.display !== 'none') {
-                container.style.display = 'none';
-                return;
-            }
+                if (container.style.display && container.style.display !== 'none') {
+                    container.style.display = 'none';
+                    // reset view button label
+                    const btn = document.querySelector(`button.btn.btn-view[data-course-id="${id}"]`);
+                    if (btn) btn.textContent = 'View Lessons';
+                    return;
+                }
+
+                // Close any other open course lessons panels so only one is open at a time
+                document.querySelectorAll('.course-lessons').forEach(el => {
+                    if (el.id !== 'course-lessons-' + idStr) {
+                        el.style.display = 'none';
+                        const otherId = el.id.replace('course-lessons-', '');
+                        const otherBtn = document.querySelector(`button.btn.btn-view[data-course-id="${otherId}"]`);
+                        if (otherBtn) otherBtn.textContent = 'View Lessons';
+                    }
+                });
 
             // Fetch lessons for course
             try {
-                const resp = await fetch('/admin/course_lessons?id=' + encodeURIComponent(id));
+                const resp = await fetch('/admin/course_lessons?id=' + encodeURIComponent(id), { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
                 const data = await resp.json().catch(() => ({}));
+                if (resp.status === 401) {
+                    alert('You are not authenticated. Please log in and try again.');
+                    window.location.href = '/admin/login';
+                    return;
+                }
                 if (!resp.ok) {
                     const msg = data && data.error ? data.error : 'Failed to load lessons';
                     alert(msg);
@@ -854,6 +878,9 @@
                 }
                 renderLessonsForCourse(idStr, data.lessons || []);
                 container.style.display = 'block';
+                // update button label to reflect expanded state
+                const btn = document.querySelector(`button.btn.btn-view[data-course-id="${id}"]`);
+                if (btn) btn.textContent = 'Hide Lessons';
             } catch (err) {
                 console.error('Failed to fetch lessons', err);
                 alert('Failed to load lessons (network error)');

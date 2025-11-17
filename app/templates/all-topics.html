@@ -499,6 +499,7 @@
                                     <button class="btn btn-delete" onclick="deleteTopic({{ topic.id }})">Delete</button>
                                 </div>
                             </div>
+                            <div class="topic-details" id="topic-details-{{ topic.id }}" style="display:none;padding:12px 14px;border-top:1px solid #eef2f7;background:#fbfdff;border-radius:0 0 8px 8px;margin-top:8px;"></div>
                         </div>
                     {% endfor %}
                 {% else %}
@@ -598,6 +599,7 @@
                             <button class="btn btn-delete" onclick="deleteTopic(${topic.id})">Delete</button>
                         </div>
                     </div>
+                    <div class="topic-details" id="topic-details-${topic.id}" style="display:none;padding:12px 14px;border-top:1px solid #eef2f7;background:#fbfdff;border-radius:0 0 8px 8px;margin-top:8px;"></div>
                 </div>
             `).join('');
         }
@@ -662,9 +664,17 @@
             }
         }
 
-        // View topic (fetch details and show)
+        // View topic (fetch details and inject below the topic card)
         async function viewTopic(id) {
             try {
+                const detailsEl = document.getElementById('topic-details-' + id);
+                // toggle: if currently visible, hide and return
+                if (detailsEl && detailsEl.style && detailsEl.style.display && detailsEl.style.display !== 'none') {
+                    detailsEl.style.display = 'none';
+                    detailsEl.innerHTML = '';
+                    return;
+                }
+
                 const resp = await fetch(GET_TOPIC_URL + '?id=' + encodeURIComponent(id), { method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
                 const data = await resp.json().catch(() => ({}));
                 if (!resp.ok) {
@@ -672,9 +682,34 @@
                     return;
                 }
                 const t = data.topic;
-                const msg = `Title: ${t.title || ''}\nLesson ID: ${t.lesson_id || ''}\nEstimated: ${t.estimated_time || 'N/A'} min\nDifficulty: ${t.difficulty || 'N/A'}\nType: ${t.type || 'N/A'}\nOrder: ${t.order || ''}\n\nDescription:\n${t.description || ''}`;
-                // simple read-only display via alert (quick solution)
-                alert(msg);
+
+                const html = `
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">
+                        <div style="flex:1;min-width:200px;">
+                            <h3 style="margin:0 0 8px 0;font-size:1.1rem;color:#0f172a">${escapeHtml(t.title || '')}</h3>
+                            <div style="color:#475569;font-size:0.95rem;margin-bottom:8px;">${escapeHtml(t.description || 'No description provided')}</div>
+                            <div style="color:#64748b;font-size:0.9rem;display:flex;gap:12px;flex-wrap:wrap;">
+                                <div>Estimated: <strong>${escapeHtml(t.estimated_time || t.duration || 'N/A')}</strong> min</div>
+                                <div>Difficulty: <strong>${escapeHtml(t.difficulty || 'N/A')}</strong></div>
+                                <div>Type: <strong>${escapeHtml(t.type || 'N/A')}</strong></div>
+                                <div>Order: <strong>${escapeHtml(t.order || '')}</strong></div>
+                            </div>
+                        </div>
+                        <div style="min-width:180px;text-align:right;">
+                            <div style="font-size:0.9rem;color:#64748b;margin-bottom:8px">Lesson: <strong>${escapeHtml(t.lesson || t.lesson_title || '')}</strong></div>
+                            <div style="margin-top:12px"> <button class="btn btn-edit" onclick="editTopic(${t.id})">Edit</button> <button class="btn btn-delete" onclick="deleteTopic(${t.id})">Delete</button></div>
+                        </div>
+                    </div>
+                `;
+
+                if (detailsEl) {
+                    detailsEl.innerHTML = html;
+                    detailsEl.style.display = 'block';
+                    detailsEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    // fallback: alert if the container isn't found
+                    alert(`Title: ${t.title || ''}\nDescription: ${t.description || ''}`);
+                }
             } catch (err) {
                 console.error('viewTopic error', err);
                 alert('Failed to view topic (network error)');
@@ -724,6 +759,12 @@
             str = String(str);
             if (str.length === 0) return '';
             return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        // Basic HTML escaper used for injected content
+        function escapeHtml(unsafe) {
+            if (unsafe === null || unsafe === undefined) return '';
+            return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
         }
 
         // Hook Add Topic button (avoid inline onclick quoting issues)

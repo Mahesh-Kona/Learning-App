@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, render_template_string, request, r
 from app.extensions import db
 from app.models import User
 from app.models import Course, Lesson, Topic, Asset
+from sqlalchemy import func
 from werkzeug.utils import secure_filename
 import uuid
 import json
@@ -318,6 +319,101 @@ def get_courses():
 
     filtered = [c for c in courses if matches(c)]
     return jsonify({'courses': filtered}), 200
+
+
+@admin_bp.route('/get_categories', methods=['GET'])
+def get_categories():
+    """Return aggregated categories from Course.category column with counts."""
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'error': 'unauthorized'}), 401
+
+    try:
+        # group by category and count courses per category
+        rows = db.session.query(Course.category, func.count(Course.id)).group_by(Course.category).all()
+        categories = []
+        for cat, cnt in rows:
+            if not cat:
+                continue
+            categories.append({'name': cat, 'count': int(cnt)})
+        return jsonify({'categories': categories}), 200
+    except Exception:
+        current_app.logger.exception('Failed to fetch categories')
+        return jsonify({'categories': []}), 200
+
+
+@admin_bp.route('/rename_category', methods=['POST'])
+def rename_category():
+    """Rename category on all courses from old_name -> new_name."""
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'unauthorized'}), 401
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'success': False, 'error': 'unauthorized'}), 401
+
+    data = request.get_json(silent=True) or {}
+    old = data.get('old') or data.get('old_name')
+    new = data.get('new') or data.get('new_name')
+    if not old or new is None:
+        return jsonify({'success': False, 'error': 'missing parameters'}), 400
+
+    try:
+        # update all Course rows where category equals old
+        updated = Course.query.filter(Course.category == old).update({ 'category': (new or None) })
+        db.session.commit()
+        return jsonify({'success': True, 'updated': int(updated)}), 200
+    except Exception:
+        current_app.logger.exception('Failed to rename category %s -> %s', old, new)
+        try:
+            db.session.rollback()
+        except Exception:
+            current_app.logger.exception('rollback failed after rename_category failure')
+        return jsonify({'success': False, 'error': 'failed to rename category'}), 500
+
+
+@admin_bp.route('/clear_category', methods=['POST'])
+def clear_category():
+    """Clear category on all courses with given name (set to NULL)."""
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'unauthorized'}), 401
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'success': False, 'error': 'unauthorized'}), 401
+
+    data = request.get_json(silent=True) or {}
+    name = data.get('name')
+    if not name:
+        return jsonify({'success': False, 'error': 'missing name'}), 400
+
+    try:
+        updated = Course.query.filter(Course.category == name).update({ 'category': None })
+        db.session.commit()
+        return jsonify({'success': True, 'updated': int(updated)}), 200
+    except Exception:
+        current_app.logger.exception('Failed to clear category %s', name)
+        try:
+            db.session.rollback()
+        except Exception:
+            current_app.logger.exception('rollback failed after clear_category failure')
+        return jsonify({'success': False, 'error': 'failed to clear category'}), 500
 
 
 @admin_bp.route('/get_lessons', methods=['GET'])
@@ -993,6 +1089,15 @@ def create_course_post():
         # For non-JSON callers fall back to a flash and redirect
         flash('Failed to create course', 'error')
         return redirect(url_for('admin_bp.create_course_page'))
+    # On success, return JSON for XHR callers, otherwise redirect to lesson page
+    try:
+        is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.headers.get('Accept', '').startswith('application/json')
+        if is_xhr:
+            return jsonify({'success': True, 'id': course.id}), 201
+        return redirect(url_for('admin_bp.lesson_page') + f'?course_id={course.id}')
+    except Exception:
+        # If something odd happens while preparing the response, fall back to redirect
+        return redirect(url_for('admin_bp.lesson_page') + f'?course_id={getattr(course, "id", "")}')
 
 @admin_bp.route('/update_course', methods=['POST'])
 def update_course():

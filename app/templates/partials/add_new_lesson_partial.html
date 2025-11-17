@@ -1,0 +1,129 @@
+<div class="form-card">
+    <!-- Header -->
+    <div class="form-header">
+        <h2 id="lessonModalTitle">Add New Lesson</h2>
+        <button class="btn-close" onclick="closeLessonModal()" title="Close">×</button>
+    </div>
+
+    <!-- Success Message -->
+    <div id="successMessage" class="success-message">
+        ✓ Lesson created successfully! Redirecting...
+    </div>
+
+    <!-- Form Body -->
+    <div class="form-body">
+        <!-- Required Fields Info -->
+        <div class="required-indicator">
+            Fields marked with <strong>*</strong> are required
+        </div>
+
+        <form id="lessonForm">
+            <!-- Category (Optional) -->
+            <div class="form-group">
+                <label for="lessonCategory">Category (Optional)</label>
+                <select id="lessonCategory" class="form-control">
+                    <option value="">-- All Categories --</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.name }}">{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="helper-text">Select a category to filter courses</p>
+            </div>
+
+            <!-- Select Course (Required) -->
+            <div class="form-group">
+                <label for="lessonCourse">Select Course <span class="required">*</span></label>
+                <select id="lessonCourse" class="form-control" required>
+                    <option value="">-- Select Course --</option>
+                    {% for c in courses %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="error-message">Please select a course</p>
+            </div>
+
+            <!-- Lesson Title (Required) -->
+            <div class="form-group">
+                <label for="lessonTitle">Lesson Title <span class="required">*</span></label>
+                <input type="text" id="lessonTitle" class="form-control" placeholder="Enter lesson title" required>
+                <p class="error-message">Please enter a lesson title</p>
+            </div>
+
+            <!-- Lesson Description (Required) -->
+            <div class="form-group">
+                <label for="lessonDescription">Lesson Description <span class="required">*</span></label>
+                <textarea id="lessonDescription" class="form-control" placeholder="Enter lesson description" required></textarea>
+                <p class="error-message">Please enter a lesson description</p>
+            </div>
+
+            <!-- Duration and Learning Level Row -->
+            <div class="form-row">
+                <!-- Duration (minutes) -->
+                <div class="form-group">
+                    <label for="lessonDuration">Duration (minutes)</label>
+                    <input type="number" id="lessonDuration" class="form-control" placeholder="e.g., 45" min="1" max="300">
+                </div>
+
+                <!-- Learning Level -->
+                <div class="form-group">
+                    <label for="lessonLevel">Learning Level</label>
+                    <select id="lessonLevel" class="form-control">
+                        <option value="">Select Level</option>
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Learning Objectives -->
+            <div class="form-group">
+                <label for="lessonObjectives">Learning Objectives</label>
+                <textarea id="lessonObjectives" class="form-control" placeholder="What will students learn from this lesson?"></textarea>
+                <p class="helper-text">Describe what students will be able to do after completing this lesson</p>
+            </div>
+
+            <!-- Additional Fields Row -->
+            <div class="form-row">
+                <!-- Lesson Order -->
+                <div class="form-group">
+                    <label for="lessonOrder">Lesson Order</label>
+                    <input type="number" id="lessonOrder" class="form-control" placeholder="e.g., 1" min="1">
+                    <p class="helper-text">Order in which this lesson appears</p>
+                </div>
+
+                <!-- Prerequisites -->
+                <div class="form-group">
+                    <label for="prerequisites">Prerequisites</label>
+                    <input type="text" id="prerequisites" class="form-control" placeholder="e.g., Basic HTML">
+                    <p class="helper-text">Required knowledge before this lesson</p>
+                </div>
+            </div>
+    
+    <!-- Form Actions -->
+    <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeLessonModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="lessonFormSubmit">Create Lesson</button>
+    </div>
+        </form>
+    </div>
+</div>
+
+<!-- Minimal styles copied from the standalone file to keep modal styled nicely -->
+<style>
+    .form-card { background: white; border-radius: 12px; padding: 0; overflow: hidden; }
+    .form-header { padding: 18px 22px; border-bottom: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; }
+    .form-header h2 { color: #10b981; margin: 0; }
+    .btn-close { background:none; border:none; font-size: 1.6rem; cursor:pointer; }
+    .form-body { padding: 18px 22px; }
+    .form-group { margin-bottom: 16px; }
+    .form-control { width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:6px; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .form-actions { display:flex; justify-content:flex-end; gap:12px; padding:12px 22px; border-top:1px solid #e2e8f0; background:#fafafa; }
+    .required-indicator { margin-bottom:12px; padding:8px 10px; background:#fff7ed; border-left:4px solid #f59e0b; }
+    .error-message { color:#ef4444; font-size:0.9rem; display:none; }
+    .form-control.error + .error-message { display:block; }
+    .success-message { display:none; padding:10px 14px; border-left:4px solid #10b981; background:#d1fae5; margin-bottom:12px; }
+    .success-message.show { display:block; }
+    @media (max-width:768px) { .form-row { grid-template-columns:1fr; } }
+</style>

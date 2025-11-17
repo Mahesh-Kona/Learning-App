@@ -319,6 +319,22 @@
             color: #991b1b;
         }
 
+        /* Additional difficulty classes to match new level values */
+        .badge.beginner {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge.intermediate {
+            background: #fed7aa;
+            color: #9a3412;
+        }
+
+        .badge.advanced {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
         .category-description {
             color: #64748b;
             font-size: 0.95rem;
@@ -771,9 +787,9 @@
                         </select>
                         <select id="difficultyFilter">
                             <option value="">All Levels</option>
-                            <option value="easy">Easy</option>
-                            <option value="medium">Medium</option>
-                            <option value="hard">Hard</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                            <option value="beginner">Beginner</option>
                         </select>
                     </div>
                 </div>
@@ -836,9 +852,9 @@
                         <label for="difficultyLevel">Difficulty Level <span class="required">*</span></label>
                         <select id="difficultyLevel" required>
                             <option value="">Select Level</option>
-                            <option value="easy">Easy</option>
-                            <option value="medium">Medium</option>
-                            <option value="hard">Hard</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                            <option value="beginner">Beginner</option>
                         </select>
                     </div>
 
@@ -863,6 +879,22 @@
         </div>
     </div>
 
+    <!-- View Courses Modal -->
+    <div id="viewCoursesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="viewCoursesTitle">Courses</h2>
+                <button class="close-modal" onclick="closeViewCourses()">&times;</button>
+            </div>
+            <div class="modal-body" id="viewCoursesBody">
+                <!-- populated dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeViewCourses()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Client-side list, populated from the server via AJAX
         let categories = [];
@@ -876,21 +908,27 @@
             };
         }
 
-        // Load courses from server with current filters
+        // Load categories aggregated from Course.category column
         async function loadCourses() {
-            const q = document.getElementById('searchInput').value || '';
-            const type = document.getElementById('typeFilter').value || '';
-            const difficulty = document.getElementById('difficultyFilter').value || '';
-            const params = new URLSearchParams();
-            if (q) params.set('q', q);
-            if (type) params.set('type', type);
-            if (difficulty) params.set('difficulty', difficulty);
-
             try {
-                const res = await fetch(`${window.location.origin}/admin/get_courses?${params.toString()}`, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
-                if (!res.ok) throw new Error('Failed to load courses');
+                const res = await fetch(`${window.location.origin}/admin/get_categories`, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!res.ok) throw new Error('Failed to load categories');
                 const data = await res.json();
-                categories = data.courses || [];
+                const cats = data.categories || [];
+
+                // Map to the structure used by the UI
+                categories = cats.map((c, idx) => ({
+                    id: idx + 1,
+                    name: c.name,
+                    icon: '📚',
+                    description: '',
+                    subjectType: c.name,
+                    difficulty: '',
+                    parentId: null,
+                    order: 1,
+                    coursesCount: c.count || 0
+                }));
+
                 renderCategories();
                 populateParentDropdown();
             } catch (err) {
@@ -978,9 +1016,9 @@
                         <div class="category-info">
                             <div class="category-header">
                                 <h3 class="category-name">${category.name}</h3>
-                                <div class="category-badges">
-                                    <span class="badge ${category.subjectType}">${capitalizeFirst(category.subjectType)}</span>
-                                    <span class="badge ${category.difficulty}">${capitalizeFirst(category.difficulty)}</span>
+                                    <div class="category-badges">
+                                    ${category.subjectType ? `<span class="badge ${category.subjectType}">${capitalizeFirst(category.subjectType)}</span>` : ''}
+                                    ${category.difficulty ? `<span class="badge ${category.difficulty}">${capitalizeFirst(category.difficulty)}</span>` : ''}
                                 </div>
                             </div>
                             <p class="category-description">${category.description || 'No description available'}</p>
@@ -1088,8 +1126,8 @@
             document.getElementById('categoryModal').classList.add('active');
         }
 
-        // Delete category
-        function deleteCategory(id) {
+        // Delete category (clears category from courses in DB)
+        async function deleteCategory(id) {
             const category = categories.find(c => c.id === id);
             if (!category) return;
 
@@ -1106,18 +1144,87 @@
                 if (!confirm(`Delete category "${category.name}"?`)) return;
             }
 
-            categories = categories.filter(c => c.id !== id);
-            renderCategories();
+            try {
+                const res = await fetch(`${window.location.origin}/admin/clear_category`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ name: category.name })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.success === false) {
+                    throw new Error((data && data.error) || 'Failed to clear category');
+                }
+
+                // Refresh list from server to reflect cleared courses
+                await loadCourses();
+            } catch (err) {
+                console.error('deleteCategory error', err);
+                alert('Failed to delete category. See console for details.');
+            }
         }
 
-        // View courses
-        function viewCourses(id) {
+        // View courses in modal (fetches courses filtered by category name)
+        async function viewCourses(id) {
             const category = categories.find(c => c.id === id);
-            alert(`Viewing courses in: ${category.name}\n\nThis would navigate to courses filtered by this category.`);
+            if (!category) return;
+
+            const title = `Courses in ${category.name}`;
+            document.getElementById('viewCoursesTitle').textContent = title;
+            const body = document.getElementById('viewCoursesBody');
+            body.innerHTML = '<p>Loading...</p>';
+            document.getElementById('viewCoursesModal').classList.add('active');
+
+            try {
+                const params = new URLSearchParams();
+                if (category.name) params.set('type', category.name);
+                const res = await fetch(`${window.location.origin}/admin/get_courses?${params.toString()}`, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!res.ok) throw new Error('Failed to load courses');
+                const data = await res.json();
+                const courses = data.courses || [];
+
+                if (courses.length === 0) {
+                    body.innerHTML = '<p>No courses found for this category.</p>';
+                    return;
+                }
+
+                const list = document.createElement('div');
+                list.style.display = 'grid';
+                list.style.gap = '12px';
+
+                courses.forEach(c => {
+                    const row = document.createElement('div');
+                    row.style.display = 'flex';
+                    row.style.justifyContent = 'space-between';
+                    row.style.alignItems = 'center';
+                    row.style.padding = '12px';
+                    row.style.border = '1px solid #e6eef3';
+                    row.style.borderRadius = '8px';
+
+                    const left = document.createElement('div');
+                    left.innerHTML = `<strong>${escapeHtml(c.name)}</strong><div style="color:#64748b">${escapeHtml(c.description || '')}</div>`;
+
+                    const right = document.createElement('div');
+                    right.innerHTML = `<span style="font-weight:600;color:#0d9488">${escapeHtml(c.difficulty || '')}</span>`;
+
+                    row.appendChild(left);
+                    row.appendChild(right);
+                    list.appendChild(row);
+                });
+
+                body.innerHTML = '';
+                body.appendChild(list);
+            } catch (err) {
+                console.error('viewCourses error', err);
+                body.innerHTML = '<p>Failed to load courses.</p>';
+            }
         }
 
-        // Save category
-        function saveCategory() {
+        // Save category (if renaming, propagate change to DB)
+        async function saveCategory() {
             const form = document.getElementById('categoryForm');
             if (!form.checkValidity()) {
                 alert('Please fill in all required fields!');
@@ -1125,8 +1232,9 @@
                 return;
             }
 
+            const newName = document.getElementById('categoryName').value;
             const categoryData = {
-                name: document.getElementById('categoryName').value,
+                name: newName,
                 icon: document.getElementById('selectedIcon').value || '📁',
                 description: document.getElementById('categoryDescription').value,
                 subjectType: document.getElementById('subjectType').value,
@@ -1136,17 +1244,43 @@
                 coursesCount: 0
             };
 
-            if (editingId) {
-                const index = categories.findIndex(c => c.id === editingId);
-                const existingCount = categories[index].coursesCount;
-                categories[index] = { ...categories[index], ...categoryData, coursesCount: existingCount };
-            } else {
-                const newId = Math.max(...categories.map(c => c.id), 0) + 1;
-                categories.push({ id: newId, ...categoryData });
-            }
+            try {
+                if (editingId) {
+                    const index = categories.findIndex(c => c.id === editingId);
+                    if (index === -1) throw new Error('Category not found');
+                    const existing = categories[index];
+                    // If the name changed and there are courses, ask server to rename category on courses
+                    if (existing.name !== newName && existing.coursesCount > 0) {
+                        const res = await fetch(`${window.location.origin}/admin/rename_category`, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ old: existing.name, new: newName })
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || data.success === false) {
+                            throw new Error((data && data.error) || 'Failed to rename category');
+                        }
+                    }
 
-            renderCategories();
-            closeModal();
+                    // Optimistically update local copy then refresh from server
+                    categories[index] = { ...categories[index], ...categoryData, name: newName };
+                    await loadCourses();
+                } else {
+                    // Creating a new category is currently a client-side action
+                    const newId = Math.max(...categories.map(c => c.id), 0) + 1;
+                    categories.push({ id: newId, ...categoryData });
+                    renderCategories();
+                }
+
+                closeModal();
+            } catch (err) {
+                console.error('saveCategory error', err);
+                alert('Failed to save category. See console for details.');
+            }
         }
 
         // Search categories
@@ -1176,12 +1310,31 @@
             return str.charAt(0).toUpperCase() + str.slice(1);
         }
 
+        // Basic HTML escaper for inserted text
+        function escapeHtml(unsafe) {
+            if (!unsafe && unsafe !== 0) return '';
+            return String(unsafe)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         // Close modal on outside click
         document.getElementById('categoryModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal();
             }
         });
+
+        // Close the view courses modal
+        function closeViewCourses() {
+            const m = document.getElementById('viewCoursesModal');
+            if (m) m.classList.remove('active');
+            const body = document.getElementById('viewCoursesBody');
+            if (body) body.innerHTML = '';
+        }
 
         // Close modal on Escape key
         document.addEventListener('keydown', function(e) {

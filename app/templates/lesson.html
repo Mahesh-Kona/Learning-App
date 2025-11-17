@@ -494,63 +494,7 @@
 	<!-- Add/Edit Lesson Modal -->
 	<div id="lessonModal" class="modal">
 		<div class="modal-content">
-			<div class="modal-header">
-				<h2 id="lessonModalTitle">Add New Lesson</h2>
-				<button class="close-btn" onclick="closeLessonModal()">×</button>
-			</div>
-			<form id="lessonForm">
-				<div class="form-group">
-					<label>Category (Optional)</label>
-					<select id="lessonCategory">
-						<option value="">-- All Categories --</option>
-					</select>
-					<small style="color: #95a5a6; margin-top: 5px; display: block;">Select a category to filter courses</small>
-				</div>
-
-				<div class="form-group">
-					<label>Select Course <span class="required">*</span></label>
-					<select id="lessonCourse" required>
-						<option value="">-- Select Course --</option>
-					</select>
-				</div>
-
-				<div class="form-group">
-					<label>Lesson Title <span class="required">*</span></label>
-					<input type="text" id="lessonTitle" placeholder="Enter lesson title" required>
-				</div>
-
-				<div class="form-group">
-					<label>Lesson Description <span class="required">*</span></label>
-					<textarea id="lessonDescription" placeholder="Enter lesson description" required></textarea>
-				</div>
-
-				<div class="form-row">
-					<div class="form-group">
-						<label>Duration (minutes)</label>
-						<input type="number" id="lessonDuration" placeholder="e.g., 45" min="0">
-					</div>
-
-					<div class="form-group">
-						<label>Learning Level</label>
-						<select id="lessonLevel">
-							<option value="">Select Level</option>
-							<option value="beginner">Beginner</option>
-							<option value="intermediate">Intermediate</option>
-							<option value="advanced">Advanced</option>
-						</select>
-					</div>
-				</div>
-
-				<div class="form-group">
-					<label>Learning Objectives</label>
-					<textarea id="lessonObjectives" placeholder="What will students learn from this lesson?" style="min-height: 100px;"></textarea>
-				</div>
-
-				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" onclick="closeLessonModal()">Cancel</button>
-					<button type="submit" class="btn btn-primary">Save Lesson</button>
-				</div>
-			</form>
+			{% include 'partials/add_new_lesson_partial.html' %}
 		</div>
 	</div>
 
@@ -993,51 +937,174 @@
 			const content = document.getElementById('topicContent').value;
 			const order = document.getElementById('topicOrder').value;
 
-			if (editingTopicId) {
-				// Update existing topic
-				const topic = topics.find(t => t.id === editingTopicId);
-				topic.title = title;
-				topic.content = content;
-				topic.order = order;
-				showAlert('Topic updated successfully!', 'success');
-			} else {
-				// Add new topic
-				const newTopic = {
-					id: Date.now(),
-					lessonId: selectedLessonId,
-					title,
-					content,
-					order
-				};
-				topics.push(newTopic);
-				showAlert('Topic added successfully!', 'success');
+			if (!title || !selectedLessonId) {
+				showAlert('Missing topic title or lesson selection', 'error');
+				return;
 			}
 
-			displayLessons();
-			closeTopicModal();
+			if (editingTopicId) {
+				// Update existing topic on server
+				const payload = {
+					id: editingTopicId,
+					title: title,
+					description: content,
+					order: order
+				};
+
+				fetch('/admin/update_topic', {
+					method: 'POST',
+					headers: {
+						'Accept': 'application/json',
+						'Content-Type': 'application/json'
+					},
+					credentials: 'same-origin',
+					body: JSON.stringify(payload)
+				})
+				.then(res => res.json().then(body => ({ status: res.status, body })))
+				.then(({ status, body }) => {
+					if (status >= 200 && status < 300 && body && body.success) {
+						// update local topics array
+						const idx = topics.findIndex(t => t.id === editingTopicId);
+						if (idx !== -1) {
+							topics[idx].title = title;
+							topics[idx].content = content;
+							topics[idx].order = order;
+						}
+						showAlert('Topic updated successfully!', 'success');
+						displayLessons();
+						closeTopicModal();
+						editingTopicId = null;
+					} else {
+						const msg = (body && body.error) ? body.error : 'Failed to update topic';
+						showAlert(msg, 'error');
+					}
+				})
+				.catch(err => {
+					console.error('update_topic error', err);
+					showAlert('Failed to update topic (network error)', 'error');
+				});
+
+			} else {
+				// Create new topic on server
+				const payload = {
+					title: title,
+					lesson_id: selectedLessonId,
+					description: content,
+					order: order
+				};
+
+				fetch('/admin/create_topic', {
+					method: 'POST',
+					headers: {
+						'Accept': 'application/json',
+						'Content-Type': 'application/json'
+					},
+					credentials: 'same-origin',
+					body: JSON.stringify(payload)
+				})
+				.then(res => res.json().then(body => ({ status: res.status, body })))
+				.then(({ status, body }) => {
+					if (status >= 200 && status < 300 && body && body.success) {
+						// push newly created topic with real id
+						const newTopic = {
+							id: body.id,
+							lessonId: selectedLessonId,
+							title: title,
+							content: content,
+							order: order
+						};
+						topics.push(newTopic);
+						displayLessons();
+						closeTopicModal();
+						showAlert('Topic added successfully!', 'success');
+					} else {
+						const msg = (body && body.error) ? body.error : 'Failed to create topic';
+						showAlert(msg, 'error');
+					}
+				})
+				.catch(err => {
+					console.error('create_topic error', err);
+					showAlert('Failed to create topic (network error)', 'error');
+				});
+			}
 		}
 
 		// Edit topic
 		function editTopic(id) {
-			const topic = topics.find(t => t.id === id);
-			if (!topic) return;
-
-			editingTopicId = id;
-			selectedLessonId = topic.lessonId;
-			document.getElementById('topicModalTitle').textContent = 'Edit Topic';
-			document.getElementById('topicTitle').value = topic.title;
-			document.getElementById('topicContent').value = topic.content;
-			document.getElementById('topicOrder').value = topic.order;
-			document.getElementById('topicModal').classList.add('active');
+			// Fetch the topic from server to ensure latest data
+			fetch(`/admin/get_topic?id=${id}`, { credentials: 'same-origin' })
+			.then(res => res.json().then(body => ({ status: res.status, body })))
+			.then(({ status, body }) => {
+				if (status >= 200 && status < 300 && body && body.success) {
+					const topic = body.topic;
+					editingTopicId = topic.id;
+					selectedLessonId = topic.lesson_id;
+					document.getElementById('topicModalTitle').textContent = 'Edit Topic';
+					document.getElementById('topicTitle').value = topic.title || '';
+					document.getElementById('topicContent').value = topic.description || '';
+					document.getElementById('topicOrder').value = topic.order || '';
+					document.getElementById('topicModal').classList.add('active');
+				} else {
+					const msg = (body && body.error) ? body.error : 'Failed to load topic';
+					showAlert(msg, 'error');
+				}
+			})
+			.catch(err => {
+				console.error('get_topic error', err);
+				showAlert('Failed to load topic (network error)', 'error');
+			});
 		}
 
 		// Delete topic
 		function deleteTopic(id) {
-			if (confirm('Are you sure you want to delete this topic?')) {
-				topics = topics.filter(t => t.id !== id);
-				displayTopics();
-				showAlert('Topic deleted successfully!', 'success');
-			}
+			if (!confirm('Are you sure you want to delete this topic?')) return;
+
+			fetch('/admin/delete_topic', {
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+				},
+				credentials: 'same-origin',
+				body: JSON.stringify({ id })
+			})
+			.then(res => {
+				// if server returned 2xx treat as success even if JSON body is missing or different
+				if (res.status >= 200 && res.status < 300) {
+					return res.text().then(text => {
+						// Try parse JSON, but fall back to success when parsing fails
+						let body = {};
+						try {
+							body = text ? JSON.parse(text) : {};
+						} catch (e) {
+							// non-JSON response but status 2xx -> assume success
+							body = {};
+						}
+						return { status: res.status, body };
+					});
+				}
+				// non-2xx -> try to extract JSON error or text
+				return res.text().then(text => {
+					let body = {};
+					try { body = text ? JSON.parse(text) : {}; } catch (e) { body = { error: text || 'server error' }; }
+					return { status: res.status, body };
+				});
+			})
+			.then(({ status, body }) => {
+				// Accept success when status is 2xx OR server explicitly returned success
+				if ((status >= 200 && status < 300) || (body && body.success)) {
+					topics = topics.filter(t => t.id !== id);
+					displayTopics();
+					showAlert('Topic deleted successfully!', 'success');
+					return;
+				}
+				const msg = (body && body.error) ? body.error : 'Failed to delete topic';
+				showAlert(msg, 'error');
+			})
+			.catch(err => {
+				console.error('delete_topic error', err);
+				showAlert('Failed to delete topic (network error)', 'error');
+			});
 		}
 
 		// Show alert message
