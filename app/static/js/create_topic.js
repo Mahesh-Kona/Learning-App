@@ -1,3 +1,86 @@
+// JS for Create Topic page
+// Runtime endpoints are provided by template via `window.CREATE_TOPIC_POST_URL` and `window.ALL_TOPICS_URL`.
+
+// Sample lesson data for each course
+const courseLessons = {
+    '1': ['Lesson 1: Introduction to Triangles', 'Lesson 2: Triangle Properties', 'Lesson 3: Special Triangles'],
+    '2': ['Lesson 1: HTML Basics', 'Lesson 2: HTML Tags', 'Lesson 3: HTML Forms'],
+    '3': ['Lesson 1: Frame Basics', 'Lesson 2: iFrame Implementation', 'Lesson 3: Frame Security'],
+    '4': ['Lesson 1: Calculus Fundamentals', 'Lesson 2: Advanced Algebra', 'Lesson 3: Differential Equations'],
+    '5': ['Lesson 1: Python Basics', 'Lesson 2: Data Structures', 'Lesson 3: Object Oriented Programming']
+};
+
+let selectedCards = [];
+let objectiveCount = 3;
+
+function loadLessons() {
+    const courseId = document.getElementById('selectCourse').value;
+    const lessonSelect = document.getElementById('attachLesson');
+    lessonSelect.innerHTML = '<option value="">-- Select Lesson --</option>';
+    if (courseId && courseLessons[courseId]) {
+        lessonSelect.disabled = false;
+        courseLessons[courseId].forEach((lesson, index) => {
+            const option = document.createElement('option');
+            option.value = index + 1;
+            option.textContent = lesson;
+            lessonSelect.appendChild(option);
+        });
+    } else {
+        lessonSelect.disabled = true;
+    }
+}
+
+function filterCourses() { const category = document.getElementById('courseCategory').value; console.log('Filtering courses by category:', category); }
+function selectCardType(element, type) { element.classList.toggle('selected'); if (element.classList.contains('selected')) selectedCards.push(type); else selectedCards = selectedCards.filter(t => t !== type); }
+function addNewCard() { if (selectedCards.length === 0) { alert('Please select at least one card type first!'); return; } alert('This will open a modal to create a new learning card of type: ' + selectedCards.join(', ')); }
+function addObjective() { const objectiveText = prompt('Enter the learning objective:'); if (!objectiveText) return; objectiveCount++; const objectivesList = document.getElementById('objectivesList'); const div = document.createElement('div'); div.className = 'objective-item'; div.innerHTML = `<div class="objective-number">${objectiveCount}</div><div class="objective-text">${objectiveText}</div><button class="objective-remove" onclick="removeObjective(this)">×</button>`; objectivesList.appendChild(div); }
+function removeObjective(button) { if (confirm('Remove this learning objective?')) { button.closest('.objective-item').remove(); updateObjectiveNumbers(); } }
+function updateObjectiveNumbers() { const objectives = document.querySelectorAll('.objective-item'); objectives.forEach((obj, index) => { obj.querySelector('.objective-number').textContent = index + 1; }); objectiveCount = objectives.length; }
+
+async function saveTopic() {
+    const form = document.getElementById('topicForm');
+    if (!form.checkValidity()) { alert('Please fill in all required fields!'); form.reportValidity(); return; }
+
+    const topicData = {
+        category: document.getElementById('courseCategory').value,
+        course: document.getElementById('selectCourse').value,
+        lesson: document.getElementById('attachLesson').value,
+        title: document.getElementById('topicTitle').value,
+        description: document.getElementById('topicDescription').value,
+        estimated_time: document.getElementById('estimatedTime') ? document.getElementById('estimatedTime').value : null,
+        difficulty: document.getElementById('difficultyLevel') ? document.getElementById('difficultyLevel').value : null,
+        order: document.getElementById('topicOrder') ? document.getElementById('topicOrder').value : null,
+        objectives: Array.from(document.querySelectorAll('.objective-text')).map(el => el.textContent),
+        cardTypes: selectedCards
+    };
+
+    try {
+        const resp = await fetch(window.CREATE_TOPIC_POST_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: JSON.stringify({ title: topicData.title, lesson_id: topicData.lesson, description: topicData.description, objectives: topicData.objectives, cards: [], estimated_time: topicData.estimated_time, difficulty: topicData.difficulty, order: topicData.order, category: topicData.category, course: topicData.course, cardTypes: topicData.cardTypes })
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) { alert('Failed to save topic: ' + (json.error || resp.status)); return; }
+        alert('Topic saved successfully! Redirecting...');
+        setTimeout(() => { window.location.href = window.ALL_TOPICS_URL; }, 800);
+    } catch (err) {
+        console.error('saveTopic error', err);
+        alert('Network error saving topic');
+    }
+}
+
+function cancelTopic() { if (confirm('Are you sure? All unsaved changes will be lost.')) { window.location.href = window.ALL_TOPICS_URL; } }
+
+// Expose helpers to global scope for inline onclick handlers
+window.loadLessons = loadLessons;
+window.filterCourses = filterCourses;
+window.selectCardType = selectCardType;
+window.addNewCard = addNewCard;
+window.addObjective = addObjective;
+window.removeObjective = removeObjective;
+window.saveTopic = saveTopic;
+window.cancelTopic = cancelTopic;
 document.addEventListener('DOMContentLoaded', function () {
     // ========== Add Learning Objective ==========
     const addObjectiveBtn = document.querySelector('.add-objective');

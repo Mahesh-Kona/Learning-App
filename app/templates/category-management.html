@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}">
+
     <style>
         * {
             margin: 0;
@@ -21,6 +22,7 @@
             line-height: 1.6;
             overflow-x: hidden;
         }
+
         /* Mobile Menu Toggle */
         .mobile-menu-toggle {
             display: none;
@@ -43,7 +45,7 @@
 
         /* Main Content */
         .main-content {
-            margin-left: 280px;
+            margin-left: 260px;
             min-height: 100vh;
             padding: 20px;
             transition: margin-left 0.3s ease;
@@ -52,6 +54,7 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
+            
         }
 
         /* Header */
@@ -727,9 +730,6 @@
                 flex: 1;
             }
         }
-        .sidebar{
-          background-color: #2E8B57;
-        }
     </style>
 </head>
 <body>
@@ -737,9 +737,9 @@
     <button class="mobile-menu-toggle" onclick="toggleSidebar()">
         <i class="fas fa-bars"></i>
     </button>
-<div class="sidebar">  <!-- Sidebar -->
-    {% include 'admin_sidebar.html' %}</div>
-  
+
+    <!-- Sidebar -->
+    {% include 'admin_sidebar.html' %}
 
     <!-- Main Content -->
     <main class="main-content">
@@ -864,42 +864,47 @@
     </div>
 
     <script>
-        // Sample data
-        let categories = [
-            {
-                id: 1,
-                name: "Mathematics",
-                icon: "📐",
-                description: "Courses related to mathematical concepts and problem solving",
-                subjectType: "academic",
-                difficulty: "medium",
-                parentId: null,
-                order: 1,
-                coursesCount: 50
-            },
-            {
-                id: 2,
-                name: "Algebra",
-                icon: "🔢",
-                description: "Algebraic equations and expressions",
-                subjectType: "academic",
-                difficulty: "medium",
-                parentId: 1,
-                order: 1,
-                coursesCount: 15
-            },
-            {
-                id: 3,
-                name: "Geometry",
-                icon: "📊",
-                description: "Shapes, angles, and spatial reasoning",
-                subjectType: "academic",
-                difficulty: "easy",
-                parentId: 1,
-                order: 2,
-                coursesCount: 20
+        // Client-side list, populated from the server via AJAX
+        let categories = [];
+
+        // Simple debounce helper for search
+        function debounce(fn, delay) {
+            let t = null;
+            return function(...args) {
+                clearTimeout(t);
+                t = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
+        // Load courses from server with current filters
+        async function loadCourses() {
+            const q = document.getElementById('searchInput').value || '';
+            const type = document.getElementById('typeFilter').value || '';
+            const difficulty = document.getElementById('difficultyFilter').value || '';
+            const params = new URLSearchParams();
+            if (q) params.set('q', q);
+            if (type) params.set('type', type);
+            if (difficulty) params.set('difficulty', difficulty);
+
+            try {
+                const res = await fetch(`${window.location.origin}/admin/get_courses?${params.toString()}`, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+                if (!res.ok) throw new Error('Failed to load courses');
+                const data = await res.json();
+                categories = data.courses || [];
+                renderCategories();
+                populateParentDropdown();
+            } catch (err) {
+                console.error('loadCourses error', err);
+                categories = [];
+                renderCategories();
             }
-        ];
+        }
+
+        // Wire controls to reload (debounced search)
+        const debouncedLoad = debounce(loadCourses, 300);
+        document.getElementById('searchInput').addEventListener('input', debouncedLoad);
+        document.getElementById('typeFilter').addEventListener('change', loadCourses);
+        document.getElementById('difficultyFilter').addEventListener('change', loadCourses);
 
         let editingId = null;
 

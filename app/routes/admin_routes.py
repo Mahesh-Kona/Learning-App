@@ -9,6 +9,7 @@ import os
 from types import SimpleNamespace
 from datetime import datetime
 import traceback
+from flask import jsonify
 
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/admin')
@@ -254,8 +255,69 @@ def category_management():
             session.pop('admin_user_id', None)
             return redirect(url_for('admin_bp.admin_login_get'))
 
-    # Render the category management template. Template will include sidebar and handle content.
+    # Render the category management template. The template will fetch courses via AJAX.
     return render_template('category-management.html', user=user, active='categories')
+
+
+
+@admin_bp.route('/get_courses', methods=['GET'])
+def get_courses():
+    """Return a JSON list of courses. Supports optional query params: q, type, difficulty."""
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    # Basic admin check
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'error': 'unauthorized'}), 401
+
+    q = (request.args.get('q') or '').strip()
+    type_filter = (request.args.get('type') or '').strip()
+    difficulty_filter = (request.args.get('difficulty') or '').strip()
+
+    try:
+        courses_q = Course.query.order_by(Course.title).all()
+        courses = []
+        for c in courses_q:
+            try:
+                lessons_count = c.lessons.count() if hasattr(c, 'lessons') else Lesson.query.filter_by(course_id=c.id).count()
+            except Exception:
+                lessons_count = 0
+            courses.append({
+                'id': c.id,
+                'name': c.title or '',
+                'icon': '📚',
+                'description': c.description or '',
+                'subjectType': getattr(c, 'category', '') or '',
+                'difficulty': getattr(c, 'difficulty', '') or '',
+                'parentId': None,
+                'order': 1,
+                'coursesCount': lessons_count
+            })
+    except Exception:
+        courses = []
+
+    # Apply simple filters in Python for stability (works even if model lacks fields)
+    def matches(item):
+        if q:
+            qlow = q.lower()
+            if qlow not in (item.get('name') or '').lower() and qlow not in (item.get('description') or '').lower():
+                return False
+        if type_filter:
+            if type_filter.lower() != (item.get('subjectType') or '').lower():
+                return False
+        if difficulty_filter:
+            if difficulty_filter.lower() != (item.get('difficulty') or '').lower():
+                return False
+        return True
+
+    filtered = [c for c in courses if matches(c)]
+    return jsonify({'courses': filtered}), 200
 
 
 @admin_bp.route('/all_topics', methods=['GET'])

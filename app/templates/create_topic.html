@@ -110,7 +110,40 @@
                             	<button class="btn btn-primary"><i class="fas fa-plus"></i> Add Card</button>
                         	</div>
 
-                        	<div class="cards-grid" id="cardsGrid"></div>
+                        	<div class="cards-grid" id="cardsGrid">
+								{# Render existing topics when viewing topics for a lesson #}
+								{% if topics and topics|length > 0 %}
+									{% for t in topics %}
+										<div class="card-item" data-topic-id="{{ t.id }}">
+											<div class="card-content">
+												<h3 class="card-title">{{ t.title }}</h3>
+												<p class="card-desc">{{ t.description or '' }}</p>
+											</div>
+
+											<div class="card-actions">
+												{# Edit: link to edit page (GET) - backend should render edit form #}
+												<a class="btn btn-outline btn-edit" href="{{ url_for('admin_bp.edit_topic', topic_id=t.id) }}">
+													<i class="fas fa-edit"></i> Edit
+												</a>
+
+												{# Delete: form POSTing to delete endpoint.
+												   If your app expects DELETE, you can use a hidden _method field and handle it server-side. #}
+												<form class="delete-topic-form" method="post" action="{{ url_for('admin_bp.delete_topic', topic_id=t.id) }}" style="display:inline;">
+													{%- if csrf_token is defined -%}
+														{{ csrf_token() }}
+													{%- endif -%}
+													<input type="hidden" name="_method" value="DELETE">
+													<button type="button" class="btn btn-danger btn-delete">
+														<i class="fas fa-trash"></i> Delete
+													</button>
+												</form>
+											</div>
+										</div>
+									{% endfor %}
+								{% else %}
+									<div class="no-topics">No topics found for this lesson.</div>
+								{% endif %}
+							</div>
 
                         	<div class="add-card">
                             	<i class="fas fa-plus"></i> Add New Card
@@ -154,5 +187,28 @@
 
 		<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 		<script src="{{ url_for('static', filename='js/create_topic.js') }}"></script>
+
+		{# Small inline JS to confirm and submit delete forms if the delete buttons are clicked. #}
+		<script>
+		(function(){
+			document.addEventListener('click', function(e){
+				var target = e.target;
+				// support clicking the icon inside the button
+				if (!target.classList.contains('btn-delete')) {
+					target = target.closest && target.closest('.btn-delete');
+				}
+				if (target && target.classList && target.classList.contains('btn-delete')) {
+					e.preventDefault();
+					var form = target.closest('.delete-topic-form');
+					if (!form) return;
+					var confirmed = confirm('Delete this topic? This action cannot be undone.');
+					if (!confirmed) return;
+					// Submit the form. Use fetch for better control if desired:
+					// form.submit() keeps server-side CSRF workflow intact.
+					form.submit();
+				}
+			}, false);
+		})();
+		</script>
 </body>
 </html>
