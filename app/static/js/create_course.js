@@ -201,4 +201,33 @@ document.addEventListener('DOMContentLoaded', () => {
   // This ensures the course image preview is empty when opening the create page
   // (e.g. after login). If you want a "Restore draft" feature, we can add a
   // visible control to allow explicit restoration.
+  // Load categories into the category select so admin-created categories
+  // (from category-management) show up in the Subject Category list.
+  async function loadCategories() {
+    try {
+      const resp = await fetch('/admin/get_categories', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      if (!resp.ok) return;
+      const j = await resp.json().catch(() => ({}));
+      const cats = (j && j.categories) || [];
+      // clear select
+      if (category) {
+        category.innerHTML = '';
+        const empty = document.createElement('option');
+        empty.value = '';
+        empty.textContent = 'Select Category';
+        category.appendChild(empty);
+        cats.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          opt.textContent = c.name + (c.count ? ` (${c.count})` : '');
+          category.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      console.error('Failed to load categories', e);
+    }
+  }
+
+  // call loadCategories on page ready
+  loadCategories();
 });

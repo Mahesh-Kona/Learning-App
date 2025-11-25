@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from datetime import datetime
 import traceback
 from flask import jsonify
+from app.utils.category_store import read_categories, write_category, remove_category
 
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/admin')
@@ -344,10 +345,94 @@ def get_categories():
             if not cat:
                 continue
             categories.append({'name': cat, 'count': int(cnt)})
+        # include persisted categories from the category store (zero-count allowed)
+        try:
+            stored = read_categories(current_app.root_path)
+            # stored is list of {name:..., ...}
+            for s in stored:
+                if not s or not s.get('name'):
+                    continue
+                name = s.get('name')
+                # if already present, skip
+                if any(c['name'].lower() == name.lower() for c in categories):
+                    continue
+                categories.append({'name': name, 'count': 0})
+        except Exception:
+            current_app.logger.exception('Failed to read stored categories')
+
         return jsonify({'categories': categories}), 200
     except Exception:
         current_app.logger.exception('Failed to fetch categories')
         return jsonify({'categories': []}), 200
+
+
+
+@admin_bp.route('/create_category', methods=['POST'])
+def create_category():
+    """Persist a new category to the lightweight category store (JSON file).
+    This avoids requiring a DB migration for a simple admin-managed list.
+    """
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'unauthorized'}), 401
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'success': False, 'error': 'unauthorized'}), 401
+
+    data = request.get_json(silent=True) or {}
+    name = data.get('name')
+    if not name:
+        return jsonify({'success': False, 'error': 'missing name'}), 400
+
+    # write to store
+    ok = write_category({
+        'name': name,
+        'icon': data.get('icon'),
+        'description': data.get('description'),
+        'subjectType': data.get('subjectType'),
+        'difficulty': data.get('difficulty')
+    }, current_app.root_path)
+
+    if not ok:
+        return jsonify({'success': False, 'error': 'failed to persist category'}), 500
+
+    return jsonify({'success': True, 'name': name}), 201
+
+
+
+@admin_bp.route('/delete_category', methods=['POST'])
+def delete_category():
+    """Remove a category from the lightweight category store (JSON file).
+    This does not affect Course.category values (clear_category handles that).
+    """
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'unauthorized'}), 401
+    if uid == 'dev_admin':
+        user = None
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'success': False, 'error': 'unauthorized'}), 401
+
+    data = request.get_json(silent=True) or {}
+    name = data.get('name')
+    if not name:
+        return jsonify({'success': False, 'error': 'missing name'}), 400
+
+    try:
+        ok = remove_category(name, current_app.root_path)
+        if not ok:
+            return jsonify({'success': False, 'error': 'not found or failed to remove'}), 404
+        return jsonify({'success': True, 'name': name}), 200
+    except Exception:
+        current_app.logger.exception('Failed to delete stored category %s', name)
+        return jsonify({'success': False, 'error': 'failed to delete category'}), 500
 
 
 @admin_bp.route('/rename_category', methods=['POST'])
