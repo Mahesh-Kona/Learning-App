@@ -1,11 +1,15 @@
 import os
 from datetime import timedelta
 from urllib.parse import quote_plus
+from pathlib import Path
+
+# Load .env file from project root
 try:
     from dotenv import load_dotenv
-    # Load .env file if present (development convenience)
-    load_dotenv()
-except Exception:
+    # Find the .env file in the project root (parent of app folder)
+    env_path = Path(__file__).parent.parent / '.env'
+    load_dotenv(env_path, override=True)
+except Exception as e:
     # python-dotenv is optional for running the app in minimal environments
     # If it's missing, continue without loading a .env file.
     pass
@@ -58,7 +62,10 @@ class Config:
         }
 
     # CORS
-    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")  # set to your React origin(s) in production
+    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")  # set to your frontend origin(s) in production
+    CORS_SUPPORTS_CREDENTIALS = True
+    CORS_ALLOW_HEADERS = ["Authorization", "Content-Type"]
+    CORS_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 
     # Uploads
     UPLOAD_PATH = os.getenv("UPLOAD_PATH", "/tmp/uploads")
@@ -99,3 +106,8 @@ class Config:
 
     # Session lifetime for "remember me" persistent sessions (defaults to 14 days)
     PERMANENT_SESSION_LIFETIME = timedelta(days=int(os.getenv('SESSION_DURATION_DAYS', '14')))
+
+    # Cross-origin admin session support (required for HTTPS and different origins)
+    SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'None')
+    SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'True').lower() in ('true', '1')
+    SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN', None)

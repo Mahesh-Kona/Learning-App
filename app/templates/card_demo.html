@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Card Demo - Create Topic & Cards</title>
+<style>
+*{box-sizing:border-box;font-family:system-ui,Arial;margin:0;padding:0;}
+body{background:#f5f7fb;padding:40px;}
+.container{max-width:800px;margin:0 auto;background:#fff;padding:40px;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+h1{color:#333;margin-bottom:10px;}
+.subtitle{color:#666;margin-bottom:30px;}
+.section{background:#f9fafb;padding:24px;border-radius:12px;margin-bottom:24px;border:2px solid #e5e7eb;}
+.section h2{font-size:18px;margin-bottom:16px;color:#111;}
+.form-group{margin-bottom:16px;}
+label{display:block;font-weight:600;margin-bottom:6px;color:#374151;}
+input,select{width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:8px;font-size:15px;}
+input:focus,select:focus{outline:none;border-color:#4361ee;}
+button{background:#4361ee;color:#fff;padding:12px 24px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;}
+button:hover{background:#3451de;}
+button:disabled{background:#9ca3af;cursor:not-allowed;}
+.btn-secondary{background:#6b7280;margin-left:8px;}
+.btn-secondary:hover{background:#4b5563;}
+.success{background:#d1fae5;color:#065f46;padding:12px;border-radius:8px;margin-bottom:16px;}
+.error{background:#fee2e2;color:#991b1b;padding:12px;border-radius:8px;margin-bottom:16px;}
+.info{background:#dbeafe;color:#1e40af;padding:12px;border-radius:8px;font-size:14px;}
+.card-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px;}
+.card-link{background:#fff;border:2px solid #e5e7eb;padding:16px;text-align:center;border-radius:10px;text-decoration:none;color:#333;font-weight:600;transition:all 0.2s;}
+.card-link:hover{border-color:#4361ee;background:#f0f4ff;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📚 Card Creation Demo</h1>
+  <p class="subtitle">Quick setup for creating topics and cards</p>
+
+  <!-- Step 1: Create Lesson -->
+  <div class="section">
+    <h2>Step 1: Create a Lesson (if needed)</h2>
+    <div id="lessonStatus"></div>
+    <div class="form-group">
+      <label>Course ID</label>
+      <input type="number" id="courseId" value="1" placeholder="Enter course ID">
+    </div>
+    <div class="form-group">
+      <label>Lesson Title</label>
+      <input type="text" id="lessonTitle" placeholder="e.g., Introduction to Programming">
+    </div>
+    <div class="form-group">
+      <label>Lesson Description</label>
+      <input type="text" id="lessonDesc" placeholder="e.g., Learn the basics">
+    </div>
+    <button onclick="createLesson()">Create Lesson</button>
+  </div>
+
+  <!-- Step 2: Create Topic -->
+  <div class="section">
+    <h2>Step 2: Create a Topic</h2>
+    <div id="topicStatus"></div>
+    <div class="form-group">
+      <label>Lesson ID</label>
+      <input type="number" id="topicLessonId" placeholder="From Step 1 or existing">
+    </div>
+    <div class="form-group">
+      <label>Topic Title</label>
+      <input type="text" id="topicTitle" placeholder="e.g., Variables and Data Types">
+    </div>
+    <button onclick="createTopic()">Create Topic</button>
+  </div>
+
+  <!-- Step 3: Create Cards -->
+  <div class="section">
+    <h2>Step 3: Create Cards</h2>
+    <div class="info">
+      After creating a topic, use one of these links to create different card types:
+    </div>
+    <div class="form-group">
+      <label>Topic ID (from Step 2)</label>
+      <input type="number" id="cardTopicId" placeholder="Enter topic ID">
+    </div>
+    <div class="card-links">
+      <a href="#" class="card-link" onclick="openCardEditor('concept');return false">📘 Concept Card</a>
+      <a href="#" class="card-link" onclick="openCardEditor('quiz');return false">❓ Quiz Card</a>
+      <a href="#" class="card-link" onclick="openCardEditor('video');return false">🎬 Video Card</a>
+      <a href="#" class="card-link" onclick="openCardEditor('interactive');return false">🧩 Interactive Card</a>
+    </div>
+  </div>
+</div>
+
+<script>
+let jwtToken = null;
+
+// Fetch JWT token
+async function getToken(){
+  if(jwtToken) return jwtToken;
+  
+  const stored = localStorage.getItem('admin_jwt_token');
+  if(stored) {
+    jwtToken = stored;
+    return stored;
+  }
+  
+  try{
+    const res = await fetch('/admin/api/get-jwt-token', {credentials: 'include'});
+    if(res.ok){
+      const data = await res.json();
+      if(data.success && data.access_token){
+        jwtToken = data.access_token;
+        localStorage.setItem('admin_jwt_token', jwtToken);
+        return jwtToken;
+      }
+    }
+  }catch(err){
+    console.error('Failed to get token:', err);
+  }
+  
+  alert('Please login as admin first');
+  window.location.href = '/admin/login';
+  return null;
+}
+
+async function createLesson(){
+  const courseId = document.getElementById('courseId').value;
+  const title = document.getElementById('lessonTitle').value.trim();
+  const desc = document.getElementById('lessonDesc').value.trim();
+  
+  if(!courseId || !title){
+    alert('Please fill in course ID and lesson title');
+    return;
+  }
+  
+  const token = await getToken();
+  if(!token) return;
+  
+  try{
+    const res = await fetch('/api/v1/lessons', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        course_id: parseInt(courseId),
+        title: title,
+        description: desc
+      })
+    });
+    
+    const data = await res.json();
+    console.log('Lesson response:', data);
+    
+    if(data.success || data.id){
+      const lessonId = data.id || data.lesson?.id;
+      document.getElementById('lessonStatus').innerHTML = 
+        `<div class="success">✅ Lesson created! ID: ${lessonId}</div>`;
+      document.getElementById('topicLessonId').value = lessonId;
+    }else{
+      document.getElementById('lessonStatus').innerHTML = 
+        `<div class="error">❌ Failed: ${data.error || 'Unknown error'}</div>`;
+    }
+  }catch(err){
+    console.error('Error:', err);
+    document.getElementById('lessonStatus').innerHTML = 
+      `<div class="error">❌ Error: ${err.message}</div>`;
+  }
+}
+
+async function createTopic(){
+  const lessonId = document.getElementById('topicLessonId').value;
+  const title = document.getElementById('topicTitle').value.trim();
+  
+  if(!lessonId || !title){
+    alert('Please fill in lesson ID and topic title');
+    return;
+  }
+  
+  const token = await getToken();
+  if(!token) return;
+  
+  try{
+    const res = await fetch('/api/v1/topics', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        lesson_id: parseInt(lessonId),
+        title: title
+      })
+    });
+    
+    const data = await res.json();
+    console.log('Topic response:', data);
+    
+    if(data.success && data.id){
+      document.getElementById('topicStatus').innerHTML = 
+        `<div class="success">✅ Topic created! ID: ${data.id}</div>`;
+      document.getElementById('cardTopicId').value = data.id;
+    }else{
+      document.getElementById('topicStatus').innerHTML = 
+        `<div class="error">❌ Failed: ${data.error || 'Unknown error'}</div>`;
+    }
+  }catch(err){
+    console.error('Error:', err);
+    document.getElementById('topicStatus').innerHTML = 
+      `<div class="error">❌ Error: ${err.message}</div>`;
+  }
+}
+
+function openCardEditor(type){
+  const topicId = document.getElementById('cardTopicId').value;
+  if(!topicId){
+    alert('Please enter a topic ID first');
+    return;
+  }
+  
+  const editorUrls = {
+    'concept': `/admin/concept-editor?topic_id=${topicId}`,
+    'quiz': `/admin/quiz-editor?topic_id=${topicId}`,
+    'video': `/admin/video-editor?topic_id=${topicId}`,
+    'interactive': `/admin/interactive-editor?topic_id=${topicId}`
+  };
+  
+  window.location.href = editorUrls[type];
+}
+</script>
+</body>
+</html>

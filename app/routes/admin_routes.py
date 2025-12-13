@@ -12,6 +12,13 @@ from datetime import datetime
 import traceback
 from flask import jsonify
 from app.utils.category_store import read_categories, write_category, remove_category
+from app.utils.dynamic_json import (
+    generate_courses_json,
+    generate_course_lessons_json,
+    generate_lesson_topics_json,
+    generate_user_progress_json,
+    generate_all_jsons
+)
 
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/admin')
@@ -137,6 +144,45 @@ def admin_login_post():
     return redirect(url_for('admin_bp.admin_login_get'))
 
 
+@admin_bp.route('/api/get-jwt-token', methods=['GET'])
+def get_jwt_token():
+    """Generate JWT token for session-authenticated admin users."""
+    from flask_jwt_extended import create_access_token
+    
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    # Get user email from database or use dev admin
+    email = 'admin@example.com'
+    role = 'admin'
+    
+    if uid != 'dev_admin':
+        try:
+            user = User.query.get(uid)
+            if user:
+                email = user.email
+                role = user.role
+        except Exception:
+            pass
+    
+    # Create JWT token
+    # The identity must be a simple type (string). We'll use user_id as identity
+    # and pass additional claims via additional_claims parameter
+    user_id_str = str(uid)
+    additional_claims = {
+        'email': email,
+        'role': role
+    }
+    
+    access_token = create_access_token(identity=user_id_str, additional_claims=additional_claims)
+    
+    return jsonify({
+        'success': True,
+        'access_token': access_token
+    }), 200
+
+
 @admin_bp.route('/dashboard')
 def admin_dashboard():
     uid = session.get('admin_user_id')
@@ -187,6 +233,23 @@ def create_course_page():
     return render_template('create_course.html', user=user, active='create_course')
 
 
+@admin_bp.route('/students', methods=['GET'])
+def students_page():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    # Render the student management template
+    return render_template('student.html', user=user, active='students')
+
+
 @admin_bp.route('/create_topic', methods=['GET'])
 def create_topic_page():
     uid = session.get('admin_user_id')
@@ -206,6 +269,27 @@ def create_topic_page():
     except Exception:
         lessons = []
     return render_template('create_topic.html', user=user, active='create_topic', lessons=lessons, selected_lesson=selected_lesson)
+
+
+# Card Type Editors
+@admin_bp.route('/quiz-editor', methods=['GET'])
+def quiz_editor():
+    return render_template('quiz.html')
+
+
+@admin_bp.route('/concept-editor', methods=['GET'])
+def concept_editor():
+    return render_template('concept.html')
+
+
+@admin_bp.route('/video-editor', methods=['GET'])
+def video_editor():
+    return render_template('video.html')
+
+
+@admin_bp.route('/interactive-editor', methods=['GET'])
+def interactive_editor():
+    return render_template('interactive.html')
 
 
 @admin_bp.route('/all_courses', methods=['GET'])
@@ -729,11 +813,6 @@ def create_topic_post():
         # JSON request body case: data is already a dict
         if isinstance(data, dict):
             description = data.get('description') or data.get('topicDescription')
-            objectives = data.get('objectives')
-            cards = data.get('cards')
-            # capture optional metadata fields from JSON
-            estimated_time = data.get('estimated_time') or data.get('estimatedTime')
-            difficulty = data.get('difficulty') or data.get('topicDifficulty')
 
         # Form-encoded case: use getlist for repeated fields or named inputs
         try:
@@ -901,6 +980,11 @@ def update_topic():
         db.session.add(topic)
         db.session.commit()
 
+        try:
+            generate_lesson_topics_json(topic.lesson_id)
+        except Exception:
+            current_app.logger.exception('Failed to regen lesson topics json after update_topic')
+
         return {"success": True, "topic": {'id': topic.id, 'title': topic.title, 'data_json': topic.data_json}}, 200
     except Exception:
         current_app.logger.exception('Failed to update topic %s', tid)
@@ -956,8 +1040,14 @@ def delete_topic():
             flash('Topic not found', 'error')
             return redirect(url_for('admin_bp.all_topics_page'))
 
+        # remember lesson id to regenerate topics JSON after deletion
+        lid_for_regen = topic.lesson_id
         db.session.delete(topic)
         db.session.commit()
+        try:
+            generate_lesson_topics_json(lid_for_regen)
+        except Exception:
+            current_app.logger.exception('Failed to regen lesson topics json after delete_topic')
     except Exception:
         current_app.logger.exception('Failed to delete topic %s', tid)
         try:
@@ -1178,6 +1268,11 @@ def create_course_post():
     try:
         is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.headers.get('Accept', '').startswith('application/json')
         if is_xhr:
+            try:
+                # regenerate top-level courses file
+                generate_courses_json()
+            except Exception:
+                current_app.logger.exception('Failed to regen courses.json after create_course')
             return jsonify({'success': True, 'id': course.id}), 201
         return redirect(url_for('admin_bp.lesson_page') + f'?course_id={course.id}')
     except Exception:
@@ -1268,6 +1363,12 @@ def update_course():
             'level': course.difficulty or '',
             'lessons': lessons_count
         }
+        try:
+            # regenerate courses list and the affected course lessons file
+            generate_courses_json()
+            generate_course_lessons_json(course.id)
+        except Exception:
+            current_app.logger.exception('Failed to regen json after update_course')
         return payload, 200
     except Exception:
         current_app.logger.exception('Failed to update course %s', cid)
@@ -1461,6 +1562,10 @@ def create_lesson_post():
         )
         db.session.add(lesson)
         db.session.commit()
+        try:
+            generate_course_lessons_json(lesson.course_id)
+        except Exception:
+            current_app.logger.exception('Failed to regen lessons json after create_lesson')
     except Exception:
         current_app.logger.exception('Failed to create lesson')
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -1531,6 +1636,10 @@ def update_lesson_post():
             lesson.objectives = objectives
 
         db.session.commit()
+        try:
+            generate_course_lessons_json(lesson.course_id)
+        except Exception:
+            current_app.logger.exception('Failed to regen lessons json after update_lesson')
     except Exception:
         current_app.logger.exception('Failed to update lesson')
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -1571,6 +1680,12 @@ def delete_lesson_post():
         Topic.query.filter_by(lesson_id=lid).delete()
         Lesson.query.filter_by(id=lid).delete()
         db.session.commit()
+        try:
+            # regenerate course lessons file for the course (if we can discover it)
+            # best-effort: try to regen all
+            generate_all_jsons()
+        except Exception:
+            current_app.logger.exception('Failed to regen json after delete_lesson')
     except Exception:
         current_app.logger.exception('Failed to delete lesson')
         db.session.rollback()

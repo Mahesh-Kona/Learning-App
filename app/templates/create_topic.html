@@ -684,9 +684,9 @@
                     </div>
 
                     <div class="card-types-grid">
-                        <div class="card-type" onclick="selectCardType(this, 'intro')">
+                        <div class="card-type" onclick="selectCardType(this, 'quiz')">
                             <div class="card-type-icon">📋</div>
-                            <div class="card-type-name">Intro</div>
+                            <div class="card-type-name">Quiz</div>
                         </div>
 
                         <div class="card-type" onclick="selectCardType(this, 'concept')">
@@ -699,9 +699,9 @@
                             <div class="card-type-name">Video</div>
                         </div>
 
-                        <div class="card-type" onclick="selectCardType(this, 'drag-drop')">
+                        <div class="card-type" onclick="selectCardType(this, 'interactive')">
                             <div class="card-type-icon">👆</div>
-                            <div class="card-type-name">Drag & Drop</div>
+                            <div class="card-type-name">Interactive</div>
                         </div>
                     </div>
                 </div>
@@ -735,23 +735,7 @@
                 </div>
             </div>
 
-            <!-- Learning Cards Section (Full Width) -->
-            <div class="card cards-section">
-                <div class="card-header">
-                    <div class="card-icon">📚</div>
-                    <h3>Learning Cards</h3>
-                    <button class="btn btn-save" style="margin-left: auto;" onclick="addNewCard()">
-                        + Add Card
-                    </button>
-                </div>
 
-                <div class="cards-list" id="cardsList">
-                    <!-- Cards will be added dynamically -->
-                    <button class="btn-add-new-card" onclick="addNewCard()">
-                        Add New Card
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -837,27 +821,55 @@
             }
         }
 
-        // Select card type
+        // Map card types to their HTML templates
+        const cardTypeFiles = {
+            'quiz': '/admin/quiz-editor',
+            'concept': '/admin/concept-editor',
+            'video': '/admin/video-editor',
+            'interactive': '/admin/interactive-editor'
+        };
+
+        // Select card type and open its editor in the same window
         function selectCardType(element, type) {
-            element.classList.toggle('selected');
+            // Check if we have a topic ID to pass along
+            const urlParams = new URLSearchParams(window.location.search);
+            const topicId = urlParams.get('topic_id');
             
-            if (element.classList.contains('selected')) {
-                selectedCards.push(type);
+            let filePath = cardTypeFiles[type];
+            if (filePath) {
+                // If we have a topic ID, append it to the URL
+                if (topicId) {
+                    filePath += '?topic_id=' + encodeURIComponent(topicId);
+                }
+                console.log('Navigating to:', filePath);
+                window.location.href = filePath;
             } else {
-                selectedCards = selectedCards.filter(t => t !== type);
+                alert('Card type editor not found!');
             }
-            
-            console.log('Selected cards:', selectedCards);
         }
 
-        // Add new card
+        // Add new card - open editor for selected card type
         function addNewCard() {
             if (selectedCards.length === 0) {
                 alert('Please select at least one card type first!');
                 return;
             }
             
-            alert('This will open a modal to create a new learning card of type: ' + selectedCards.join(', '));
+            // Check if we have a topic ID to pass along
+            const urlParams = new URLSearchParams(window.location.search);
+            const topicId = urlParams.get('topic_id');
+            
+            // Navigate to the most recently selected card type
+            const latestType = selectedCards[selectedCards.length - 1];
+            let filePath = cardTypeFiles[latestType];
+            if (filePath) {
+                // If we have a topic ID, append it to the URL
+                if (topicId) {
+                    filePath += '?topic_id=' + encodeURIComponent(topicId);
+                }
+                console.log('Navigating to:', filePath);
+                window.location.href = filePath;
+            }
         }
 
         // Add learning objective
@@ -905,14 +917,17 @@
                 return;
             }
 
+            const lessonId = document.getElementById('attachLesson').value;
+            const displayOrder = parseInt(document.getElementById('topicOrder').value) || 0;
+
             const topicData = {
                 title: document.getElementById('topicTitle').value,
-                lesson_id: document.getElementById('attachLesson').value,
+                lesson_id: lessonId,
                 data_json: {
                     description: document.getElementById('topicDescription').value,
                     estimated_time: parseInt(document.getElementById('estimatedTime').value) || null,
                     difficulty: document.getElementById('difficultyLevel').value || null,
-                    order: parseInt(document.getElementById('topicOrder').value) || null,
+                    order: displayOrder,
                     objectives: Array.from(document.querySelectorAll('.objective-text')).map(el => el.textContent),
                     cardTypes: selectedCards,
                     category: document.getElementById('courseCategory').value || null,
@@ -936,11 +951,24 @@
                 }
 
                 const resp = await res.json().catch(() => null);
+                console.log('Topic creation response:', resp);
+                
+                // If the topic was created successfully, redirect directly to concept editor
+                // with both topic_id and lesson_id in the URL, plus display_order
+                if (resp && resp.success && resp.id) {
+                    console.log('Topic created with ID:', resp.id);
+                    // Automatically open concept editor with topic_id, lesson_id, and display_order
+                    const url = `/admin/concept-editor?topic_id=${resp.id}&lesson_id=${lessonId}&display_order=${displayOrder}`;
+                    window.location.href = url;
+                    return;
+                }
+                
                 // If server provided a redirect URL, go there
                 if (resp && resp.redirect) {
                     window.location.href = resp.redirect;
                     return;
                 }
+                
                 // Otherwise navigate to admin topics list
                 window.location.href = '/admin/all_topics';
             } catch (err) {
@@ -956,9 +984,10 @@
             }
         }
 
-        // Initialize page
+        // Initialize page and set up card type files
         document.addEventListener('DOMContentLoaded', function() {
             loadCoursesForTopic();
+            console.log('Card type files available:', Object.keys(cardTypeFiles));
         });
     </script>
 </body>

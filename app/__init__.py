@@ -4,6 +4,7 @@ import os
 from app.extensions import db, migrate, jwt, cors, limiter, cache
 from app.routes.auth_routes import auth_bp
 from app.api import bp as api_bp
+from app.routes.api import api_bp as routes_api_bp
 from app.routes.demo_routes import bp as demo_bp
 from app.routes.admin_routes import admin_bp
 
@@ -16,7 +17,13 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    cors.init_app(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", "*")}})
+    cors.init_app(
+        app,
+        resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", "*")}},
+        supports_credentials=app.config.get('CORS_SUPPORTS_CREDENTIALS', True),
+        methods=app.config.get('CORS_METHODS', ['GET','POST','PUT','DELETE','OPTIONS']),
+        allow_headers=app.config.get('CORS_ALLOW_HEADERS', ['Authorization','Content-Type'])
+    )
     # Initialize limiter with storage URI if provided (Redis) and set default limits
     limiter_storage = app.config.get('RATELIMIT_STORAGE_URL')
     default_limits = app.config.get('RATELIMIT_DEFAULTS')
@@ -38,6 +45,13 @@ def create_app():
     # Blueprints
     # API blueprint (v1 endpoints under /api/v1/... via the route definitions)
     app.register_blueprint(api_bp, url_prefix="/api/v1")
+    # Also register the older routes-based API blueprint which declares its
+    # own `url_prefix='/api/v1'` in `app/routes/api.py`. This ensures routes
+    # defined there (including dynamic meta endpoints) are available.
+    try:
+        app.register_blueprint(routes_api_bp)
+    except Exception:
+        app.logger.debug('routes_api_bp not registered or already present')
     # Auth routes are currently defined as full paths; register without prefix to keep existing routes
     app.register_blueprint(auth_bp)
     # Demo page for browser verification

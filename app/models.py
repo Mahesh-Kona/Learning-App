@@ -97,3 +97,78 @@ class Progress(db.Model):  # type: ignore[name-defined]
 
 # Index examples (if you want explicit composite indexes)
 Index("ix_progress_user_lesson", Progress.user_id, Progress.lesson_id)
+
+
+class Student(db.Model):  # type: ignore[name-defined]
+    """Optional student-specific table that links to a `User` record.
+
+    This table may be present in some deployments. We keep it lightweight
+    so APIs can prefer student-specific metadata when available while
+    falling back to the `User` model for authentication.
+    """
+    __tablename__ = "students"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=True)
+    email = db.Column(db.String(255), nullable=True, index=True)
+    password = db.Column(db.String(255), nullable=True)
+    syllabus = db.Column(db.String(255), nullable=True)
+    class_ = db.Column(db.String(50), nullable=True, name='class')
+    subjects = db.Column(db.Text, nullable=True)
+    second_language = db.Column(db.String(100), nullable=True)
+    third_language = db.Column(db.String(100), nullable=True)
+    # Default enrollment date to now when not provided
+    date = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
+    # Status: active or inactive (admin can change this)
+    status = db.Column(db.Enum('active', 'inactive', name='student_status'), default='active', nullable=False)
+    # Avatar image path (stored in /uploads/avatars/)
+    image = db.Column(db.String(255), nullable=True)
+    # Mobile number (10 digits)
+    mobile = db.Column(db.String(10), nullable=True)
+
+
+class Notification(db.Model):  # type: ignore[name-defined]
+    __tablename__ = 'notifications'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=True)
+    title = db.Column(db.String(255), nullable=False)
+    body = db.Column(db.Text, nullable=True)
+    data = db.Column(JSON_COL, nullable=True)
+    is_read = db.Column(db.Boolean, default=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    user = db.relationship('User')
+
+
+class Leaderboard(db.Model):  # type: ignore[name-defined]
+    """Leaderboard table storing ranked student data."""
+    __tablename__ = 'leaderboard'
+    id = db.Column(db.Integer, primary_key=True)
+    rank = db.Column(db.Integer, index=True, nullable=False)
+    name = db.Column(db.String(255), nullable=True)
+    score = db.Column(db.Float, nullable=True, default=0.0)
+    last_updated_date = db.Column(db.DateTime, nullable=True)
+    league = db.Column(db.Enum('bronze', 'silver', 'gold', 'platinum', name='leaderboard_league'), nullable=True)
+
+
+class Card(db.Model):  # type: ignore[name-defined]
+    """Card table for storing concept, quiz, video, and interactive cards."""
+    __tablename__ = 'cards'
+    id = db.Column(db.Integer, primary_key=True)
+    topic_id = db.Column(db.Integer, db.ForeignKey('topics.id'), index=True, nullable=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.id'), index=True, nullable=True)
+    card_type = db.Column(db.Enum('concept', 'quiz', 'video', 'interactive', name='card_type'), nullable=False, index=True)
+    title = db.Column(db.String(500), nullable=False)
+    # JSON data storing card-specific content (blocks for concept, questions for quiz, etc.)
+    data_json = db.Column(JSON_COL, nullable=True)
+    # Display order within the topic/lesson
+    display_order = db.Column(db.Integer, default=0, index=True)
+    # Metadata
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    published = db.Column(db.Boolean, default=False, index=True)
+    
+    # Relationships
+    topic = db.relationship('Topic', backref=db.backref('cards', lazy='dynamic'))
+    lesson = db.relationship('Lesson', backref=db.backref('cards', lazy='dynamic'))
+    creator = db.relationship('User', foreign_keys=[created_by])

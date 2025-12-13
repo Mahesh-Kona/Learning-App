@@ -1,0 +1,15 @@
+{
+  "courses": [
+    {
+      "id": 1,
+      "title": "Demo Course",
+      "description": "Demo course for recording",
+      "category": null,
+      "thumbnail_url": null,
+      "difficulty": null,
+      "duration_weeks": null,
+      "total_lessons": 1,
+      "published": false
+    }
+  ]
+}

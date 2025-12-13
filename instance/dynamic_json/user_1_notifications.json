@@ -1,0 +1,12 @@
+{
+  "notifications": [
+    {
+      "id": 1,
+      "title": "Test from CLI",
+      "body": "hello",
+      "data": {},
+      "is_read": false,
+      "created_at": "2025-12-03T08:53:34.245047"
+    }
+  ]
+}

@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Interactive Builder — Full (All except Hotspot)</title>
+<style>
+/* --- Reset & base --- */
+*{box-sizing:border-box;margin:0;padding:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+body{background:#f7f3fb;color:#111;height:100vh;display:flex;overflow:hidden}
+
+/* --- Layout --- */
+.app{display:flex;flex:1;height:100vh;width:100%}
+.col-left{width:20%;background:#fff;border-right:1px solid #eee;padding:18px;overflow:auto}
+.col-mid{width:52%;padding:18px;overflow:auto}
+.col-right{width:28%;background:#fff;border-left:1px solid #eee;padding:18px;overflow:auto}
+
+/* --- Left panel --- */
+h2{font-size:18px;margin-bottom:12px}
+.activity-item{padding:10px;border-radius:10px;background:#fbf9ff;border:1px solid #efe8ff;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.activity-item.active{box-shadow:0 6px 18px rgba(125,77,255,0.06);border-color:#d9cfff}
+.small-del{background:#ff6b6b;color:white;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
+
+/* --- Mid panel --- */
+.section{background:#fff;padding:14px;border-radius:12px;border:1px solid #efe8ff;margin-bottom:14px}
+label{display:block;font-weight:700;margin-bottom:8px}
+input[type=text], select, textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #e9e3f8;background:#fff}
+textarea{min-height:90px;resize:vertical}
+.btn{background:linear-gradient(90deg,#6f63ff,#7d4dff);color:#fff;padding:10px 14px;border:none;border-radius:10px;cursor:pointer;font-weight:700}
+.ghost{background:#fff;border:1px solid #efe8ff;padding:8px 12px;border-radius:8px;cursor:pointer}
+.muted{color:#7f7a86;font-size:13px;margin-top:8px}
+
+/* --- Specific editors --- */
+.match-wrapper{display:flex;gap:12px}
+.match-col{flex:1;background:#fbfaff;border-radius:10px;padding:10px;border:1px dashed #e8e2ff;min-height:160px}
+.match-item{background:#fff;padding:8px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;border:1px solid #efe8ff}
+
+.reorder-list{background:#fbfaff;padding:10px;border-radius:10px;border:1px dashed #e8e2ff;min-height:60px}
+.reorder-item{background:#fff;padding:8px;border-radius:8px;margin-bottom:8px;border:1px solid #efe8ff;cursor:grab}
+
+.option-block{margin-top:10px;background:#fff;padding:10px;border-radius:10px;border:1px solid #efe8ff}
+.option-row{display:flex;gap:8px;align-items:center}
+.option-row input[type="text"]{flex:1;padding:8px;border-radius:8px;border:1px solid #e6def8}
+
+.media-preview img, .media-preview video{max-width:100%;border-radius:8px;border:1px solid #eee}
+
+/* image labeling */
+.img-labels{display:flex;flex-direction:column;gap:8px}
+.label-token{background:#fff;padding:8px;border-radius:8px;border:1px solid #efe8ff;cursor:grab}
+.label-token.locked{opacity:0.6;cursor:default}
+
+/* --- Right preview --- */
+.preview-title{font-weight:800;margin-bottom:8px;font-size:18px}
+.preview-block{background:#fbf9ff;padding:12px;border-radius:12px;border:1px solid #efe8ff}
+.left-draggable{background:#fff;padding:8px;border-radius:8px;margin-bottom:8px;border:1px solid #efe8ff;cursor:grab}
+.left-draggable.locked{opacity:0.6;cursor:default;background:#f3f4f6}
+.right-drop{background:#fff;padding:12px;border-radius:8px;margin-bottom:10px;border:2px dashed #e9e3ff;min-height:48px;position:relative}
+.right-drop.locked{border-style:solid;border-color:#d6ffd8;background:#f6fff6}
+.feedback{margin-top:6px;font-weight:700}
+.correct{color:#1f8a3e}
+.incorrect{color:#c92a2a}
+
+.label-target{position:absolute;border:2px dashed rgba(77,124,255,0.6);background:rgba(125,77,255,0.06);border-radius:6px;padding:4px;font-weight:700}
+
+/* common controls */
+.row{display:flex;gap:8px;margin-top:12px}
+.row .spacer{flex:1}
+
+/* responsive */
+@media(max-width:1000px){
+  .col-left{display:none}
+  .col-right{display:none}
+  .col-mid{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- LEFT -->
+  <div class="col-left">
+    <h2>Activities</h2>
+    <div id="activitiesList"></div>
+
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn" onclick="createActivity()">+ New Activity</button>
+      <button class="ghost" onclick="exportAll()">Export</button>
+    </div>
+  </div>
+
+  <!-- MIDDLE -->
+  <div class="col-mid">
+    <div class="section">
+      <label>Activity Title</label>
+      <input id="actTitle" type="text" placeholder="Enter title" oninput="saveField('title')">
+
+      <label style="margin-top:12px">Activity Type</label>
+      <select id="actType" onchange="onTypeChange()">
+        <option value="">Select type</option>
+        <option value="match">1 — Match the Following</option>
+        <option value="reorder">2 — Reorder the List</option>
+        <option value="mcq">3 — MCQ Interactive</option>
+        <option value="tf">4 — True / False</option>
+        <option value="fill">5 — Fill in the Blank</option>
+        <option value="label">6 — Image Labeling (Drag & Drop)</option>
+        <option value="ref">7 — Image/Video Reference</option>
+        <option value="click">8 — Clickable Options</option>
+      </select>
+
+      <label style="margin-top:12px">Instructions / Prompt</label>
+      <textarea id="actPrompt" placeholder="Write instructions..." oninput="saveField('prompt')"></textarea>
+
+      <label style="margin-top:12px">Attach Media (image/mp4) — used by several activities</label>
+      <input id="mediaIn" type="file" accept="image/*,video/*" onchange="handleMediaUpload(event)">
+      <div id="mediaPreview" class="media-preview" style="margin-top:8px"></div>
+    </div>
+
+    <!-- Match editor -->
+    <div id="matchEditor" class="section" style="display:none">
+      <label>Add left & right items (a pair will be created automatically)</label>
+      <div style="display:flex;gap:8px">
+        <input id="leftInput" type="text" placeholder="Left item (term)" />
+        <input id="rightInput" type="text" placeholder="Right item (term)" />
+        <button class="btn" onclick="addPairFromInputs()">Add Pair</button>
+      </div>
+      <div class="match-wrapper" style="margin-top:12px">
+        <div class="match-col">
+          <strong>Left Items</strong>
+          <div id="leftCol" style="margin-top:8px"></div>
+        </div>
+        <div class="match-col">
+          <strong>Right Items</strong>
+          <div id="rightCol" style="margin-top:8px"></div>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:8px">To create correct mapping, use Add Pair. In preview, drag the left items onto right targets. Correct/incorrect comment is shown and lock occurs on drop.</div>
+      <div class="row" style="margin-top:10px">
+        <button class="ghost" onclick="resetMatches()">Reset Matches</button>
+        <div class="spacer"></div>
+        <button class="ghost" onclick="clearPairs()">Clear All</button>
+      </div>
+    </div>
+
+    <!-- Reorder editor -->
+    <div id="reorderEditor" class="section" style="display:none">
+      <label>Add Steps</label>
+      <div style="display:flex;gap:8px">
+        <input id="reorderInput" type="text" placeholder="Step text" />
+        <button class="btn" onclick="addReorderStep()">Add</button>
+      </div>
+      <div id="reorderList" class="reorder-list" style="margin-top:10px"></div>
+      <div class="muted" style="margin-top:8px">Drag items in the list to reorder. Preview also supports drag reordering.</div>
+      <div class="row" style="margin-top:10px">
+        <button class="ghost" onclick="clearReorder()">Clear Steps</button>
+      </div>
+    </div>
+
+    <!-- MCQ editor -->
+    <div id="mcqEditor" class="section" style="display:none">
+      <label>MCQ — add options and mark correct</label>
+      <div id="mcqOptions"></div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn" onclick="addMcqOption()">+ Add Option</button>
+        <button class="ghost" onclick="simulateAiMcq()">AI Generate</button>
+        <div class="spacer"></div>
+        <button class="ghost" onclick="clearMcq()">Clear Options</button>
+      </div>
+      <div class="muted" style="margin-top:8px">Each option supports per-option feedback in the preview.</div>
+    </div>
+
+    <!-- True/False editor -->
+    <div id="tfEditor" class="section" style="display:none">
+      <label>True / False — choose which one is correct and add feedback</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label><input id="tfCorrectTrue" type="radio" name="tf" value="true" /> True</label>
+        <label><input id="tfCorrectFalse" type="radio" name="tf" value="false" /> False</label>
+      </div>
+      <div style="margin-top:8px">
+        <label>Correct Feedback</label><input id="tfCorrectFb" type="text" placeholder="Correct feedback" />
+        <label style="margin-top:8px">Incorrect Feedback</label><input id="tfIncorrectFb" type="text" placeholder="Incorrect feedback" />
+      </div>
+    </div>
+
+    <!-- Fill editor -->
+    <div id="fillEditor" class="section" style="display:none">
+      <label>Fill in the Blank — mark blanks using [[blank]] or select and use Make Blank</label>
+      <textarea id="fillText" placeholder="Write content with [[blank]] markers"></textarea>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="btn" onclick="makeBlank()">Make Blank (wrap selection)</button>
+        <button class="ghost" onclick="parseBlanks()">Parse & Preview</button>
+      </div>
+    </div>
+
+    <!-- Image labeling editor -->
+    <div id="labelEditor" class="section" style="display:none">
+      <label>Image Labeling — create label tokens and a correct mapping</label>
+      <div style="display:flex;gap:8px">
+        <input id="labelTokenInput" type="text" placeholder="Label text" />
+        <button class="btn" onclick="addLabelToken()">Add Label</button>
+      </div>
+      <div style="margin-top:10px">
+        <strong>Label Tokens</strong>
+        <div id="labelTokens" class="img-labels" style="margin-top:8px"></div>
+      </div>
+      <div style="margin-top:10px">
+        <strong>Correct Mappings (label -> area key)</strong>
+        <div id="labelMappings" style="margin-top:8px"></div>
+        <div class="muted" style="margin-top:8px">In preview, drag a label token onto the image to place it. If it matches a mapping, you'll see correct/incorrect feedback and the token will lock.</div>
+      </div>
+    </div>
+
+    <!-- Reference editor (simple media) -->
+    <div id="refEditor" class="section" style="display:none">
+      <label>Reference Media — used by activities</label>
+      <div class="muted">Upload an image or video above; it will be displayed in the preview area for reference.</div>
+    </div>
+
+    <!-- Clickable options editor -->
+    <div id="clickEditor" class="section" style="display:none">
+      <label>Clickable Options — like MCQ but single-click</label>
+      <div id="clickOptions"></div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="btn" onclick="addClickOption()">+ Add Option</button>
+        <button class="ghost" onclick="clearClick()">Clear</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button class="btn" onclick="saveActivity()">Save Activity</button>
+      <button class="ghost" onclick="loadActivityToEditor()">Reload</button>
+      <button class="ghost" onclick="deleteActivity()" style="margin-left:auto">Delete Activity</button>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="col-right">
+    <div class="preview-title">Live Preview</div>
+    <div class="preview-block" id="previewBlock"><i>No activity selected</i></div>
+  </div>
+
+</div>
+
+<script>
+/* ============================
+  State & helpers
+   ============================ */
+let activities = [];
+let selectedIndex = null;
+
+function uid(pref='id'){ return pref + '_' + Math.random().toString(36).slice(2,9); }
+
+/* activity schema:
+{
+ id, title, type,
+ prompt,
+ media: {type:'image'|'video', dataUrl, name} | null,
+ left: [{id,text}],
+ right: [{id,text}],
+ pairs: [{lId,rId}],
+ matched: { rId: { lId, correct } },
+ reorder: [ 'step', ... ],
+ mcq: { options: [{id,text, correct, correctFb, incorrectFb}], shuffle:false },
+ tf: { correct:'true'|'false', correctFb, incorrectFb },
+ fillText: 'string with [[blank]]',
+ labels: [{id, text}], labelMappings: [{labelId, areaKey}], labelPlacements: { areaKey: { labelId, correct } },
+ clickOptions: [{id,text, correct, correctFb, incorrectFb}]
+}
+*/
+
+/* Initialize with a sample match & reorder & mcq */
+(function init(){
+  const a1 = {
+    id: uid('act'),
+    title: 'Capitals — Match',
+    type: 'match',
+    prompt: 'Drag the country onto the correct capital',
+    media: null,
+    left: [ {id:uid('L'), text:'India'}, {id:uid('L'), text:'Japan'}, {id:uid('L'), text:'France'} ],
+    right: [ {id:uid('R'), text:'Tokyo'}, {id:uid('R'), text:'Paris'}, {id:uid('R'), text:'New Delhi'} ],
+    pairs: [], matched: {}
+  };
+  // pair India->New Delhi, Japan->Tokyo, France->Paris
+  a1.pairs.push({ lId: a1.left[0].id, rId: a1.right[2].id });
+  a1.pairs.push({ lId: a1.left[1].id, rId: a1.right[0].id });
+  a1.pairs.push({ lId: a1.left[2].id, rId: a1.right[1].id });
+
+  const a2 = {
+    id: uid('act'),
+    title: 'Steps — Reorder',
+    type: 'reorder',
+    prompt: 'Arrange the steps in correct order',
+    media: null,
+    reorder: ['Mix ingredients','Heat the pan','Serve hot']
+  };
+
+  const a3 = {
+    id: uid('act'),
+    title: 'Simple MCQ',
+    type: 'mcq',
+    prompt: 'Choose the right option',
+    mcq: { options: [
+      {id:uid('o'), text:'2', correct:false, correctFb:'', incorrectFb:''},
+      {id:uid('o'), text:'4', correct:true, correctFb:'Nice!', incorrectFb:''},
+      {id:uid('o'), text:'3', correct:false, correctFb:'', incorrectFb:''}
+    ]}
+  };
+
+  activities.push(a1, a2, a3);
+  selectedIndex = 0;
+  renderActivitiesList();
+  loadActivityToEditor();
+})();
+
+/* ============================
+  Left panel functions
+   ============================ */
+function renderActivitiesList(){
+  const box = document.getElementById('activitiesList'); box.innerHTML='';
+  activities.forEach((a,i)=>{
+    const div = document.createElement('div'); div.className='activity-item' + (i===selectedIndex ? ' active':'');
+    div.innerHTML = `<div style="flex:1" onclick="selectActivity(${i})">${a.title||'(untitled)'}</div>
+                     <button class="small-del" onclick="removeActivity(${i});event.stopPropagation()">Del</button>`;
+    box.appendChild(div);
+  });
+}
+function createActivity(){
+  const a = { id:uid('act'), title:'Untitled', type:'match', prompt:'', media:null, left:[], right:[], pairs:[], matched:{}, reorder:[], mcq:{options:[]}, tf:{}, fillText:'', labels:[], labelMappings:[], labelPlacements:{}, clickOptions:[] };
+  activities.push(a); selectedIndex = activities.length-1; renderActivitiesList(); loadActivityToEditor();
+}
+function selectActivity(i){ selectedIndex = i; renderActivitiesList(); loadActivityToEditor(); }
+function removeActivity(i){ if(!confirm('Delete activity?')) return; activities.splice(i,1); selectedIndex = activities.length ? 0 : null; renderActivitiesList(); if(selectedIndex !== null) loadActivityToEditor(); else clearEditor(); }
+
+/* ============================
+  Editor load/save helpers
+   ============================ */
+function loadActivityToEditor(){
+  if(selectedIndex === null){ clearEditor(); renderPreview(); return; }
+  const a = activities[selectedIndex];
+  document.getElementById('actTitle').value = a.title || '';
+  document.getElementById('actType').value = a.type || '';
+  document.getElementById('actPrompt').value = a.prompt || '';
+  renderMediaPreview(a.media);
+  // show/hide editors
+  document.getElementById('matchEditor').style.display = a.type==='match' ? '' : 'none';
+  document.getElementById('reorderEditor').style.display = a.type==='reorder' ? '' : 'none';
+  document.getElementById('mcqEditor').style.display = a.type==='mcq' ? '' : 'none';
+  document.getElementById('tfEditor').style.display = a.type==='tf' ? '' : 'none';
+  document.getElementById('fillEditor').style.display = a.type==='fill' ? '' : 'none';
+  document.getElementById('labelEditor').style.display = a.type==='label' ? '' : 'none';
+  document.getElementById('refEditor').style.display = a.type==='ref' ? '' : 'none';
+  document.getElementById('clickEditor').style.display = a.type==='click' ? '' : 'none';
+  // populate specific editors
+  if(a.type === 'match') renderMatchEditor(a);
+  if(a.type === 'reorder') renderReorderEditor(a);
+  if(a.type === 'mcq') renderMcqEditor(a);
+  if(a.type === 'tf') renderTfEditor(a);
+  if(a.type === 'fill') document.getElementById('fillText').value = a.fillText || '';
+  if(a.type === 'label') renderLabelEditor(a);
+  if(a.type === 'click') renderClickEditor(a);
+  renderActivitiesList();
+  renderPreview();
+}
+function clearEditor(){
+  document.getElementById('actTitle').value=''; document.getElementById('actType').value=''; document.getElementById('actPrompt').value=''; document.getElementById('mediaPreview').innerHTML='';
+  document.getElementById('leftInput').value=''; document.getElementById('rightInput').value=''; document.getElementById('leftCol').innerHTML=''; document.getElementById('rightCol').innerHTML='';
+  document.getElementById('reorderList').innerHTML=''; document.getElementById('mcqOptions').innerHTML=''; document.getElementById('clickOptions').innerHTML='';
+  document.getElementById('labelTokens').innerHTML=''; document.getElementById('labelMappings').innerHTML='';
+}
+
+/* save simple fields */
+function saveField(field){
+  if(selectedIndex === null) return;
+  const a = activities[selectedIndex];
+  if(field==='title') a.title = document.getElementById('actTitle').value;
+  if(field==='prompt') a.prompt = document.getElementById('actPrompt').value;
+  renderActivitiesList(); renderPreview();
+}
+function onTypeChange(){
+  if(selectedIndex === null) return;
+  activities[selectedIndex].type = document.getElementById('actType').value;
+  loadActivityToEditor();
+}
+
+/* media upload */
+function handleMediaUpload(ev){
+  if(selectedIndex === null) return alert('Create/select an activity first');
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    activities[selectedIndex].media = { type: file.type.startsWith('video') ? 'video' : 'image', dataUrl: e.target.result, name: file.name };
+    renderMediaPreview(activities[selectedIndex].media);
+    renderPreview();
+  };
+  reader.readAsDataURL(file);
+}
+function renderMediaPreview(media){
+  const box = document.getElementById('mediaPreview'); box.innerHTML='';
+  if(!media){ box.innerHTML='<small class="muted">No media</small>'; return; }
+  if(media.type==='video'){ const v=document.createElement('video'); v.controls=true; v.src=media.dataUrl; v.style.maxWidth='100%'; box.appendChild(v); }
+  else { const img=document.createElement('img'); img.src=media.dataUrl; img.style.maxWidth='100%'; box.appendChild(img); }
+}
+
+/* ============================
+  MATCH Editor functions (add/delete, render)
+   ============================ */
+function addPairFromInputs(){
+  if(selectedIndex===null) return;
+  const leftTxt = document.getElementById('leftInput').value.trim();
+  const rightTxt = document.getElementById('rightInput').value.trim();
+  if(!leftTxt || !rightTxt) return alert('Enter both left and right');
+  const a = activities[selectedIndex];
+  const lId = uid('L'), rId = uid('R');
+  a.left.push({id:lId, text:leftTxt});
+  a.right.push({id:rId, text:rightTxt});
+  a.pairs.push({ lId, rId });
+  document.getElementById('leftInput').value=''; document.getElementById('rightInput').value='';
+  renderMatchEditor(a); renderPreview();
+}
+function renderMatchEditor(a){
+  const leftCol = document.getElementById('leftCol'); leftCol.innerHTML='';
+  a.left.forEach(li=>{
+    const el = document.createElement('div'); el.className='match-item';
+    el.innerHTML = `<div style="flex:1">${li.text}</div>
+                    <div style="display:flex;gap:6px">
+                      <button class="ghost" onclick="editLeft('${li.id}')">Edit</button>
+                      <button class="ghost" onclick="delLeft('${li.id}')">Del</button>
+                    </div>`;
+    leftCol.appendChild(el);
+  });
+  const rightCol = document.getElementById('rightCol'); rightCol.innerHTML='';
+  a.right.forEach(ri=>{
+    const el = document.createElement('div'); el.className='match-item';
+    el.innerHTML = `<div style="flex:1">${ri.text}</div>
+                    <div style="display:flex;gap:6px">
+                      <button class="ghost" onclick="editRight('${ri.id}')">Edit</button>
+                      <button class="ghost" onclick="delRight('${ri.id}')">Del</button>
+                    </div>`;
+    rightCol.appendChild(el);
+  });
+}
+function editLeft(lid){ const a=activities[selectedIndex]; const it=a.left.find(x=>x.id===lid); if(!it) return; const v=prompt('Edit left',it.text); if(v===null) return; it.text=v; renderMatchEditor(a); renderPreview(); }
+function editRight(rid){ const a=activities[selectedIndex]; const it=a.right.find(x=>x.id===rid); if(!it) return; const v=prompt('Edit right',it.text); if(v===null) return; it.text=v; renderMatchEditor(a); renderPreview(); }
+function delLeft(lid){ const a=activities[selectedIndex]; a.left=a.left.filter(x=>x.id!==lid); a.pairs=a.pairs.filter(p=>p.lId!==lid); if(a.matched) { for(const k in a.matched) if(a.matched[k].lId===lid) delete a.matched[k]; } renderMatchEditor(a); renderPreview(); }
+function delRight(rid){ const a=activities[selectedIndex]; a.right=a.right.filter(x=>x.id!==rid); a.pairs=a.pairs.filter(p=>p.rId!==rid); if(a.matched) delete a.matched[rid]; renderMatchEditor(a); renderPreview(); }
+function clearPairs(){ if(selectedIndex===null) return; if(!confirm('Clear all items?')) return; const a=activities[selectedIndex]; a.left=[]; a.right=[]; a.pairs=[]; a.matched={}; renderMatchEditor(a); renderPreview(); }
+
+/* ============================
+  Reorder Editor
+   ============================ */
+function addReorderStep(){ if(selectedIndex===null) return; const v=document.getElementById('reorderInput').value.trim(); if(!v) return; activities[selectedIndex].reorder.push(v); document.getElementById('reorderInput').value=''; renderReorderEditor(activities[selectedIndex]); renderPreview(); }
+function renderReorderEditor(a){
+  const list = document.getElementById('reorderList'); list.innerHTML='';
+  a.reorder.forEach((s,i)=>{
+    const el = document.createElement('div'); el.className='reorder-item'; el.draggable=true;
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1">${i+1}. ${s}</div><div style="display:flex;gap:6px"><button class="ghost" onclick="editReorder(${i})">Edit</button><button class="ghost" onclick="delReorder(${i})">Del</button></div></div>`;
+    // drag handlers
+    el.addEventListener('dragstart', e=> e.dataTransfer.setData('text/plain', i));
+    el.addEventListener('dragover', e=> e.preventDefault());
+    el.addEventListener('drop', e=> { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); const to = i; moveReorder(from,to); });
+    list.appendChild(el);
+  });
+}
+function moveReorder(from,to){ if(from===to) return; const a=activities[selectedIndex]; const it=a.reorder.splice(from,1)[0]; a.reorder.splice(to,0,it); renderReorderEditor(a); renderPreview(); }
+function editReorder(i){ const v=prompt('Edit step', activities[selectedIndex].reorder[i]); if(v===null) return; activities[selectedIndex].reorder[i]=v; renderReorderEditor(activities[selectedIndex]); renderPreview(); }
+function delReorder(i){ activities[selectedIndex].reorder.splice(i,1); renderReorderEditor(activities[selectedIndex]); renderPreview(); }
+function clearReorder(){ if(selectedIndex===null) return; activities[selectedIndex].reorder=[]; renderReorderEditor(activities[selectedIndex]); renderPreview(); }
+
+/* ============================
+  MCQ Editor
+   ============================ */
+function addMcqOption(opt=null){
+  if(selectedIndex===null) return;
+  const a = activities[selectedIndex];
+  a.mcq = a.mcq || { options: [] };
+  const id = uid('o');
+  a.mcq.options.push({ id, text: opt?.text||'New option', correct: !!opt?.correct, correctFb: opt?.correctFb||'', incorrectFb: opt?.incorrectFb||'' });
+  renderMcqEditor(a);
+}
+function renderMcqEditor(a){
+  const box = document.getElementById('mcqOptions'); box.innerHTML='';
+  a.mcq = a.mcq || { options:[] };
+  a.mcq.options.forEach((o,idx)=>{
+    const div = document.createElement('div'); div.className='option-block';
+    div.innerHTML = `<div class="option-row"><input type="radio" name="mcqSel" ${o.correct ? 'checked':''} onclick="setMcqCorrect('${o.id}')"/> <input type="text" value="${escapeHtml(o.text)}" onchange="updateMcqText('${o.id}',this.value)"/> <button class="ghost" onclick="delMcqOption('${o.id}')">Del</button></div>
+      <div style="margin-top:8px;display:flex;gap:8px"><input type="text" placeholder="Correct feedback" value="${escapeHtml(o.correctFb||'')}" onchange="updateMcqCorrectFb('${o.id}',this.value)"/><input type="text" placeholder="Incorrect feedback" value="${escapeHtml(o.incorrectFb||'')}" onchange="updateMcqIncorrectFb('${o.id}',this.value)"/></div>`;
+    box.appendChild(div);
+  });
+}
+function setMcqCorrect(id){ const a=activities[selectedIndex]; a.mcq.options.forEach(o=> o.correct = o.id===id); renderMcqEditor(a); renderPreview(); }
+function updateMcqText(id,txt){ const a=activities[selectedIndex]; const o=a.mcq.options.find(x=>x.id===id); if(o) o.text=txt; renderPreview(); }
+function updateMcqCorrectFb(id,txt){ const a=activities[selectedIndex]; const o=a.mcq.options.find(x=>x.id===id); if(o) o.correctFb=txt; renderPreview(); }
+function updateMcqIncorrectFb(id,txt){ const a=activities[selectedIndex]; const o=a.mcq.options.find(x=>x.id===id); if(o) o.incorrectFb=txt; renderPreview(); }
+function delMcqOption(id){ const a=activities[selectedIndex]; a.mcq.options = a.mcq.options.filter(x=>x.id!==id); renderMcqEditor(a); renderPreview(); }
+function clearMcq(){ if(selectedIndex===null) return; activities[selectedIndex].mcq = { options:[] }; renderMcqEditor(activities[selectedIndex]); renderPreview(); }
+function simulateAiMcq(){ if(selectedIndex===null) return; const q = activities[selectedIndex].prompt||activities[selectedIndex].title||'Question'; activities[selectedIndex].mcq.options=[ {id:uid('o'),text:q+' — option A',correct:true,correctFb:'Good!'}, {id:uid('o'),text:q+' — option B',correct:false,incorrectFb:'Nope'} ]; renderMcqEditor(activities[selectedIndex]); renderPreview(); }
+
+/* ============================
+  True/False Editor
+   ============================ */
+function renderTfEditor(a){
+  document.getElementById('tfCorrectTrue').checked = a.tf && a.tf.correct === 'true';
+  document.getElementById('tfCorrectFalse').checked = a.tf && a.tf.correct === 'false';
+  document.getElementById('tfCorrectFb').value = a.tf?.correctFb || '';
+  document.getElementById('tfIncorrectFb').value = a.tf?.incorrectFb || '';
+}
+document.getElementById('tfCorrectTrue').addEventListener('change', ()=>{ if(selectedIndex===null) return; activities[selectedIndex].tf = activities[selectedIndex].tf || {}; activities[selectedIndex].tf.correct='true'; renderPreview(); });
+document.getElementById('tfCorrectFalse').addEventListener('change', ()=>{ if(selectedIndex===null) return; activities[selectedIndex].tf = activities[selectedIndex].tf || {}; activities[selectedIndex].tf.correct='false'; renderPreview(); });
+document.getElementById('tfCorrectFb').addEventListener('input', ()=>{ if(selectedIndex===null) return; activities[selectedIndex].tf = activities[selectedIndex].tf || {}; activities[selectedIndex].tf.correctFb = document.getElementById('tfCorrectFb').value; });
+document.getElementById('tfIncorrectFb').addEventListener('input', ()=>{ if(selectedIndex===null) return; activities[selectedIndex].tf = activities[selectedIndex].tf || {}; activities[selectedIndex].tf.incorrectFb = document.getElementById('tfIncorrectFb').value; });
+
+/* ============================
+  Fill-in-the-blank
+   ============================ */
+function makeBlank(){
+  const ta = document.getElementById('fillText');
+  ta.focus();
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  if(start===end) return alert('Select text to make blank');
+  const before = ta.value.slice(0,start), sel = ta.value.slice(start,end), after = ta.value.slice(end);
+  ta.value = before + '[[' + sel + ']]' + after;
+  if(selectedIndex!==null){ activities[selectedIndex].fillText = ta.value; renderPreview(); }
+}
+function parseBlanks(){ if(selectedIndex!==null){ activities[selectedIndex].fillText = document.getElementById('fillText').value; renderPreview(); } }
+
+/* ============================
+  Image Labeling editor
+   ============================ */
+function addLabelToken(){
+  if(selectedIndex===null) return;
+  const txt = document.getElementById('labelTokenInput').value.trim();
+  if(!txt) return;
+  const a = activities[selectedIndex];
+  const id = uid('lab');
+  a.labels.push({ id, text: txt });
+  // by default no mapping; user can create mapping by selecting mapping UI — we'll show tokens and allow mapping by choosing right area key manually
+  document.getElementById('labelTokenInput').value='';
+  renderLabelEditor(a);
+}
+function renderLabelEditor(a){
+  const tokBox = document.getElementById('labelTokens'); tokBox.innerHTML='';
+  a.labels.forEach(l => {
+    const div = document.createElement('div'); div.className='label-token'; div.innerText = l.text + ' ';
+    const del = document.createElement('button'); del.className='ghost'; del.style.marginLeft='8px'; del.innerText='Del'; del.onclick = ()=>{ a.labels = a.labels.filter(x=>x.id!==l.id); renderLabelEditor(a); renderPreview(); };
+    div.appendChild(del);
+    tokBox.appendChild(div);
+  });
+  // mappings list
+  const mapBox = document.getElementById('labelMappings'); mapBox.innerHTML='';
+  a.labelMappings.forEach((m,i)=>{
+    const lab = a.labels.find(x=>x.id===m.labelId)?.text || '(deleted)';
+    const div = document.createElement('div'); div.style.background='#fff'; div.style.padding='8px'; div.style.marginBottom='6px'; div.style.border='1px solid #efe8ff'; div.style.borderRadius='8px';
+    div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${lab}</strong> → <em>${m.areaKey}</em></div><div><button class="ghost" onclick="delLabelMapping(${i})">Del</button></div></div>`;
+    mapBox.appendChild(div);
+  });
+}
+function delLabelMapping(i){ if(selectedIndex===null) return; activities[selectedIndex].labelMappings.splice(i,1); renderLabelEditor(activities[selectedIndex]); renderPreview(); }
+/* label placements will be handled in preview by drag & drop */
+
+function renderClickEditor(a){
+  const box = document.getElementById('clickOptions'); box.innerHTML='';
+  a.clickOptions.forEach(opt=>{
+    const div = document.createElement('div'); div.className='option-block';
+    div.innerHTML = `<div style="display:flex;gap:8px;align-items:center"><input type="text" value="${escapeHtml(opt.text)}" onchange="updateClickOptText('${opt.id}',this.value)"/><label><input type="checkbox" ${opt.correct? 'checked':''} onchange="setClickCorrect('${opt.id}',this.checked)"/> Correct</label><button class="ghost" onclick="delClickOpt('${opt.id}')">Del</button></div>
+      <div style="margin-top:8px;display:flex;gap:8px"><input type="text" placeholder="Correct feedback" value="${escapeHtml(opt.correctFb||'')}" onchange="updateClickCorrectFb('${opt.id}',this.value)"/><input type="text" placeholder="Incorrect feedback" value="${escapeHtml(opt.incorrectFb||'')}" onchange="updateClickIncorrectFb('${opt.id}',this.value)"/></div>`;
+    box.appendChild(div);
+  });
+}
+function addClickOption(opt=null){
+  if(selectedIndex===null) return;
+  const a = activities[selectedIndex];
+  const id = uid('c'); a.clickOptions.push({ id, text: opt?.text||'Option', correct: !!opt?.correct, correctFb: opt?.correctFb||'', incorrectFb: opt?.incorrectFb||'' });
+  renderClickEditor(a); renderPreview();
+}
+function setClickCorrect(id,val){ const a=activities[selectedIndex]; a.clickOptions.forEach(o=> o.correct = o.id===id ? val : o.correct); renderClickEditor(a); renderPreview(); }
+function updateClickOptText(id,txt){ const a=activities[selectedIndex]; const o=a.clickOptions.find(x=>x.id===id); if(o) o.text=txt; renderPreview(); }
+function updateClickCorrectFb(id,txt){ const a=activities[selectedIndex]; const o=a.clickOptions.find(x=>x.id===id); if(o) o.correctFb=txt; }
+function updateClickIncorrectFb(id,txt){ const a=activities[selectedIndex]; const o=a.clickOptions.find(x=>x.id===id); if(o) o.incorrectFb=txt; }
+function delClickOpt(id){ const a=activities[selectedIndex]; a.clickOptions=a.clickOptions.filter(x=>x.id!==id); renderClickEditor(a); renderPreview(); }
+function clearClick(){ if(selectedIndex===null) return; activities[selectedIndex].clickOptions=[]; renderClickEditor(activities[selectedIndex]); renderPreview(); }
+
+/* ============================
+  Save/Delete/Export
+   ============================ */
+function saveActivity(){
+  if(selectedIndex===null) return alert('Select/create an activity');
+  const a = activities[selectedIndex];
+  a.title = document.getElementById('actTitle').value;
+  a.prompt = document.getElementById('actPrompt').value;
+  // for fill, mcq, tf, label etc we already persisted changes in editor functions
+  alert('Saved');
+  renderActivitiesList();
+  renderPreview();
+}
+function deleteActivity(){
+  if(selectedIndex===null) return alert('No activity selected'); if(!confirm('Delete this activity?')) return; activities.splice(selectedIndex,1); selectedIndex = activities.length ? 0 : null; renderActivitiesList(); if(selectedIndex!==null) loadActivityToEditor(); else clearEditor(); renderPreview();
+}
+function exportAll(){ const copy = JSON.parse(JSON.stringify(activities)); const blob = new Blob([JSON.stringify(copy,null,2)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='activities.json'; a.click(); }
+
+/* ============================
+  Preview rendering & interactive behaviors
+   ============================ */
+function renderPreview(){
+  const box = document.getElementById('previewBlock'); box.innerHTML='';
+  if(selectedIndex===null){ box.innerHTML='<i>No activity selected</i>'; return; }
+  const a = activities[selectedIndex];
+  const header = document.createElement('div'); header.style.fontWeight='800'; header.style.marginBottom='6px'; header.innerText = a.title || '(untitled)'; box.appendChild(header);
+  if(a.prompt){ const p = document.createElement('div'); p.style.marginBottom='10px'; p.innerText = a.prompt; box.appendChild(p); }
+  if(a.media){ const m = document.createElement('div'); if(a.media.type==='video'){ const v=document.createElement('video'); v.controls=true; v.src=a.media.dataUrl; v.style.maxWidth='100%'; m.appendChild(v);} else { const img=document.createElement('img'); img.src=a.media.dataUrl; img.style.maxWidth='100%'; m.appendChild(img);} box.appendChild(m); }
+  // clear transient matched if not present
+  a.matched = a.matched || {};
+
+  // types
+  if(a.type === 'match'){
+    // build two columns: left draggable items (not matched) and right drop targets
+    const cont = document.createElement('div'); cont.style.display='flex'; cont.style.gap='12px';
+    const leftWrap = document.createElement('div'); leftWrap.style.flex='1';
+    const rightWrap = document.createElement('div'); rightWrap.style.flex='1';
+
+    a.left.forEach(li=>{
+      // skip left items that are already matched somewhere
+      const used = Object.values(a.matched).find(m=>m.lId===li.id);
+      if(used) return;
+      const el = document.createElement('div'); el.className='left-draggable'; el.draggable=true; el.dataset.lid = li.id; el.innerText = li.text;
+      el.addEventListener('dragstart', e=> { e.dataTransfer.setData('text/plain', li.id); e.dataTransfer.effectAllowed = 'move'; el.classList.add('dragging'); });
+      el.addEventListener('dragend', ()=> el.classList.remove('dragging'));
+      leftWrap.appendChild(el);
+    });
+
+    a.right.forEach(ri=>{
+      const rdiv = document.createElement('div'); rdiv.className='right-drop'; rdiv.dataset.rid = ri.id;
+      const match = a.matched[ri.id];
+      if(match){
+        // locked view
+        const leftObj = a.left.find(x=>x.id===match.lId) || {text:'(removed)'};
+        rdiv.classList.add('locked');
+        rdiv.innerHTML = `<div style="font-weight:700">${ri.text}</div><div style="margin-top:8px;background:#fff;padding:8px;border-radius:8px;border:1px solid #efe8ff">${leftObj.text}</div>`;
+        const fb = document.createElement('div'); fb.className='feedback ' + (match.correct ? 'correct' : 'incorrect'); fb.innerText = match.correct ? 'Correct Match!' : 'Incorrect Match!'; rdiv.appendChild(fb);
+      } else {
+        rdiv.innerHTML = `<div style="font-weight:700">${ri.text}</div><div style="margin-top:8px;color:#666">Drop here</div>`;
+        rdiv.addEventListener('dragover', e=> { e.preventDefault(); rdiv.style.background='#f0f7ff'; });
+        rdiv.addEventListener('dragleave', ()=> rdiv.style.background='' );
+        rdiv.addEventListener('drop', e=> {
+          e.preventDefault(); rdiv.style.background='';
+          const leftId = e.dataTransfer.getData('text/plain');
+          if(!leftId) return;
+          // check pair
+          const correct = a.pairs.some(p=>p.lId===leftId && p.rId===ri.id);
+          a.matched[ri.id] = { lId: leftId, correct: !!correct };
+          renderPreview();
+        });
+      }
+      rightWrap.appendChild(rdiv);
+    });
+
+    cont.appendChild(leftWrap); cont.appendChild(rightWrap);
+    box.appendChild(cont);
+    const controls = document.createElement('div'); controls.className='row'; controls.style.marginTop='12px';
+    const resetBtn = document.createElement('button'); resetBtn.className='ghost'; resetBtn.innerText='Reset Matches'; resetBtn.onclick = ()=> { a.matched = {}; renderPreview(); };
+    controls.appendChild(resetBtn);
+    box.appendChild(controls);
+
+  } else if(a.type === 'reorder'){
+    const list = document.createElement('div'); list.style.display='flex'; list.style.flexDirection='column'; list.style.gap='8px';
+    a.reorder.forEach((s,i)=>{
+      const el = document.createElement('div'); el.style.padding='8px'; el.style.background='#fff'; el.style.borderRadius='8px'; el.style.border='1px solid #efe8ff'; el.draggable=true; el.innerText = (i+1)+'. '+s;
+      el.addEventListener('dragstart', e=> e.dataTransfer.setData('text/plain', i));
+      el.addEventListener('drop', e=> { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); const to = i; const it = a.reorder.splice(from,1)[0]; a.reorder.splice(to,0,it); renderPreview(); renderReorderEditor(a); });
+      el.addEventListener('dragover', e=> e.preventDefault());
+      list.appendChild(el);
+    });
+    box.appendChild(list);
+    const hint = document.createElement('div'); hint.className='muted'; hint.style.marginTop='8px'; hint.innerText='Drag items to reorder.';
+    box.appendChild(hint);
+
+  } else if(a.type === 'mcq'){
+    const q = document.createElement('div'); q.innerText = a.prompt || '';
+    box.appendChild(q);
+    a.mcq = a.mcq || { options:[] };
+    a.mcq.options.forEach(opt=>{
+      const optDiv = document.createElement('div'); optDiv.style.marginTop='8px'; optDiv.style.background='#fff'; optDiv.style.padding='8px'; optDiv.style.borderRadius='8px'; optDiv.style.border='1px solid #efe8ff';
+      const btn = document.createElement('button'); btn.className='ghost'; btn.innerText = opt.text; btn.onclick = ()=> {
+        // click -> show feedback
+        const fb = document.createElement('div'); fb.style.marginTop='6px'; fb.className = 'feedback ' + (opt.correct ? 'correct' : 'incorrect'); fb.innerText = opt.correct ? (opt.correctFb || 'Correct') : (opt.incorrectFb || 'Incorrect');
+        // show fb under option
+        // remove existing small popups first
+        const existing = optDiv.querySelector('.feedback'); if(existing) existing.remove();
+        optDiv.appendChild(fb);
+      };
+      optDiv.appendChild(btn);
+      box.appendChild(optDiv);
+    });
+
+  } else if(a.type === 'tf'){
+    const wrapper = document.createElement('div');
+    const tbtn = document.createElement('button'); tbtn.className='ghost'; tbtn.innerText='True'; tbtn.onclick = ()=> showTfFeedback(a,'true');
+    const fbtn = document.createElement('button'); fbtn.className='ghost'; fbtn.innerText='False'; fbtn.onclick = ()=> showTfFeedback(a,'false');
+    wrapper.appendChild(tbtn); wrapper.appendChild(fbtn);
+    box.appendChild(wrapper);
+  } else if(a.type === 'fill'){
+    const dom = renderFillToDOM(a.fillText || '');
+    box.appendChild(dom);
+  } else if(a.type === 'label'){
+    // Image labeling: show label tokens (draggable) and image as drop target area (absolute positions)
+    const wrap = document.createElement('div'); wrap.style.display='flex'; wrap.style.gap='12px';
+    const leftPane = document.createElement('div'); leftPane.style.flex='0 0 35%';
+    const tokensBox = document.createElement('div'); tokensBox.style.display='flex'; tokensBox.style.flexDirection='column'; tokensBox.style.gap='8px';
+    a.labels.forEach(l=>{
+      // if this label is already placed somewhere (check placements object), skip showing in tokens list
+      const placed = Object.values(a.labelPlacements || {}).find(pl => pl.labelId === l.id);
+      if(placed) return;
+      const t = document.createElement('div'); t.className='label-token'; t.draggable=true; t.innerText = l.text; t.dataset.lid = l.id;
+      t.addEventListener('dragstart', e=> { e.dataTransfer.setData('text/plain', l.id); });
+      tokensBox.appendChild(t);
+    });
+    leftPane.appendChild(tokensBox);
+
+    const rightPane = document.createElement('div'); rightPane.style.flex='1'; rightPane.style.position='relative';
+    if(a.media && a.media.type==='image'){
+      const img = document.createElement('img'); img.src = a.media.dataUrl; img.style.maxWidth='100%'; img.style.display='block';
+      img.addEventListener('dragover', e=> e.preventDefault());
+      img.addEventListener('drop', e=> {
+        e.preventDefault();
+        const lid = e.dataTransfer.getData('text/plain');
+        if(!lid) return;
+        // compute percentage coordinates from drop relative to image
+        const rect = img.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        // place label
+        // find mapping correctness by checking labelMappings (areaKey match). For simplicity areaKey uses rounded x,y pair or user-provided mapping. Here we will check labelMappings by areaKey equals nearest region key if defined
+        // For demo: check if there exists a mapping with labelId == lid and areaKey == 'any' (user didn't define) — mapping feature can be expanded
+        a.labelPlacements = a.labelPlacements || {};
+        const areaKey = 'pos_' + Math.round(x) + '_' + Math.round(y);
+        // determine correctness: if labelMappings has mapping for this label to this areaKey -> correct, else incorrect
+        const mapping = a.labelMappings.find(m => m.labelId === lid && m.areaKey === areaKey);
+        const isCorrect = !!mapping;
+        a.labelPlacements[areaKey] = { labelId: lid, correct: isCorrect, x, y };
+        renderPreview();
+      });
+      rightPane.appendChild(img);
+      // place existing placements
+      for(const k in (a.labelPlacements || {})){
+        const pl = a.labelPlacements[k];
+        const badge = document.createElement('div'); badge.className='label-target'; badge.style.left = `calc(${pl.x}% - 40px)`; badge.style.top = `calc(${pl.y}% - 14px)`; badge.style.position='absolute'; badge.innerText = (a.labels.find(l => l.id===pl.labelId)?.text||'');
+        rightPane.appendChild(badge);
+        // click shows correctness
+        badge.addEventListener('click', ()=> alert((pl.correct? 'Correct placement' : 'Incorrect placement') + ' — ' + badge.innerText));
+      }
+    } else {
+      rightPane.innerHTML = '<small class="muted">Upload an image to enable labeling</small>';
+    }
+    wrap.appendChild(leftPane); wrap.appendChild(rightPane);
+    box.appendChild(wrap);
+  } else if(a.type === 'ref'){
+    // show media only
+    if(a.media){
+      const m = document.createElement('div');
+      if(a.media.type==='video'){ const v=document.createElement('video'); v.controls=true; v.src=a.media.dataUrl; v.style.maxWidth='100%'; m.appendChild(v); } else { const im=document.createElement('img'); im.src=a.media.dataUrl; im.style.maxWidth='100%'; m.appendChild(im); }
+      box.appendChild(m);
+    } else {
+      box.appendChild(document.createTextNode('No reference media uploaded.'));
+    }
+  } else if(a.type === 'click'){
+    a.clickOptions.forEach(opt=>{
+      const odiv = document.createElement('div'); odiv.style.marginTop='8px'; odiv.style.background='#fff'; odiv.style.padding='8px'; odiv.style.border='1px solid #efe8ff'; odiv.style.borderRadius='8px';
+      const btn = document.createElement('button'); btn.className='ghost'; btn.innerText = opt.text; btn.onclick = ()=> {
+        const fb = document.createElement('div'); fb.className='feedback ' + (opt.correct ? 'correct':'incorrect'); fb.innerText = opt.correct ? (opt.correctFb||'Correct') : (opt.incorrectFb||'Incorrect');
+        const existing = odiv.querySelector('.feedback'); if(existing) existing.remove(); odiv.appendChild(fb);
+      };
+      odiv.appendChild(btn); box.appendChild(odiv);
+    });
+  } else {
+    box.appendChild(document.createTextNode('Choose activity type to preview.'));
+  }
+}
+
+/* helper for TF feedback */
+function showTfFeedback(a,choice){
+  const correct = a.tf && a.tf.correct === choice;
+  alert(correct ? (a.tf?.correctFb || 'Correct') : (a.tf?.incorrectFb || 'Incorrect'));
+}
+
+/* helper: render fill blanks into DOM */
+function renderFillToDOM(raw){
+  const wrap = document.createElement('div');
+  if(!raw) { wrap.innerHTML = '<i>No content</i>'; return wrap; }
+  const parts = []; let remaining = raw; const regex = /\[\[(.+?)\]\]/;
+  while(true){
+    const m = remaining.match(regex);
+    if(!m){ parts.push({type:'text', text:remaining}); break; }
+    const before = remaining.slice(0,m.index);
+    if(before) parts.push({type:'text', text:before});
+    parts.push({type:'blank', key:m[1]});
+    remaining = remaining.slice(m.index + m[0].length);
+  }
+  parts.forEach(p=>{
+    if(p.type==='text'){ const s = document.createElement('span'); s.innerText = p.text; wrap.appendChild(s); }
+    else { const inp = document.createElement('input'); inp.placeholder='____'; inp.style.margin='6px'; inp.style.padding='6px'; inp.style.borderRadius='6px'; inp.style.border='1px solid #eee'; wrap.appendChild(inp); }
+  });
+  return wrap;
+}
+
+/* ============================
+  Misc helpers
+   ============================ */
+function resetMatches(){ if(selectedIndex===null) return; activities[selectedIndex].matched = {}; renderPreview(); }
+function renderMcqEditor(a){ if(!a.mcq) a.mcq={ options:[] }; renderMcqEditorDOM(a); }
+function renderMcqEditorDOM(a){
+  const box = document.getElementById('mcqOptions'); box.innerHTML='';
+  a.mcq.options.forEach(opt=>{
+    const div = document.createElement('div'); div.className='option-block';
+    div.innerHTML = `<div class="option-row"><input type="radio" name="mcqSel" ${opt.correct ? 'checked':''} onclick="setMcqCorrectInAct('${opt.id}')"/> <input type="text" value="${escapeHtml(opt.text)}" onchange="updateMcqTextInAct('${opt.id}',this.value)"/> <button class="ghost" onclick="delMcqOptionInAct('${opt.id}')">Del</button></div>
+      <div style="margin-top:8px;display:flex;gap:8px"><input type="text" placeholder="Correct feedback" value="${escapeHtml(opt.correctFb||'')}" onchange="updateMcqCorrectFbInAct('${opt.id}',this.value)"/><input type="text" placeholder="Incorrect feedback" value="${escapeHtml(opt.incorrectFb||'')}" onchange="updateMcqIncorrectFbInAct('${opt.id}',this.value)"/></div>`;
+    box.appendChild(div);
+  });
+}
+function setMcqCorrectInAct(id){ const a=activities[selectedIndex]; a.mcq.options.forEach(o=> o.correct = o.id===id); renderMcqEditorDOM(a); renderPreview(); }
+function updateMcqTextInAct(id,txt){ const a=activities[selectedIndex]; const o=a.mcq.options.find(x=>x.id===id); if(o) o.text=txt; renderPreview(); }
+function delMcqOptionInAct(id){ const a=activities[selectedIndex]; a.mcq.options = a.mcq.options.filter(x=>x.id!==id); renderMcqEditorDOM(a); renderPreview(); }
+function updateMcqCorrectFbInAct(id,txt){ const a=activities[selectedIndex]; const o=a.mcq.options.find(x=>x.id===id); if(o) o.correctFb=txt; }
+function updateMcqIncorrectFbInAct(id,txt){ const a=activities[selectedIndex]; const o=a.mcq.options.find(x=>x.id===id); if(o) o.incorrectFb=txt; }
+
+function renderTfEditor(a){ document.getElementById('tfCorrectTrue').checked = a.tf && a.tf.correct === 'true'; document.getElementById('tfCorrectFalse').checked = a.tf && a.tf.correct === 'false'; document.getElementById('tfCorrectFb').value = a.tf?.correctFb || ''; document.getElementById('tfIncorrectFb').value = a.tf?.incorrectFb || ''; }
+function renderLabelEditor(a){ renderLabelEditorDOM(a); }
+function renderLabelEditorDOM(a){
+  const tokBox = document.getElementById('labelTokens'); tokBox.innerHTML=''; a.labels.forEach(l=>{ const div=document.createElement('div'); div.className='label-token'; div.innerText = l.text + ' '; const del = document.createElement('button'); del.className='ghost'; del.innerText='Del'; del.onclick = ()=>{ a.labels=a.labels.filter(x=>x.id!==l.id); renderLabelEditorDOM(a); renderPreview(); }; div.appendChild(del); tokBox.appendChild(div); });
+  const mapBox = document.getElementById('labelMappings'); mapBox.innerHTML=''; a.labelMappings.forEach((m,i)=>{ const lab = a.labels.find(x=>x.id===m.labelId)?.text || '(deleted)'; const div=document.createElement('div'); div.style.background='#fff'; div.style.padding='8px'; div.style.marginBottom='6px'; div.style.border='1px solid #efe8ff'; div.style.borderRadius='8px'; div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${lab}</strong> → <em>${m.areaKey}</em></div><div><button class="ghost" onclick="delLabelMapping(${i})">Del</button></div></div>`; mapBox.appendChild(div); });
+}
+
+/* wrapper small helpers used earlier to avoid repeated definitions */
+function renderReorderEditor(a){ renderReorderEditorDOM(a); }
+function renderReorderEditorDOM(a){ const list=document.getElementById('reorderList'); list.innerHTML=''; (a.reorder||[]).forEach((s,i)=>{ const el=document.createElement('div'); el.className='reorder-item'; el.draggable=true; el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1">${i+1}. ${s}</div><div style="display:flex;gap:6px"><button class="ghost" onclick="editReorder(${i})">Edit</button><button class="ghost" onclick="delReorder(${i})">Del</button></div></div>`; el.addEventListener('dragstart', e=> e.dataTransfer.setData('text/plain', i)); el.addEventListener('dragover', e=> e.preventDefault()); el.addEventListener('drop', e=> { e.preventDefault(); const from=Number(e.dataTransfer.getData('text/plain')); const to=i; const tmp=a.reorder.splice(from,1)[0]; a.reorder.splice(to,0,tmp); renderReorderEditorDOM(a); renderPreview(); }); list.appendChild(el); }); }
+
+/* initial load */
+renderActivitiesList();
+loadActivityToEditor();
+
+/* small util */
+function escapeHtml(str){ if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+</script>
+</body>
+</html>

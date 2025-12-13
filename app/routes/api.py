@@ -5,7 +5,7 @@ Mobile/Student API endpoints for EduSaint Flutter App
 Base URL: https://byte.edusaint.in/api/v1
 """
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -13,13 +13,23 @@ from flask_jwt_extended import (
     get_jwt_identity
 )
 from app.extensions import db
-from app.models import User, Course, Lesson, Topic
+from app.models import User, Course, Lesson, Topic, Student
 from sqlalchemy import or_
 from datetime import datetime
 import traceback
+import os
+from app.utils.dynamic_json import generate_students_json
+from app.utils.dynamic_json import (
+    generate_user_progress_json,
+    generate_courses_json,
+    generate_course_lessons_json,
+    generate_user_profile_json,
+    generate_user_notifications_json,
+)
 
 # Create blueprint
-api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
+# Use a distinct internal name to avoid colliding with `app.api.bp`
+api_bp = Blueprint('routes_api', __name__, url_prefix='/api/v1')
 
 
 # ============================================================================
@@ -33,6 +43,46 @@ def get_profile_model():
         return Profile
     except ImportError:
         return None
+
+
+def get_student_model():
+    """Dynamically import Student model if present."""
+    try:
+        from app.models import Student
+        return Student
+    except ImportError:
+        return None
+
+
+def resolve_user_and_student_ids():
+    """Return tuple (user_id, student_id_or_None).
+
+    - `user_id` is the id from the JWT identity (users.id).
+    - `student_id_or_None` is the id from the `students` table when present.
+    """
+    try:
+        current = get_jwt_identity()
+    except Exception:
+        return None, None
+
+    uid = current.get('user_id') if isinstance(current, dict) else None
+    sid = None
+    if uid is not None:
+        Student = get_student_model()
+        if Student:
+            try:
+                s = Student.query.filter_by(user_id=uid).first()
+                if s:
+                    sid = s.id
+                else:
+                    # maybe students table uses same ids as users
+                    s2 = Student.query.get(uid)
+                    if s2:
+                        sid = s2.id
+            except Exception:
+                sid = None
+
+    return uid, sid
 
 
 def get_enrollment_model():
@@ -51,6 +101,73 @@ def get_progress_model():
         return Progress
     except ImportError:
         return None
+
+
+def generate_leaderboard_json(limit=10, write_file=True):
+    """Compute leaderboard (total_time per user) and optionally write to
+    `instance/dynamic_json/leaderboard.json`. Returns the leaderboard list.
+    """
+    try:
+        from sqlalchemy import func, desc
+        import json
+
+        Progress = get_progress_model()
+        if not Progress:
+            return []
+
+        rows = db.session.query(
+            Progress.user_id,
+            func.coalesce(func.sum(Progress.time_spent), 0).label('total_time'),
+            func.count(Progress.id).label('lessons_count')
+        ).group_by(Progress.user_id).order_by(desc('total_time')).limit(limit).all()
+
+        board = []
+        rank = 1
+        Student = get_student_model()
+        for r in rows:
+            uid = int(r.user_id) if r.user_id is not None else None
+            name = None
+            email = None
+            if Student and uid is not None:
+                try:
+                    s = Student.query.filter_by(user_id=uid).first() or Student.query.get(uid)
+                    if s:
+                        name = getattr(s, 'name', None)
+                        email = getattr(s, 'email', None)
+                except Exception:
+                    pass
+            if not name and uid is not None:
+                try:
+                    u = User.query.get(uid)
+                    if u:
+                        email = getattr(u, 'email', None)
+                except Exception:
+                    pass
+
+            board.append({
+                'rank': rank,
+                'user_id': uid,
+                'name': name,
+                'email': email,
+                'total_time': int(r.total_time) if r.total_time is not None else 0,
+                'lessons_count': int(r.lessons_count)
+            })
+            rank += 1
+
+        if write_file:
+            try:
+                dyn_dir = os.path.join(current_app.instance_path, 'dynamic_json')
+                os.makedirs(dyn_dir, exist_ok=True)
+                out_path = os.path.join(dyn_dir, 'leaderboard.json')
+                with open(out_path, 'w', encoding='utf8') as fh:
+                    json.dump({'leaderboard': board}, fh, ensure_ascii=False, indent=2)
+            except Exception:
+                current_app.logger.exception('Failed to write leaderboard.json')
+
+        return board
+    except Exception:
+        current_app.logger.exception('Failed to generate leaderboard')
+        return []
 
 
 # ============================================================================
@@ -88,14 +205,14 @@ def register():
         
         email = data.get('email')
         password = data.get('password')
-        name = data.get('name')
+        name = data.get('name', email.split('@')[0] if email else 'user')
         role = data.get('role', 'student')
         
         # Validation
-        if not email or not password or not name:
+        if not email or not password:
             return jsonify({
                 'success': False,
-                'error': 'Email, password and name are required'
+                'error': 'Email and password are required'
             }), 400
         
         # Check if user already exists
@@ -110,9 +227,33 @@ def register():
         user = User(email=email.strip(), role=role)
         user.set_password(password)
         db.session.add(user)
-        db.session.commit()
+        db.session.flush()  # Get user ID before committing
         
         user_id = user.id
+        
+        # Create Student record if role is student
+        if role == 'student':
+            new_student = Student(
+                name=name.strip(),
+                email=email.strip(),
+                password='',  # Password stored in User table
+                syllabus=data.get('syllabus', ''),
+                class_=data.get('class', ''),
+                subjects=data.get('subjects', ''),
+                second_language=data.get('second_language', ''),
+                third_language=data.get('third_language', ''),
+                date=datetime.utcnow()
+            )
+            db.session.add(new_student)
+        
+        db.session.commit()
+        
+        # Regenerate students JSON for cloud sync
+        if role == 'student':
+            try:
+                generate_students_json()
+            except Exception as e:
+                current_app.logger.exception('Failed to regenerate students.json after registration')
         
         # Create profile
         Profile = get_profile_model()
@@ -327,400 +468,190 @@ def logout():
 
 
 # ============================================================================
-# PROFILE APIs
+# NOTIFICATIONS APIs
 # ============================================================================
 
-@api_bp.route('/profile/<int:user_id>', methods=['GET'])
+
+@api_bp.route('/notifications', methods=['GET'])
 @jwt_required()
-def get_profile(user_id):
-    """
-    Get user profile
-    
-    Headers:
-    Authorization: Bearer <access_token>
-    
-    Response:
-    {
-        "success": true,
-        "profile": {
-            "id": 456,
-            "user_id": 123,
-            "name": "Student Name",
-            "email": "student@test.com",
-            "phone": "+91-9876543210",
-            "bio": "Learning enthusiast",
-            "avatar_url": "https://...",
-            "date_of_birth": "2005-06-15",
-            "grade": "10th",
-            "school": "ABC School"
-        }
-    }
+def list_notifications():
+    """List notifications for the current user.
+
+    Query params:
+    - unread=true  => only unread notifications
     """
     try:
-        current_user = get_jwt_identity()
-        
-        # Authorization check
-        if current_user['user_id'] != user_id and current_user['role'] != 'admin':
-            return jsonify({
-                'success': False,
-                'error': 'Unauthorized'
-            }), 403
-        
-        Profile = get_profile_model()
-        if not Profile:
-            return jsonify({
-                'success': False,
-                'error': 'Profile feature not available'
-            }), 500
-        
-        profile = Profile.query.filter_by(user_id=user_id).first()
-        
-        if not profile:
-            return jsonify({
-                'success': False,
-                'error': 'Profile not found'
-            }), 404
-        
-        return jsonify({
-            'success': True,
-            'profile': {
-                'id': profile.id,
-                'user_id': profile.user_id,
-                'name': profile.name,
-                'email': profile.email,
-                'phone': profile.phone,
-                'bio': profile.bio,
-                'avatar_url': profile.avatar_url,
-                'date_of_birth': profile.date_of_birth,
-                'grade': profile.grade,
-                'school': profile.school,
-                'created_at': profile.created_at.isoformat() if profile.created_at else None,
-                'updated_at': profile.updated_at.isoformat() if profile.updated_at else None
-            }
-        }), 200
-        
-    except Exception as e:
-        current_app.logger.exception('Get profile failed')
-        return jsonify({
-            'success': False,
-            'error': 'Failed to load profile'
-        }), 500
+        current = get_jwt_identity()
+        uid = current.get('user_id') if isinstance(current, dict) else None
+        if not uid:
+            return jsonify({'success': False, 'error': 'invalid identity'}), 401
+
+        unread = request.args.get('unread')
+        from app.models import Notification
+        q = Notification.query.filter_by(user_id=uid)
+        if unread and unread.lower() in ('1', 'true', 'yes'):
+            q = q.filter_by(is_read=False)
+
+        items = q.order_by(Notification.created_at.desc()).all()
+        out = []
+        for n in items:
+            out.append({
+                'id': n.id,
+                'title': n.title,
+                'body': n.body,
+                'data': n.data,
+                'is_read': bool(n.is_read),
+                'created_at': n.created_at.isoformat() if getattr(n, 'created_at', None) else None
+            })
+
+        return jsonify({'success': True, 'notifications': out}), 200
+    except Exception:
+        current_app.logger.exception('Failed to list notifications')
+        return jsonify({'success': False, 'error': 'failed to list notifications'}), 500
 
 
-@api_bp.route('/profile', methods=['POST'])
+@api_bp.route('/notifications/<int:notification_id>', methods=['GET'])
 @jwt_required()
-def create_profile():
-    """
-    Create new profile
-    
-    Request Body:
-    {
-        "user_id": 123,
-        "name": "Student Name",
-        "phone": "+91-9876543210",
-        "bio": "Learning enthusiast",
-        "date_of_birth": "2005-06-15",
-        "grade": "10th",
-        "school": "ABC School"
-    }
-    
-    Response:
-    {
-        "success": true,
-        "message": "Profile created",
-        "profile_id": 456
-    }
+def get_notification(notification_id):
+    try:
+        current = get_jwt_identity()
+        uid = current.get('user_id') if isinstance(current, dict) else None
+        role = current.get('role') if isinstance(current, dict) else None
+
+        from app.models import Notification
+        n = Notification.query.get(notification_id)
+        if not n:
+            return jsonify({'success': False, 'error': 'not found'}), 404
+
+        # allow owner or admin
+        if n.user_id != uid and role != 'admin':
+            return jsonify({'success': False, 'error': 'unauthorized'}), 403
+
+        return jsonify({'success': True, 'notification': {
+            'id': n.id,
+            'title': n.title,
+            'body': n.body,
+            'data': n.data,
+            'is_read': bool(n.is_read),
+            'created_at': n.created_at.isoformat() if getattr(n, 'created_at', None) else None
+        }}), 200
+    except Exception:
+        current_app.logger.exception('Failed to get notification')
+        return jsonify({'success': False, 'error': 'failed to load notification'}), 500
+
+
+@api_bp.route('/notifications', methods=['POST'])
+@jwt_required()
+def create_notification():
+    """Create notifications. Admin-only.
+
+    Body schema examples:
+    - single user: {"user_id": 3, "title": "Hi", "body": "...", "data": {}}
+    - multiple users: {"user_ids": [1,2,3], "title": "Update", "body": "..."}
     """
     try:
-        current_user = get_jwt_identity()
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No data provided'
-            }), 400
-        
-        user_id = data.get('user_id')
-        
-        # Authorization check
-        if current_user['user_id'] != user_id:
-            return jsonify({
-                'success': False,
-                'error': 'Unauthorized'
-            }), 403
-        
-        Profile = get_profile_model()
-        if not Profile:
-            return jsonify({
-                'success': False,
-                'error': 'Profile feature not available'
-            }), 500
-        
-        # Check if profile already exists
-        existing = Profile.query.filter_by(user_id=user_id).first()
-        if existing:
-            return jsonify({
-                'success': False,
-                'error': 'Profile already exists'
-            }), 400
-        
-        # Create profile
-        profile = Profile(
-            user_id=user_id,
-            name=data.get('name', ''),
-            email=current_user.get('email', ''),
-            phone=data.get('phone'),
-            bio=data.get('bio'),
-            date_of_birth=data.get('date_of_birth'),
-            grade=data.get('grade'),
-            school=data.get('school')
-        )
-        
-        db.session.add(profile)
+        current = get_jwt_identity()
+        role = current.get('role') if isinstance(current, dict) else None
+        if role != 'admin':
+            return jsonify({'success': False, 'error': 'forbidden'}), 403
+
+        data = request.get_json(silent=True) or {}
+        title = data.get('title')
+        body = data.get('body')
+        payload = data.get('data')
+        uids = []
+        if 'user_ids' in data and isinstance(data.get('user_ids'), list):
+            uids = [int(x) for x in data.get('user_ids') if x]
+        elif 'user_id' in data and data.get('user_id'):
+            uids = [int(data.get('user_id'))]
+
+        if not title or not uids:
+            return jsonify({'success': False, 'error': 'title and user_id(s) required'}), 400
+
+        from app.models import Notification
+        created = []
+        for u in uids:
+            n = Notification(user_id=u, title=title, body=body, data=payload)
+            db.session.add(n)
+            created.append(u)
         db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Profile created',
-            'profile_id': profile.id
-        }), 201
-        
-    except Exception as e:
+
+        # Regenerate per-user notifications JSON for cloud clients
+        try:
+            for u in created:
+                try:
+                    generate_user_notifications_json(int(u))
+                except Exception:
+                    current_app.logger.exception('Failed to regen notifications json for user %s', u)
+        except Exception:
+            current_app.logger.exception('Notifications JSON regeneration failed')
+
+        return jsonify({'success': True, 'created_for': created}), 201
+    except Exception:
         db.session.rollback()
-        current_app.logger.exception('Create profile failed')
-        return jsonify({
-            'success': False,
-            'error': 'Failed to create profile'
-        }), 500
+        current_app.logger.exception('Failed to create notification')
+        return jsonify({'success': False, 'error': 'failed to create notification'}), 500
 
 
-@api_bp.route('/profile/<int:user_id>', methods=['PUT'])
+@api_bp.route('/notifications/<int:notification_id>/read', methods=['POST'])
 @jwt_required()
-def update_profile(user_id):
-    """
-    Update profile
-    
-    Request Body (all fields optional):
-    {
-        "name": "Updated Name",
-        "phone": "+91-9876543210",
-        "bio": "Updated bio",
-        "date_of_birth": "2005-06-15",
-        "grade": "11th",
-        "school": "XYZ School"
-    }
-    
-    Response:
-    {
-        "success": true,
-        "message": "Profile updated"
-    }
-    """
+def mark_notification_read(notification_id):
     try:
-        current_user = get_jwt_identity()
-        
-        # Authorization check
-        if current_user['user_id'] != user_id:
-            return jsonify({
-                'success': False,
-                'error': 'Unauthorized'
-            }), 403
-        
-        Profile = get_profile_model()
-        if not Profile:
-            return jsonify({
-                'success': False,
-                'error': 'Profile feature not available'
-            }), 500
-        
-        profile = Profile.query.filter_by(user_id=user_id).first()
-        
-        if not profile:
-            return jsonify({
-                'success': False,
-                'error': 'Profile not found'
-            }), 404
-        
-        data = request.get_json()
-        
-        # Update fields if provided
-        if 'name' in data:
-            profile.name = data['name']
-        if 'phone' in data:
-            profile.phone = data['phone']
-        if 'bio' in data:
-            profile.bio = data['bio']
-        if 'date_of_birth' in data:
-            profile.date_of_birth = data['date_of_birth']
-        if 'grade' in data:
-            profile.grade = data['grade']
-        if 'school' in data:
-            profile.school = data['school']
-        if 'avatar_url' in data:
-            profile.avatar_url = data['avatar_url']
-        
+        current = get_jwt_identity()
+        uid = current.get('user_id') if isinstance(current, dict) else None
+        if not uid:
+            return jsonify({'success': False, 'error': 'invalid identity'}), 401
+
+        from app.models import Notification
+        n = Notification.query.get(notification_id)
+        if not n:
+            return jsonify({'success': False, 'error': 'not found'}), 404
+        if n.user_id != uid:
+            return jsonify({'success': False, 'error': 'unauthorized'}), 403
+
+        n.is_read = True
         db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Profile updated'
-        }), 200
-        
-    except Exception as e:
+        # regenerate notifications json for the user
+        try:
+            generate_user_notifications_json(int(uid))
+        except Exception:
+            current_app.logger.exception('Failed to regen notifications json after mark read for user %s', uid)
+        return jsonify({'success': True}), 200
+    except Exception:
         db.session.rollback()
-        current_app.logger.exception('Update profile failed')
-        return jsonify({
-            'success': False,
-            'error': 'Failed to update profile'
-        }), 500
+        current_app.logger.exception('Failed to mark notification read')
+        return jsonify({'success': False, 'error': 'failed to mark read'}), 500
 
 
-@api_bp.route('/profile/<int:user_id>', methods=['DELETE'])
+@api_bp.route('/notifications/<int:notification_id>', methods=['DELETE'])
 @jwt_required()
-def delete_profile(user_id):
-    """
-    Delete profile
-    
-    Response:
-    {
-        "success": true,
-        "message": "Profile deleted"
-    }
-    """
+def delete_notification(notification_id):
     try:
-        current_user = get_jwt_identity()
-        
-        # Authorization check
-        if current_user['user_id'] != user_id and current_user['role'] != 'admin':
-            return jsonify({
-                'success': False,
-                'error': 'Unauthorized'
-            }), 403
-        
-        Profile = get_profile_model()
-        if not Profile:
-            return jsonify({
-                'success': False,
-                'error': 'Profile feature not available'
-            }), 500
-        
-        profile = Profile.query.filter_by(user_id=user_id).first()
-        
-        if not profile:
-            return jsonify({
-                'success': False,
-                'error': 'Profile not found'
-            }), 404
-        
-        db.session.delete(profile)
+        current = get_jwt_identity()
+        uid = current.get('user_id') if isinstance(current, dict) else None
+        role = current.get('role') if isinstance(current, dict) else None
+
+        from app.models import Notification
+        n = Notification.query.get(notification_id)
+        if not n:
+            return jsonify({'success': False, 'error': 'not found'}), 404
+        if n.user_id != uid and role != 'admin':
+            return jsonify({'success': False, 'error': 'unauthorized'}), 403
+
+        user_of_notification = n.user_id
+        db.session.delete(n)
         db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Profile deleted'
-        }), 200
-        
-    except Exception as e:
+        # regenerate notifications json for the user
+        try:
+            if user_of_notification:
+                generate_user_notifications_json(int(user_of_notification))
+        except Exception:
+            current_app.logger.exception('Failed to regen notifications json after delete for user %s', user_of_notification)
+        return jsonify({'success': True}), 200
+    except Exception:
         db.session.rollback()
-        current_app.logger.exception('Delete profile failed')
-        return jsonify({
-            'success': False,
-            'error': 'Failed to delete profile'
-        }), 500
-
-
-@api_bp.route('/profile/avatar', methods=['POST'])
-@jwt_required()
-def upload_avatar():
-    """
-    Upload profile avatar (multipart/form-data)
-    
-    Form Data:
-    - user_id: 123
-    - avatar: [file]
-    
-    Response:
-    {
-        "success": true,
-        "avatar_url": "https://byte.edusaint.in/media/avatars/123.jpg"
-    }
-    """
-    try:
-        from werkzeug.utils import secure_filename
-        import os
-        import uuid
-        
-        current_user = get_jwt_identity()
-        user_id = int(request.form.get('user_id'))
-        
-        # Authorization check
-        if current_user['user_id'] != user_id:
-            return jsonify({
-                'success': False,
-                'error': 'Unauthorized'
-            }), 403
-        
-        if 'avatar' not in request.files:
-            return jsonify({
-                'success': False,
-                'error': 'No file provided'
-            }), 400
-        
-        file = request.files['avatar']
-        
-        if file.filename == '':
-            return jsonify({
-                'success': False,
-                'error': 'No file selected'
-            }), 400
-        
-        # Validate file type
-        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
-        if not ('.' in file.filename and
-                file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
-            return jsonify({
-                'success': False,
-                'error': 'Invalid file type. Allowed: png, jpg, jpeg, gif'
-            }), 400
-        
-        # Generate unique filename
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = f"{user_id}_{uuid.uuid4().hex}.{ext}"
-        
-        # Save file
-        upload_path = current_app.config.get('UPLOAD_PATH', '/tmp/uploads')
-        if not os.path.isabs(upload_path):
-            upload_path = os.path.join(current_app.root_path, upload_path)
-        
-        avatars_dir = os.path.join(upload_path, 'avatars')
-        os.makedirs(avatars_dir, exist_ok=True)
-        
-        file_path = os.path.join(avatars_dir, filename)
-        file.save(file_path)
-        
-        # Generate URL
-        avatar_url = f"/uploads/avatars/{filename}"
-        
-        # Update profile
-        Profile = get_profile_model()
-        if Profile:
-            profile = Profile.query.filter_by(user_id=user_id).first()
-            if profile:
-                profile.avatar_url = avatar_url
-                db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'avatar_url': avatar_url
-        }), 200
-        
-    except Exception as e:
-        current_app.logger.exception('Avatar upload failed')
-        return jsonify({
-            'success': False,
-            'error': 'Failed to upload avatar'
-        }), 500
+        current_app.logger.exception('Failed to delete notification')
+        return jsonify({'success': False, 'error': 'failed to delete notification'}), 500
 
 
 # ============================================================================
@@ -1313,7 +1244,7 @@ def get_category(category_id):
 # ENROLLMENT APIs
 # ============================================================================
 
-@api_bp.route('/student/enrollments', methods=['GET'])
+@api_bp.route('/students/enrollments', methods=['GET'])
 @jwt_required()
 def get_my_enrollments():
     """
@@ -1338,8 +1269,10 @@ def get_my_enrollments():
     }
     """
     try:
-        current_user = get_jwt_identity()
-        student_id = current_user['user_id']
+        # Resolve both user_id (users.id) and student_id (students.id) when available
+        uid, sid = resolve_user_and_student_ids()
+        # Use `sid` for enrollment lookups when available, otherwise fall back to uid
+        student_id_for_enroll = sid or uid
         
         Enrollment = get_enrollment_model()
         
@@ -1351,10 +1284,15 @@ def get_my_enrollments():
                 'message': 'Enrollment feature not yet available'
             }), 200
         
-        enrollments = Enrollment.query.filter_by(
-            student_id=student_id,
-            is_active=True
-        ).all()
+        enrollments = []
+        try:
+            # Try to find enrollments for student_id (students.id) and user_id (legacy)
+            if student_id_for_enroll is not None:
+                enrollments = Enrollment.query.filter_by(student_id=student_id_for_enroll, is_active=True).all()
+            if not enrollments and uid is not None and student_id_for_enroll != uid:
+                enrollments = Enrollment.query.filter_by(student_id=uid, is_active=True).all()
+        except Exception:
+            enrollments = []
         
         enrollments_list = []
         
@@ -1376,10 +1314,11 @@ def get_my_enrollments():
                     total_topics += len(topics)
                     
                     for topic in topics:
+                        # Map topic-level progress to lesson-level Progress model
+                        # find any Progress record for the lesson by this user
                         progress = Progress.query.filter_by(
-                            student_id=student_id,
-                            topic_id=topic.id,
-                            completed=True
+                            user_id=uid,
+                            lesson_id=lesson.id
                         ).first()
                         if progress:
                             completed_topics += 1
@@ -1393,7 +1332,7 @@ def get_my_enrollments():
                 'course_id': e.course_id,
                 'course_title': course.title,
                 'thumbnail_url': course.thumbnail_url,
-                'enrolled_at': e.enrolled_at.isoformat() if e.enrolled_at else None,
+                'enrolled_at': e.enrolled_at.isoformat() if getattr(e, 'enrolled_at', None) else None,
                 'progress_percent': progress_percent,
                 'completed_topics': completed_topics,
                 'total_topics': total_topics,
@@ -1432,8 +1371,7 @@ def enroll_course():
     }
     """
     try:
-        current_user = get_jwt_identity()
-        student_id = current_user['user_id']
+        uid, sid = resolve_user_and_student_ids()
         
         data = request.get_json()
         course_id = data.get('course_id')
@@ -1461,10 +1399,14 @@ def enroll_course():
             }), 501
         
         # Check if already enrolled
-        existing = Enrollment.query.filter_by(
-            student_id=student_id,
-            course_id=course_id
-        ).first()
+        existing = None
+        try:
+            if sid is not None:
+                existing = Enrollment.query.filter_by(student_id=sid, course_id=course_id).first()
+            if not existing and uid is not None:
+                existing = Enrollment.query.filter_by(student_id=uid, course_id=course_id).first()
+        except Exception:
+            existing = None
         
         if existing:
             if existing.is_active:
@@ -1486,7 +1428,7 @@ def enroll_course():
         
         # Create new enrollment
         enrollment = Enrollment(
-            student_id=student_id,
+            student_id=(sid or uid),
             course_id=course_id,
             enrolled_at=datetime.utcnow(),
             is_active=True,
@@ -1524,8 +1466,7 @@ def unenroll_course(course_id):
     }
     """
     try:
-        current_user = get_jwt_identity()
-        student_id = current_user['user_id']
+        uid, sid = resolve_user_and_student_ids()
         
         Enrollment = get_enrollment_model()
         
@@ -1535,10 +1476,14 @@ def unenroll_course(course_id):
                 'error': 'Enrollment feature not yet available'
             }), 501
         
-        enrollment = Enrollment.query.filter_by(
-            student_id=student_id,
-            course_id=course_id
-        ).first()
+        enrollment = None
+        try:
+            if sid is not None:
+                enrollment = Enrollment.query.filter_by(student_id=sid, course_id=course_id).first()
+            if not enrollment and uid is not None:
+                enrollment = Enrollment.query.filter_by(student_id=uid, course_id=course_id).first()
+        except Exception:
+            enrollment = None
         
         if not enrollment:
             return jsonify({
@@ -1578,8 +1523,7 @@ def check_enrollment(course_id):
     }
     """
     try:
-        current_user = get_jwt_identity()
-        student_id = current_user['user_id']
+        uid, sid = resolve_user_and_student_ids()
         
         Enrollment = get_enrollment_model()
         
@@ -1590,11 +1534,14 @@ def check_enrollment(course_id):
                 'message': 'Enrollment feature not yet available'
             }), 200
         
-        enrollment = Enrollment.query.filter_by(
-            student_id=student_id,
-            course_id=course_id,
-            is_active=True
-        ).first()
+        enrollment = None
+        try:
+            if sid is not None:
+                enrollment = Enrollment.query.filter_by(student_id=sid, course_id=course_id, is_active=True).first()
+            if not enrollment and uid is not None:
+                enrollment = Enrollment.query.filter_by(student_id=uid, course_id=course_id, is_active=True).first()
+        except Exception:
+            enrollment = None
         
         return jsonify({
             'success': True,
@@ -1614,7 +1561,7 @@ def check_enrollment(course_id):
 # PROGRESS TRACKING APIs
 # ============================================================================
 
-@api_bp.route('/student/progress', methods=['GET'])
+@api_bp.route('/students/progress', methods=['GET'])
 @jwt_required()
 def get_overall_progress():
     """
@@ -1633,8 +1580,7 @@ def get_overall_progress():
     }
     """
     try:
-        current_user = get_jwt_identity()
-        student_id = current_user['user_id']
+        uid, sid = resolve_user_and_student_ids()
         
         Enrollment = get_enrollment_model()
         Progress = get_progress_model()
@@ -1646,24 +1592,22 @@ def get_overall_progress():
         total_learning_time = 0
         
         if Enrollment:
-            total_enrolled = Enrollment.query.filter_by(
-                student_id=student_id,
-                is_active=True
-            ).count()
-            
-            total_completed = Enrollment.query.filter_by(
-                student_id=student_id,
-                is_active=True
-            ).filter(Enrollment.completed_at.isnot(None)).count()
+            try:
+                total_enrolled = Enrollment.query.filter_by(student_id=(sid or uid), is_active=True).count()
+                total_completed = Enrollment.query.filter_by(student_id=(sid or uid), is_active=True).filter(Enrollment.completed_at.isnot(None)).count()
+            except Exception:
+                total_enrolled = 0
+                total_completed = 0
         
         if Progress:
-            completed_progress = Progress.query.filter_by(
-                student_id=student_id,
-                completed=True
-            ).all()
-            
-            total_topics_completed = len(completed_progress)
-            total_learning_time = sum(p.time_spent or 0 for p in completed_progress)
+            # Progress model is lesson-level and uses users.id as user_id
+            try:
+                completed_progress = Progress.query.filter_by(user_id=uid).all()
+                total_topics_completed = len(completed_progress)
+                total_learning_time = sum(p.time_spent or 0 for p in completed_progress)
+            except Exception:
+                total_topics_completed = 0
+                total_learning_time = 0
         
         return jsonify({
             'success': True,
@@ -1684,7 +1628,7 @@ def get_overall_progress():
         }), 500
 
 
-@api_bp.route('/student/progress/<int:course_id>', methods=['GET'])
+@api_bp.route('/students/progress/<int:course_id>', methods=['GET'])
 @jwt_required()
 def get_course_progress(course_id):
     """
@@ -1703,8 +1647,7 @@ def get_course_progress(course_id):
     }
     """
     try:
-        current_user = get_jwt_identity()
-        student_id = current_user['user_id']
+        uid, sid = resolve_user_and_student_ids()
         
         # Check if course exists
         course = Course.query.get(course_id)
@@ -1730,15 +1673,15 @@ def get_course_progress(course_id):
                 total_topics += len(topics)
                 
                 for topic in topics:
-                    progress = Progress.query.filter_by(
-                        student_id=student_id,
-                        topic_id=topic.id
+                    # Map topic -> lesson progress: treat a Progress row for the
+                    # lesson as the unit of completion. Use lesson_id from topic.
+                    p = Progress.query.filter_by(
+                        user_id=uid,
+                        lesson_id=lesson.id
                     ).first()
-                    
-                    if progress:
-                        if progress.completed:
-                            completed_topics += 1
-                        time_spent += progress.time_spent or 0
+                    if p:
+                        completed_topics += 1
+                        time_spent += p.time_spent or 0
         
         progress_percent = 0
         if total_topics > 0:
@@ -1784,28 +1727,19 @@ def update_progress():
     }
     """
     try:
-        current_user = get_jwt_identity()
-        student_id = current_user['user_id']
+        uid, sid = resolve_user_and_student_ids()
         
         data = request.get_json()
         
         topic_id = data.get('topic_id')
         time_spent = data.get('time_spent', 0)
-        completed = data.get('completed', False)
-        
-        if not topic_id:
+
+        # Accept either topic_id (will map to lesson) or lesson_id directly
+        if not topic_id and not data.get('lesson_id'):
             return jsonify({
                 'success': False,
-                'error': 'Topic ID required'
+                'error': 'topic_id or lesson_id required'
             }), 400
-        
-        # Check if topic exists
-        topic = Topic.query.get(topic_id)
-        if not topic:
-            return jsonify({
-                'success': False,
-                'error': 'Topic not found'
-            }), 404
         
         Progress = get_progress_model()
         
@@ -1816,56 +1750,80 @@ def update_progress():
             }), 501
         
         # Check if progress record exists
+        # Support either topic-level input (map to lesson) or lesson-level input
+        lesson_id = None
+        if 'lesson_id' in data and data.get('lesson_id'):
+            lesson_id = data.get('lesson_id')
+        else:
+            # fallback to topic -> lesson mapping
+            topic = Topic.query.get(topic_id)
+            if topic:
+                lesson_id = topic.lesson_id
+
+        if not lesson_id:
+            return jsonify({
+                'success': False,
+                'error': 'Lesson could not be determined from topic'
+            }), 400
+
+        # Check if progress record exists for (user, lesson)
         progress = Progress.query.filter_by(
-            student_id=student_id,
-            topic_id=topic_id
+            user_id=uid,
+            lesson_id=lesson_id
         ).first()
-        
+
         if progress:
             # Update existing
             if time_spent:
                 progress.time_spent = (progress.time_spent or 0) + time_spent
-            if completed:
-                progress.completed = True
-            progress.updated_at = datetime.utcnow()
+            if 'score' in data and data.get('score') is not None:
+                progress.score = data.get('score')
+            if 'answers' in data and data.get('answers') is not None:
+                progress.answers = data.get('answers')
         else:
-            # Create new
+            # Create new progress record (lesson-level)
             progress = Progress(
-                student_id=student_id,
-                topic_id=topic_id,
+                user_id=uid,
+                lesson_id=lesson_id,
                 time_spent=time_spent,
-                completed=completed,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                score=data.get('score'),
+                answers=data.get('answers'),
+                attempt_id=data.get('attempt_id'),
+                created_at=datetime.utcnow()
             )
             db.session.add(progress)
         
         db.session.commit()
+        try:
+            generate_user_progress_json(uid)
+        except Exception:
+            current_app.logger.exception('Failed to regen user progress json after update_progress')
+        try:
+            # refresh leaderboard artifact when progress changes
+            generate_leaderboard_json(write_file=True)
+        except Exception:
+            current_app.logger.exception('Failed to regen leaderboard json after update_progress')
         
-        # Calculate course progress
-        lesson = Lesson.query.get(topic.lesson_id)
+        # Calculate course progress at lesson granularity
+        # Determine lesson for the updated progress
+        lesson = Lesson.query.get(lesson_id)
         course_progress = 0
-        
+
         if lesson:
             lessons = Lesson.query.filter_by(course_id=lesson.course_id).all()
-            total_topics = 0
-            completed_topics = 0
-            
+            total_lessons = len(lessons)
+            completed_lessons = 0
+
             for l in lessons:
-                topics = Topic.query.filter_by(lesson_id=l.id).all()
-                total_topics += len(topics)
-                
-                for t in topics:
-                    p = Progress.query.filter_by(
-                        student_id=student_id,
-                        topic_id=t.id,
-                        completed=True
-                    ).first()
-                    if p:
-                        completed_topics += 1
-            
-            if total_topics > 0:
-                course_progress = round((completed_topics / total_topics) * 100, 2)
+                p = Progress.query.filter_by(
+                    user_id=uid,
+                    lesson_id=l.id
+                ).first()
+                if p:
+                    completed_lessons += 1
+
+            if total_lessons > 0:
+                course_progress = round((completed_lessons / total_lessons) * 100, 2)
         
         return jsonify({
             'success': True,
@@ -1882,37 +1840,7 @@ def update_progress():
         }), 500
 
 
-@api_bp.route('/progress/complete-topic', methods=['POST'])
-@jwt_required()
-def complete_topic():
-    """
-    Mark topic as complete
-    
-    Request Body:
-    {
-        "topic_id": 502
-    }
-    
-    Response:
-    {
-        "success": true,
-        "message": "Topic marked as complete"
-    }
-    """
-    data = request.get_json()
-    data['completed'] = True
-    
-    # Reuse update_progress function
-    return update_progress()
 
-
-@api_bp.route('/student/stats', methods=['GET'])
-@jwt_required()
-def get_student_stats():
-    """
-    Get learning statistics (alias for overall progress)
-    """
-    return get_overall_progress()
 
 
 # ============================================================================
@@ -2011,6 +1939,157 @@ def global_search():
             'success': False,
             'error': 'Search failed'
         }), 500
+
+
+# ============================================================================
+# CLOUD FILES API
+# ============================================================================
+
+@api_bp.route('/cloud/<path:filename>', methods=['GET'])
+def get_cloud_file(filename):
+    """Serve dynamic JSON files generated by the backend.
+    Files are stored under `instance/dynamic_json/`.
+    """
+    try:
+        base = os.path.join(current_app.instance_path, 'dynamic_json')
+        return send_from_directory(base, filename)
+    except Exception:
+        return jsonify({'success': False, 'error': 'File not found'}), 404
+
+
+# ============================================================================
+# SETTINGS APIs
+# ============================================================================
+
+
+@api_bp.route('/settings', methods=['GET'])
+@jwt_required()
+def get_my_settings():
+    """Return per-user settings stored under `instance/settings/user_<id>_settings.json`.
+
+    If no file exists, return sensible defaults (and profile/student info when available).
+    """
+    try:
+        import json
+
+        current = get_jwt_identity()
+        uid = current.get('user_id') if isinstance(current, dict) else None
+        if not uid:
+            return jsonify({'success': False, 'error': 'invalid identity'}), 401
+
+        settings_dir = os.path.join(current_app.instance_path, 'settings')
+        os.makedirs(settings_dir, exist_ok=True)
+        fname = os.path.join(settings_dir, f'user_{uid}_settings.json')
+
+        if os.path.exists(fname):
+            try:
+                with open(fname, 'r', encoding='utf8') as fh:
+                    data = json.load(fh)
+                return jsonify({'success': True, 'settings': data}), 200
+            except Exception:
+                current_app.logger.exception('Failed to read settings file')
+                return jsonify({'success': False, 'error': 'failed to load settings'}), 500
+
+        # No explicit settings saved — build defaults from Student/Profile/User
+        defaults = {
+            'notifications': True,
+            'dark_mode': False,
+            'language': 'en',
+            'preferences': {}
+        }
+
+        Student = get_student_model()
+        if Student:
+            try:
+                s = Student.query.filter_by(user_id=uid).first() or Student.query.get(uid)
+                if s:
+                    defaults['display_name'] = getattr(s, 'name', None)
+                    defaults['email'] = getattr(s, 'email', None)
+            except Exception:
+                pass
+        else:
+            Profile = get_profile_model()
+            if Profile:
+                try:
+                    p = Profile.query.filter_by(user_id=uid).first()
+                    if p:
+                        defaults['display_name'] = getattr(p, 'name', None)
+                        defaults['email'] = getattr(p, 'email', None)
+                except Exception:
+                    pass
+
+        return jsonify({'success': True, 'settings': defaults}), 200
+    except Exception:
+        current_app.logger.exception('Get settings failed')
+        return jsonify({'success': False, 'error': 'failed to load settings'}), 500
+
+
+@api_bp.route('/settings', methods=['PUT', 'POST'])
+@jwt_required()
+def save_my_settings():
+    """Persist the requesting user's settings to `instance/settings/`.
+
+    Accepts arbitrary JSON payload; we don't enforce a schema here.
+    """
+    try:
+        import json
+        current = get_jwt_identity()
+        uid = current.get('user_id') if isinstance(current, dict) else None
+        if not uid:
+            return jsonify({'success': False, 'error': 'invalid identity'}), 401
+
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({'success': False, 'error': 'invalid payload'}), 400
+
+        settings_dir = os.path.join(current_app.instance_path, 'settings')
+        os.makedirs(settings_dir, exist_ok=True)
+        fname = os.path.join(settings_dir, f'user_{uid}_settings.json')
+
+        try:
+            with open(fname, 'w', encoding='utf8') as fh:
+                json.dump(data, fh, ensure_ascii=False, indent=2)
+        except Exception:
+            current_app.logger.exception('Failed to write settings file')
+            return jsonify({'success': False, 'error': 'failed to save settings'}), 500
+
+        # Mirror settings to dynamic_json for cloud consumption
+        try:
+            dyn_dir = os.path.join(current_app.instance_path, 'dynamic_json')
+            os.makedirs(dyn_dir, exist_ok=True)
+            out_path = os.path.join(dyn_dir, f'user_{uid}_settings.json')
+            with open(out_path, 'w', encoding='utf8') as fh:
+                json.dump(data, fh, ensure_ascii=False, indent=2)
+        except Exception:
+            current_app.logger.exception('Failed to mirror settings to dynamic_json')
+
+        return jsonify({'success': True, 'settings': data}), 200
+    except Exception:
+        current_app.logger.exception('Save settings failed')
+        return jsonify({'success': False, 'error': 'failed to save settings'}), 500
+
+
+# ============================================================================
+# LEADERBOARD APIs
+# ============================================================================
+
+
+@api_bp.route('/leaderboard', methods=['GET'])
+def leaderboard():
+    """Return a simple leaderboard of users sorted by total learning time.
+
+    Query params:
+    - limit (int, default 10)
+    - period (optional): currently ignored (future: weekly/monthly)
+    """
+    try:
+        # Generate leaderboard and persist to dynamic_json for client consumption
+        limit = int(request.args.get('limit', 10))
+        board = generate_leaderboard_json(limit=limit, write_file=True)
+        return jsonify({'success': True, 'leaderboard': board}), 200
+    except Exception:
+        current_app.logger.exception('Leaderboard generation failed')
+        return jsonify({'success': False, 'error': 'failed to generate leaderboard'}), 500
 
 
 # ============================================================================

@@ -1,0 +1,115 @@
+{
+  "students": [
+    {
+      "id": 1,
+      "name": "Sachin",
+      "email": "sachin.patro@edusaint.in",
+      "enrollmentDate": "2025-12-04",
+      "courses": "Science,Mathematics",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 2,
+      "name": "Aayushman",
+      "email": "aayush@gmail.com",
+      "enrollmentDate": "2025-12-02",
+      "courses": "English,General Knowledge",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 3,
+      "name": "Parth Goel",
+      "email": "parth@gmail.com",
+      "enrollmentDate": "2025-12-01",
+      "courses": "Social Science,Computer Science",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 4,
+      "name": "Mahesh",
+      "email": "mahesh@gmail.com",
+      "enrollmentDate": "2025-12-06",
+      "courses": "Social Science,Science",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 5,
+      "name": "Subhash Roy",
+      "email": "subhash@gmail.com",
+      "enrollmentDate": "2025-12-08",
+      "courses": "Social Science,Science",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 6,
+      "name": "Narasimha",
+      "email": "narasimha@gmail.com",
+      "enrollmentDate": "2025-12-09",
+      "courses": "Science,Mathematics",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 8,
+      "name": "xyz",
+      "email": "xyz@gmail.com",
+      "enrollmentDate": "2025-12-11",
+      "courses": "english",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 9,
+      "name": "aayushmann",
+      "email": "gakkharaayushmann@gmail.com",
+      "enrollmentDate": "2025-12-11",
+      "courses": "Maths , Social Studies",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 12,
+      "name": "Shrusti",
+      "email": "kshitij@gmail.com",
+      "enrollmentDate": "2025-12-11",
+      "courses": "English,Hindi,Maths",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 16,
+      "name": "ayush",
+      "email": "ayush@gmail.com",
+      "enrollmentDate": "2025-12-11",
+      "courses": "French",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    }
+  ],
+  "total": 10
+}

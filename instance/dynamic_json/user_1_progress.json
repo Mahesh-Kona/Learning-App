@@ -1,0 +1,23 @@
+{
+  "user_id": 1,
+  "lessons": [
+    {
+      "lesson_id": 1,
+      "time_spent": 120,
+      "score": 0.85,
+      "answers": {
+        "q1": "a"
+      },
+      "attempt_id": null,
+      "updated_at": "2025-11-28T10:47:08"
+    }
+  ],
+  "course_summary": [
+    {
+      "course_id": 1,
+      "completed_lessons": 1,
+      "time_spent": 120
+    }
+  ],
+  "updated_at": "2025-11-28T10:47:08.946163"
+}

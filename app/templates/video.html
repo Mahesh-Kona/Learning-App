@@ -1,0 +1,728 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title> Video-Editor Card</title>
+<style>
+  /* ========== Global ========== */
+  :root{
+    --header-start:#6f63ff;
+    --header-end:#7d4dff;
+    --page-bg:#f5f7fb;
+    --card:#ffffff;
+    --muted:#6b7280;
+    --accent:#7d4dff;
+    --success:#2fb45a;
+    --danger:#ff6b5b;
+    --panel-border:#eef0f5;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin:0; background:var(--page-bg); color:#162029}
+  a{color:inherit}
+
+  /* Header */
+  .topbar{
+    background: linear-gradient(90deg,var(--header-start),var(--header-end));
+    color:#fff;
+    padding:28px 36px;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.04);
+  }
+  .topbar h1{font-size:28px; margin:0; display:flex; gap:12px; align-items:center}
+  .topbar p{margin:6px 0 0 0; opacity:0.95}
+
+  /* Layout */
+  .container{max-width:1300px;margin:24px auto; padding:0 20px}
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 420px;
+    gap:18px;
+  }
+
+  /* Cards */
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:22px;
+    box-shadow: 0 6px 18px rgba(16,24,40,0.06);
+    border:1px solid var(--panel-border);
+  }
+  .section-title{display:flex;align-items:center;gap:12px;font-weight:700;font-size:18px;margin-bottom:14px}
+  .form-row{display:flex;gap:12px}
+  .col{flex:1}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:600}
+  input[type="text"], select, textarea{
+    width:100%; padding:12px 14px; border-radius:10px; border:1px solid #e6e9ee; background:#fff; font-size:14px;
+  }
+  textarea{min-height:100px; resize:vertical}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:9px;padding:10px 16px;border-radius:10px;border:none;cursor:pointer;font-weight:700;
+  }
+  .btn.primary{background:linear-gradient(90deg,var(--header-start),var(--header-end)); color:#fff; box-shadow:0 6px 16px rgba(125,77,255,0.18)}
+  .btn.ghost{background:#f7f8fb;border:1px solid #e8e8ee;color:#333}
+  .btn.success{background:var(--success);color:#fff}
+  .btn.icon{padding:10px 12px;border-radius:10px}
+
+  .muted{color:var(--muted);font-size:13px}
+
+  /* Video + right column layout */
+  .two-col{
+    display:grid;
+    grid-template-columns: 1fr 360px;
+    gap:18px;
+    margin-top:18px;
+  }
+
+  /* Video preview big */
+  .video-preview{
+    min-height:340px; border-radius:12px; overflow:hidden; background:#000;
+    display:flex;align-items:center;justify-content:center; color:#cbd5e1; position:relative;
+  }
+  .video-placeholder { text-align:center; padding:28px; color:#9aa6b8; }
+
+  /* Right panel (Add Interaction) */
+  .interaction-panel .tiles{display:grid;grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px}
+  .tile{background:#fff;border-radius:12px;padding:18px;border:1px solid #eef0f6;cursor:pointer; text-align:center}
+  .tile.active{background:linear-gradient(90deg,#6f63ff,#7d4dff); color:#fff; border:none; box-shadow:0 8px 20px rgba(125,77,255,0.14)}
+  .tile h4{margin:6px 0 0 0}
+  .tile p{margin:8px 0 0 0; color:var(--muted); font-size:13px}
+
+  .timestamp{display:block;padding:12px;border-radius:10px;border:1px solid #e6e9ee;background:#fff;margin-bottom:6px}
+  .small{font-size:13px;color:var(--muted)}
+
+  /* Timeline editor */
+  .timeline{background:#fff;padding:18px;border-radius:12px;border:1px solid #eef0f6;margin-top:18px}
+  .timeline-controls{display:flex;align-items:center;gap:12px;margin-top:14px}
+  .slider{flex:1; height:8px; background:#edf2f7;border-radius:8px; position:relative}
+  .progress{height:8px;background:#1e90ff;border-radius:8px;width:0}
+  .thumb{width:14px;height:14px;border-radius:50%;background:#1e90ff;position:absolute;right:0;top:50%;transform:translate(50%,-50%); box-shadow:0 4px 12px rgba(30,144,255,0.25)}
+  .time-text{min-width:90px;text-align:center;color:var(--muted);font-weight:700}
+
+  /* Stats boxes */
+  .stats{display:flex;gap:12px;margin-top:12px}
+  .stat{flex:1;padding:18px;border-radius:10px;background:#fbfdff;border:1px solid #eef2f6;text-align:center}
+  .stat .big{font-weight:800;font-size:20px;color:#111}
+
+  /* Added interactions list */
+  .interactions-list{margin-top:18px}
+  .interaction-item{display:flex;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;border:1px solid #eef0f6;background:#fff;margin-bottom:8px}
+  .small-muted{color:var(--muted);font-size:13px}
+
+  /* Right bottom buttons */
+  .bottom-actions{display:flex;gap:12px;align-items:center; margin-top:18px; justify-content:flex-end}
+  .file-btn{background:#e9eef6;padding:10px 14px;border-radius:10px;border:none;cursor:pointer}
+
+  /* Quiz builder (right col) */
+  .quiz-builder{display:flex;flex-direction:column;gap:10px}
+  .option-row{display:flex;gap:8px;align-items:center}
+  .option-row input{flex:1}
+  .option-row .remove{background:var(--danger);color:#fff;border:none;padding:8px;border-radius:8px;cursor:pointer}
+
+  /* Footer action */
+  .footer-card{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px;padding:14px;border-radius:10px;background:#fff;border:1px solid #eef0f6}
+
+  /* Responsive */
+  @media (max-width:1100px){
+    .grid{grid-template-columns: 1fr}
+    .two-col{grid-template-columns: 1fr}
+    .container{padding:12px}
+  }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="topbar">
+    <div class="container">
+      <h1>🎬  Video-Editor Card</h1>
+      
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="container">
+
+    <!-- VIDEO SOURCE CONFIG -->
+    <div class="card">
+      <div class="section-title"><span style="width:6px;height:28px;border-radius:10px;background:linear-gradient(180deg,#7d4dff,#6f63ff)"></span> Video Source Configuration</div>
+
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="col">
+          <label>Video Title *</label>
+          <input id="videoTitle" type="text" placeholder="Enter video title" />
+        </div>
+        <div class="col">
+          <label>Video Source Type *</label>
+          <select id="videoSourceType">
+            <option value="">Select source type</option>
+            <option value="youtube">YouTube</option>
+            <option value="vimeo">Vimeo</option>
+            <option value="direct">Direct (mp4)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label>Video URL *</label>
+        <input id="videoUrl" type="text" placeholder="Paste video URL here (YouTube, Vimeo, or direct video URL)" />
+      </div>
+
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="col">
+          <label>Category</label>
+          <select id="category">
+            <option value="">Select category</option>
+            <option>Math</option><option>Science</option><option>Programming</option>
+          </select>
+        </div>
+        <div class="col">
+          <label>Topic</label>
+          <select id="topic">
+            <option value="">Select topic</option>
+            <option>Algebra</option><option>Physics</option><option>Flutter</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="loadVideoBtn" class="btn primary"><span>▶</span> Load Video</button>
+    </div>
+
+    <!-- TWO-COLUMN: LEFT (preview/timeline/list) / RIGHT (interactions) -->
+    <div class="two-col">
+
+      <!-- LEFT COLUMN -->
+      <div>
+        <!-- VIDEO PREVIEW -->
+        <div class="card">
+          <div class="section-title"><span style="width:6px;height:28px;border-radius:10px;background:linear-gradient(180deg,#7d4dff,#6f63ff)"></span> Video Preview</div>
+          <div id="videoPreview" class="video-preview">
+            <div class="video-placeholder">↑ Load a video to start adding interactions</div>
+            <!-- video iframe/video element will be injected here -->
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:16px">
+            <div class="stat"><div class="small-muted">Duration</div><div id="statDuration" class="big">--:--</div></div>
+            <div class="stat"><div class="small-muted">Interactions</div><div id="statInteractions" class="big">0</div></div>
+            <div class="stat"><div class="small-muted">Quiz Points</div><div id="statPoints" class="big">0</div></div>
+          </div>
+        </div>
+
+        <!-- TIMELINE EDITOR -->
+        <div class="card timeline">
+          <div class="section-title"><span style="width:6px;height:28px;border-radius:10px;background:linear-gradient(180deg,#7d4dff,#6f63ff)"></span> Timeline Editor</div>
+          <div id="timelineClickable" style="height:60px;border-radius:8px;background:#f7fafc;border:1px dashed #e9eef6;display:flex;align-items:center;padding:12px;">
+            <div style="width:100%;height:36px;border-radius:8px;background:#fff;border:1px solid #eef2f6"></div>
+          </div>
+
+          <div class="timeline-controls">
+            <button id="playBtn" class="btn ghost icon">▶ Play</button>
+            <div class="time-text" id="timeCurrent">00:00</div>
+            <div class="slider" id="sliderBar">
+              <div class="progress" id="progressBar"></div>
+              <div class="thumb" id="thumb"></div>
+            </div>
+            <div class="time-text" id="timeTotal">00:00</div>
+          </div>
+        </div>
+
+        <!-- ADDED INTERACTIONS -->
+        <div class="card">
+          <div class="section-title"><span style="width:6px;height:28px;border-radius:10px;background:linear-gradient(180deg,#7d4dff,#6f63ff)"></span> Added Interactions</div>
+          <div id="interactionsList" class="interactions-list">
+            <div class="small-muted">No interactions added yet. Use the panel on the right to add quiz questions, bookmarks, or summaries.</div>
+          </div>
+
+          <div class="footer-card">
+            <div>
+              <button id="previewBtn" class="file-btn">👁 Preview</button>
+              <button id="exportBtn" class="file-btn">📤 Export JSON</button>
+            </div>
+            <div>
+              <button id="saveBtn" class="btn success">💾 Save to Database</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="interaction-panel card">
+        <div class="section-title"><span style="width:6px;height:28px;border-radius:10px;background:linear-gradient(180deg,#7d4dff,#6f63ff)"></span> Add Interaction</div>
+
+        <label class="small">Timestamp (HH:MM:SS)</label>
+        <input id="timestampInput" class="timestamp" value="00:00:00" />
+
+        <div class="small muted">Click on timeline or enter manually</div>
+
+        <div style="height:12px"></div>
+
+        <div class="tiles">
+          <div id="tileQuiz" class="tile active" data-type="quiz"><h4>Quiz Question</h4><p>Add question interactions</p></div>
+          <div id="tileBookmark" class="tile" data-type="bookmark"><h4>Bookmark</h4><p>Mark important moments</p></div>
+          <div id="tileSummary" class="tile" data-type="summary"><h4>Summary</h4><p>Add a brief summary</p></div>
+          <div id="tileInfo" class="tile" data-type="info"><h4>Info Note</h4><p>Small note / tip</p></div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <!-- QUIZ BUILDER -->
+        <div id="quizBuilder" class="quiz-builder">
+          <label class="small">Quiz Type *</label>
+          <select id="quizType" class="select-field">
+            <option>Multiple Choice (MCQ)</option>
+            <option>True / False</option>
+            <option>Match Columns</option>
+          </select>
+
+          <label class="small">Question *</label>
+          <textarea id="quizQuestion" placeholder="Enter your quiz question"></textarea>
+
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div class="small-muted">Answer Options</div>
+              <button id="addOptionBtn" class="btn ghost">+ Add Option</button>
+            </div>
+
+            <div id="optionsContainer" style="margin-top:10px">
+              <!-- option rows inserted here -->
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:8px">
+            <div style="flex:1">
+              <label class="small">Points</label>
+              <input id="pointsInput" type="text" class="input" value="10" />
+            </div>
+            <div style="flex:1">
+              <label class="small">Pause Video?</label>
+              <select id="pauseSelect" class="select-field">
+                <option>Yes</option><option>No</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="small">Explanation (Optional)</label>
+          <textarea id="explainInput" placeholder="Explain the correct answer"></textarea>
+
+          <button id="addQuizInteraction" class="btn success">✓ Add Quiz Question</button>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+<script>
+/* ========= Helper utilities ========= */
+function formatTime(seconds){
+  if (!isFinite(seconds) || seconds < 0) return '00:00';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600)/60);
+  const s = Math.floor(seconds % 60);
+  if (h>0) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function parseHMS(str){
+  // Accept 00:00:00 or 00:00
+  const parts = str.split(':').map(p=>parseInt(p||0,10));
+  if (parts.length===3) return parts[0]*3600 + parts[1]*60 + parts[2];
+  if (parts.length===2) return parts[0]*60 + parts[1];
+  return 0;
+}
+
+/* ========= App state ========= */
+let app = {
+  videoElement: null,
+  videoType: null, // 'youtube' | 'vimeo' | 'direct'
+  duration: 0,
+  interactions: [], // {id, type, timestamp, data}
+  quizPoints: 0
+};
+
+/* ========= DOM refs ========= */
+const videoPreview = document.getElementById('videoPreview');
+const loadVideoBtn = document.getElementById('loadVideoBtn');
+const videoUrlInput = document.getElementById('videoUrl');
+const videoSourceType = document.getElementById('videoSourceType');
+const videoTitleInput = document.getElementById('videoTitle');
+const statDuration = document.getElementById('statDuration');
+const statInteractions = document.getElementById('statInteractions');
+const statPoints = document.getElementById('statPoints');
+
+const playBtn = document.getElementById('playBtn');
+const timeCurrent = document.getElementById('timeCurrent');
+const timeTotal = document.getElementById('timeTotal');
+const progressBar = document.getElementById('progressBar');
+const thumb = document.getElementById('thumb');
+const sliderBar = document.getElementById('sliderBar');
+const timelineClickable = document.getElementById('timelineClickable');
+
+const timestampInput = document.getElementById('timestampInput');
+const interactionsList = document.getElementById('interactionsList');
+
+const tiles = document.querySelectorAll('.tile');
+const quizBuilder = document.getElementById('quizBuilder');
+const tileQuiz = document.getElementById('tileQuiz');
+
+const addOptionBtn = document.getElementById('addOptionBtn');
+const optionsContainer = document.getElementById('optionsContainer');
+const addQuizInteractionBtn = document.getElementById('addQuizInteraction');
+const quizQuestionInput = document.getElementById('quizQuestion');
+const quizTypeSelect = document.getElementById('quizType');
+const pointsInput = document.getElementById('pointsInput');
+const pauseSelect = document.getElementById('pauseSelect');
+const explainInput = document.getElementById('explainInput');
+
+const previewBtn = document.getElementById('previewBtn');
+const exportBtn = document.getElementById('exportBtn');
+const saveBtn = document.getElementById('saveBtn');
+
+/* ========= Interactions for tiles (select type) ========= */
+tiles.forEach(t=>{
+  t.addEventListener('click', ()=> {
+    tiles.forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    // show/hide builders (only quiz implemented fully here)
+    const type = t.dataset.type;
+    if(type === 'quiz'){
+      quizBuilder.style.display = 'flex';
+    } else {
+      // For other types, still keep quiz UI hidden and show minimal fields (not implemented in detail)
+      quizBuilder.style.display = 'none';
+      alert('This demo supports full Quiz builder. For other interaction types, basic add is supported.');
+    }
+  });
+});
+
+/* ========= VIDEO LOAD ========= */
+loadVideoBtn.addEventListener('click', ()=>{
+  const url = videoUrlInput.value.trim();
+  const source = videoSourceType.value;
+  if(!url || !source){ alert('Please select source type and enter a URL'); return; }
+  loadVideo(url, source);
+});
+
+function clearVideoPreview(){
+  videoPreview.innerHTML = '<div class="video-placeholder">↑ Load a video to start adding interactions</div>';
+  if(app.videoElement){
+    try { app.videoElement.pause?.(); } catch(e) {}
+    app.videoElement = null;
+  }
+  app.duration = 0;
+  timeTotal.textContent = formatTime(0);
+  timeCurrent.textContent = formatTime(0);
+  progressBar.style.width = '0%';
+  thumb.style.left = '0%';
+}
+
+function loadVideo(url, source){
+  clearVideoPreview();
+  app.videoType = source;
+  // sanitize url
+  if(source === 'youtube'){
+    // extract video id: support typical youtube urls
+    const ytMatch = url.match(/(?:v=|\/v\/|youtu\.be\/|\/embed\/)([A-Za-z0-9_-]{6,})/);
+    const id = ytMatch ? ytMatch[1] : null;
+    if(!id){ alert('Unable to parse YouTube ID from URL'); return; }
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube.com/embed/${id}?rel=0&enablejsapi=1`;
+    iframe.width = '100%';
+    iframe.height = '420';
+    iframe.frameBorder = '0';
+    iframe.allow = 'autoplay; encrypted-media; fullscreen';
+    videoPreview.innerHTML = '';
+    videoPreview.appendChild(iframe);
+    app.videoElement = { type:'youtube', iframe, duration:0 };
+    // Note: YouTube API integration would be needed for precise timing; we'll simulate using message events not included here.
+    statDuration.innerText = '--:--';
+    timeTotal.innerText = '--:--';
+    alert('YouTube preview loaded. For local timeline control, use direct MP4 or host video. Timing features will be limited for embedded YouTube in this demo.');
+  } else if(source === 'vimeo'){
+    // embed vimeo
+    const idMatch = url.match(/vimeo\.com\/(\d+)/);
+    const id = idMatch ? idMatch[1] : null;
+    if(!id){ alert('Unable to parse Vimeo ID'); return; }
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://player.vimeo.com/video/${id}`;
+    iframe.width='100%'; iframe.height='420'; iframe.frameBorder='0'; iframe.allow='autoplay; fullscreen';
+    videoPreview.innerHTML = ''; videoPreview.appendChild(iframe);
+    app.videoElement = { type:'vimeo', iframe };
+    statDuration.innerText = '--:--'; timeTotal.innerText='--:--';
+    alert('Vimeo preview loaded. Full timeline control limited in demo for embedded players.');
+  } else {
+    // direct video file -> use <video>
+    const video = document.createElement('video');
+    video.src = url;
+    video.controls = false;
+    video.width = videoPreview.clientWidth;
+    video.height = 420;
+    videoPreview.innerHTML = '';
+    videoPreview.appendChild(video);
+    app.videoElement = video;
+    video.addEventListener('loadedmetadata', ()=>{
+      app.duration = video.duration;
+      statDuration.innerText = formatTime(video.duration);
+      timeTotal.innerText = formatTime(video.duration);
+    });
+    // update time on timeupdate
+    video.addEventListener('timeupdate', ()=>{
+      const cur = video.currentTime;
+      timeCurrent.innerText = formatTime(cur);
+      const pct = (cur / Math.max(1, app.duration)) * 100;
+      progressBar.style.width = pct + '%';
+      thumb.style.left = pct + '%';
+    });
+    videoPreview.querySelector('.video-placeholder')?.remove?.();
+  }
+}
+
+/* ========= PLAY / PAUSE / TIMELINE ========= */
+playBtn.addEventListener('click', ()=>{
+  if(!app.videoElement) { alert('Load a direct video to use timeline controls'); return; }
+  if(app.videoElement.tagName === 'VIDEO'){
+    if(app.videoElement.paused) { app.videoElement.play(); playBtn.textContent = '⏸ Pause'; }
+    else { app.videoElement.pause(); playBtn.textContent = '▶ Play'; }
+  } else {
+    alert('Play/pause works for direct video files in this demo.');
+  }
+});
+
+// clicking on timelineClickable to set timestamp
+timelineClickable.addEventListener('click', (ev)=>{
+  // compute relative position inside slider width
+  if(!app.videoElement || app.videoElement.tagName !== 'VIDEO') {
+    // fallback: set timestamp using percent of known duration if available
+    if(!app.duration) return;
+  }
+  const rect = sliderBar.getBoundingClientRect();
+  const clickX = ev.clientX - rect.left;
+  const pct = Math.max(0, Math.min(1, clickX / rect.width));
+  const newSec = Math.round(pct * (app.duration || 0));
+  if(app.videoElement && app.videoElement.tagName === 'VIDEO'){
+    app.videoElement.currentTime = newSec;
+  }
+  timeCurrent.innerText = formatTime(newSec);
+  timestampInput.value = new Date(newSec * 1000).toISOString().substr(11, 8);
+});
+
+// slider drag on the top slider
+let dragging = false;
+sliderBar.addEventListener('mousedown', (ev)=>{
+  dragging = true;
+  seekByEvent(ev);
+});
+window.addEventListener('mousemove', (ev)=>{ if(dragging) seekByEvent(ev); });
+window.addEventListener('mouseup', ()=>{ dragging=false; });
+function seekByEvent(ev){
+  const rect = sliderBar.getBoundingClientRect();
+  const x = Math.max(0, Math.min(rect.width, ev.clientX - rect.left));
+  const pct = x / rect.width;
+  const newSec = Math.round(pct * (app.duration || 0));
+  progressBar.style.width = (pct*100)+'%';
+  thumb.style.left = (pct*100)+'%';
+  timeCurrent.innerText = formatTime(newSec);
+  if(app.videoElement && app.videoElement.tagName === 'VIDEO') app.videoElement.currentTime = newSec;
+  timestampInput.value = new Date(newSec * 1000).toISOString().substr(11, 8);
+}
+
+/* ========= Option management for quiz builder ========= */
+function createOptionRow(text=''){
+  const id = 'opt_' + Math.random().toString(36).slice(2,9);
+  const div = document.createElement('div');
+  div.className = 'option-row';
+  div.dataset.id = id;
+  div.innerHTML = `
+    <input type="text" placeholder="Option text" value="${text}" />
+    <label style="display:flex;align-items:center;gap:8px">
+      <input type="radio" name="correctOpt" value="${id}" />
+      <span class="small-muted">Correct</span>
+    </label>
+    <button class="remove" title="Remove option">✕</button>
+  `;
+  // remove handler
+  const removeBtn = div.querySelector('.remove');
+  removeBtn.addEventListener('click', ()=>{
+    div.remove();
+  });
+  // default select first if none
+  return div;
+}
+function ensureTwoOptions(){
+  if(optionsContainer.children.length < 2){
+    while(optionsContainer.children.length < 2){
+      optionsContainer.appendChild(createOptionRow(''));
+    }
+  }
+}
+addOptionBtn.addEventListener('click', ()=>{
+  optionsContainer.appendChild(createOptionRow(''));
+});
+ensureTwoOptions();
+
+/* ========= Add Quiz Interaction ========= */
+addQuizInteraction.addEventListener?.('click', addQuizInteractionHandler);
+function addQuizInteractionHandler(){
+  // validate
+  if(!app.videoElement){
+    alert('Load a video first (prefer direct mp4 for timeline features). You can still add interactions without timeline control.');
+    return;
+  }
+  const ts = timestampInput.value.trim();
+  const seconds = parseHMS(ts);
+  const question = quizQuestionInput.value.trim();
+  if(!question){ alert('Enter quiz question'); return; }
+  // gather options
+  const opts = Array.from(optionsContainer.querySelectorAll('.option-row')).map(row=>{
+    const txt = row.querySelector('input[type="text"]').value.trim();
+    const id = row.dataset.id;
+    return {id, text:txt};
+  }).filter(o=>o.text);
+  if(opts.length < 2){ alert('Provide at least 2 answer options'); return; }
+  const correctRadio = optionsContainer.querySelector('input[type="radio"]:checked');
+  const correctId = correctRadio ? correctRadio.value : opts[0].id;
+  // build interaction object
+  const inter = {
+    id: 'i_' + Math.random().toString(36).slice(2,9),
+    type: 'quiz',
+    timestamp: seconds,
+    timestampStr: ts,
+    data: {
+      question: question,
+      type: quizTypeSelect.value,
+      options: opts,
+      correctOptionId: correctId,
+      points: Number(pointsInput.value) || 0,
+      pauseVideo: (pauseSelect.value === 'Yes'),
+      explanation: explainInput.value || ''
+    }
+  };
+  app.interactions.push(inter);
+  // update stats
+  statInteractions.innerText = app.interactions.length;
+  app.quizPoints += inter.data.points;
+  statPoints.innerText = app.quizPoints;
+  renderInteractionsList();
+  // if pause requested, pause video at that moment
+  if(app.videoElement && app.videoElement.tagName === 'VIDEO' && inter.data.pauseVideo){
+    app.videoElement.currentTime = seconds;
+    app.videoElement.pause();
+  }
+  // clear question form
+  quizQuestionInput.value = '';
+  optionsContainer.innerHTML = '';
+  ensureTwoOptions();
+  document.querySelector('input[name="correctOpt"]')?.checked = true;
+  explainInput.value = '';
+  alert('Quiz Interaction added');
+}
+
+function renderInteractionsList(){
+  if(app.interactions.length === 0){
+    interactionsList.innerHTML = '<div class="small-muted">No interactions added yet. Use the panel on the right to add quiz questions, bookmarks, or summaries.</div>';
+    return;
+  }
+  interactionsList.innerHTML = '';
+  app.interactions.forEach(it=>{
+    const div = document.createElement('div');
+    div.className = 'interaction-item';
+    div.innerHTML = `
+      <div style="flex:1"><strong>${it.type.toUpperCase()}</strong> <div class="small-muted">${it.data?.question || it.type} </div></div>
+      <div style="min-width:160px;text-align:right">
+        <div class="small-muted">${formatTime(it.timestamp)}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn ghost" data-id="${it.id}">Edit</button>
+          <button class="btn" style="background:#ff6b5b;color:#fff" data-id="${it.id}">Delete</button>
+        </div>
+      </div>
+    `;
+    // edit/delete
+    div.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const id = btn.dataset.id;
+        if(btn.textContent.trim() === 'Delete'){
+          app.interactions = app.interactions.filter(x=>x.id!==id);
+          statInteractions.innerText = app.interactions.length;
+          renderInteractionsList();
+        } else {
+          alert('Edit action — in demo this will focus on Quiz builder for that interaction if it is a quiz.');
+          // focus quiz builder and populate fields (for quiz)
+          const found = app.interactions.find(x=>x.id===id);
+          if(found && found.type === 'quiz'){
+            tiles.forEach(x=>x.classList.remove('active'));
+            tileQuiz.classList.add('active');
+            quizBuilder.style.display = 'flex';
+            timestampInput.value = new Date(found.timestamp * 1000).toISOString().substr(11,8);
+            quizQuestionInput.value = found.data.question;
+            pointsInput.value = found.data.points;
+            pauseSelect.value = found.data.pauseVideo ? 'Yes' : 'No';
+            explainInput.value = found.data.explanation;
+            // options
+            optionsContainer.innerHTML = '';
+            found.data.options.forEach(o=>{
+              const r = createOptionRow(o.text);
+              r.dataset.id = o.id;
+              optionsContainer.appendChild(r);
+            });
+            // mark correct
+            const correctRadio = optionsContainer.querySelector(`input[value="${found.data.correctOptionId}"]`);
+            if(correctRadio) correctRadio.checked = true;
+          }
+        }
+      });
+    });
+    interactionsList.appendChild(div);
+  });
+}
+
+/* ========= Export / Save / Preview ========= */
+exportBtn.addEventListener('click', ()=>{
+  const payload = {
+    title: videoTitleInput.value || '',
+    sourceType: videoSourceType.value || '',
+    url: videoUrlInput.value || '',
+    category: document.getElementById('category').value || '',
+    topic: document.getElementById('topic').value || '',
+    duration: app.duration || null,
+    interactions: app.interactions
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (videoTitleInput.value || 'project') + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+saveBtn.addEventListener('click', ()=>{
+  // simulate server save & response
+  const data = { title: videoTitleInput.value, interactions: app.interactions };
+  // fake network delay
+  saveBtn.textContent = 'Saving...';
+  saveBtn.disabled = true;
+  setTimeout(()=>{
+    saveBtn.textContent = '💾 Save to Database';
+    saveBtn.disabled = false;
+    alert('Saved to database (simulated). Project ID: ' + Math.random().toString(36).slice(2,9));
+  }, 900);
+});
+
+previewBtn.addEventListener('click', ()=>{
+  if(app.interactions.length === 0) { alert('No interactions to preview'); return; }
+  // simple preview: list interactions and timestamps
+  const list = app.interactions.map(i => `${i.type.toUpperCase()} @ ${formatTime(i.timestamp)} — ${i.data?.question || ''}`).join('\n\n');
+  alert('Preview interactions:\n\n' + list);
+});
+
+/* ========= Initialize defaults ========= */
+ensureTwoOptions();
+renderInteractionsList();
+
+// When direct video loaded, set duration variable to update slider behaviour
+// Already handled in loadVideo's loadedmetadata listener for video tag.
+
+</script>
+</body>
+</html>

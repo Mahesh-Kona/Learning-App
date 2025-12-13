@@ -1,0 +1,206 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Students - Admin{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/student.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.2.0/remixicon.css">
+{% endblock %}
+
+{% block content %}
+
+{# Sidebar is provided by `admin_base.html` via include of `admin_sidebar.html`. #}
+
+
+<div class="student-page">
+
+   
+    <div class="top-header">
+        <h1><i class="ri-user-graduate-line"></i> Student Management</h1>
+
+        <div class="header-actions">
+            <button class="btn export" id="exportBtn">
+                <i class="ri-download-line"></i> Export
+            </button>
+        </div>
+    </div>
+
+   
+    <div class="quick-actions">
+        <div class="qa-card">
+            <i class="ri-mail-send-line"></i>
+            <span>Message All</span>
+        </div>
+
+        <div class="qa-card">
+            <i class="ri-file-user-line"></i>
+            <span>Generate Certificates</span>
+        </div>
+
+        <div class="qa-card">
+            <i class="ri-file-chart-line"></i>
+            <span>Generate Report</span>
+        </div>
+
+        <div class="qa-card">
+            <i class="ri-video-chat-line"></i>
+            <span>Schedule Meeting</span>
+        </div>
+    </div>
+
+    
+    <div class="stats">
+
+        
+        <div class="stat-card">
+            <div class="stat-icon stat-green">
+                <i class="ri-group-line"></i>
+            </div>
+            <div>
+                <h2 id="totalStudentsCount">0</h2>
+                <p>Total Students</p>
+            </div>
+        </div>
+
+        
+        <div class="stat-card">
+            <div class="stat-icon stat-blue">
+                <i class="ri-line-chart-line"></i>
+            </div>
+            <div>
+                <h2 id="activeThisWeekCount">0</h2>
+                <p>Active This Week</p>
+            </div>
+        </div>
+
+        
+        <div class="stat-card">
+            <div class="stat-icon stat-orange">
+                <i class="ri-user-add-line"></i>
+            </div>
+            <div>
+                <h2 id="newThisMonthCount">0</h2>
+                <p>New This Month</p>
+            </div>
+        </div>
+    </div>
+
+    
+    <section id="student-list-section" class="content-section">
+        <h2>All Students</h2>
+
+        
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="Search by name or ID">
+            <select id="statusFilter">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+            <select id="courseFilter">
+                <option value="">All Courses</option>
+                <option value="web">Web</option>
+                <option value="mobile">Mobile</option>
+                <option value="ui">UI</option>
+            </select>
+
+            <button id="clearFiltersBtn" class="btn">Clear</button>
+        </div>
+
+        
+        <div class="selected-count">0 selected</div>
+
+        
+        <div class="table-container">
+            <table class="student-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
+                        <th>Id</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Enrollment Date</th>
+                        <th>Courses</th>
+                        <th>Progress</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody">
+                   
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    
+    <section id="leaderboard-section" class="content-section">
+        <div class="leaderboard-container">
+            <div class="leaderboard-header">
+                <h2>Leaderboard</h2>
+                <div class="actions">
+                    <button class="btn add" id="refreshLeaderboardBtn">Refresh</button>
+                    <button class="btn export" id="exportLeaderboardBtn">Export</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Name</th>
+                            <th>Score</th>
+                            <th>Last Updated</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardTableBody">
+                        <!-- Populated dynamically from API -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<!-- Modal for view/edit student -->
+<div id="studentModal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modalTitle">Edit Student</h3>
+      <button type="button" class="modal-close" id="modalCloseBtn">&times;</button>
+    </div>
+    <form id="studentForm">
+      <label>Name
+        <input type="text" id="modalName" required>
+      </label>
+      <label>Email
+        <input type="email" id="modalEmail" required>
+      </label>
+      <label>Enrollment Date
+        <input type="date" id="modalEnrollment">
+      </label>
+      <label>Courses (Subjects)
+        <input type="text" id="modalCourses" placeholder="Comma separated">
+      </label>
+      <label>Status
+        <select id="modalStatus">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="modalCancelBtn">Cancel</button>
+        <button type="submit" class="btn add" id="modalSaveBtn">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/student.js') }}"></script>
+{% endblock %}

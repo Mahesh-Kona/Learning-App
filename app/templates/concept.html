@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EduSaint — Concept Card Editor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --primary:#4361ee; --secondary:#3a0ca3;
+  --success:#4cc9f0; --muted:#6c757d;
+  --bg:#f5f7fb; --card:#fff;
+  --accent:#7d4dff; --danger:#ff6b5b;
+}
+*{box-sizing:border-box;font-family:Inter,Segoe UI,Arial,system-ui;margin:0;padding:0;}
+body{background:var(--bg);color:#222;height:100vh;display:flex;overflow:hidden;}
+/* GRID LAYOUT: left/right panels small, main large */
+.container{display:grid;grid-template-columns:1fr 3fr 1fr;overflow:hidden;height:100vh;}
+
+/* LEFT SIDEBAR */
+.sidebar{background:var(--card);padding:20px;border-right:1px solid #e6e6ea;overflow:auto;}
+.sidebar h2{font-size:16px;margin-bottom:16px;letter-spacing:0.4px;}
+.template{border-radius:14px;padding:18px;margin-bottom:18px;background:linear-gradient(180deg,#fff,#fcfcfd);box-shadow:0 2px 8px rgba(16,24,40,0.03);border:2px solid transparent;cursor:pointer;}
+.template .title{display:flex;align-items:center;gap:12px;font-weight:700;font-size:16px;margin-bottom:8px;}
+.template .desc{color:var(--muted);font-size:13px;margin-bottom:10px;}
+.template ul{color:var(--muted);font-size:13px;padding-left:18px;margin-bottom:14px;}
+.template .select{display:block;width:100%;padding:12px;border-radius:10px;border:none;font-weight:700;cursor:pointer;}
+.template.quiz{border-color:rgba(255,107,91,0.2)}.template.quiz .select{background:var(--danger);color:#fff}
+.template.interactive{border-color:rgba(140,40,255,0.12)}.template.interactive .select{background:#7b2cff;color:#fff}
+.template.video{border-color:rgba(45,177,76,0.12)}.template.video .select{background:#2db14c;color:#fff}
+.template.concept{border-color:rgba(255,198,0,0.25)}.template.concept .select{background:#ffb400;color:#fff}
+
+/* MAIN AREA */
+.main{padding:28px;overflow:auto;}
+.preview-wrap{max-width:1080px;margin:0 auto;}
+.card-preview{background:var(--card);border-radius:18px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,0.06);padding-bottom:20px;}
+.card-title-big{font-size:44px;font-weight:800;padding:36px 28px 6px 28px;text-align:center;}
+.card-body{padding:8px 28px 0 28px;}
+.blocks-area{min-height:120px;padding:18px;border-radius:12px;border:2px dashed #e8e8e8;background:#fafbff;margin-top:12px;}
+.block{background:#fff;border-radius:10px;padding:14px;margin:12px 0;border:1px solid #eee;position:relative;cursor:grab;}
+.block.dragging{opacity:0.5;}
+.block .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.btn{padding:6px 10px;border-radius:8px;border:none;cursor:pointer;font-size:13px;}
+.btn.gray{background:#f0f2f5;}
+.btn.primary{background:var(--primary);color:#fff;}
+.btn.danger{background:#ff6b6b;color:#fff;}
+.btn.small{padding:4px 8px;font-size:12px;}
+
+/* RIGHT PANEL */
+.right{background:var(--card);padding:20px;border-left:1px solid #e6e6e6;overflow:auto;}
+.block-item{border:2px solid #eee;padding:12px;border-radius:10px;margin-bottom:12px;cursor:pointer;background:#fff;transition:all 0.2s;}
+.block-item:hover{border-color:var(--primary);background:#f8faff;}
+.image-placeholder{padding:22px;border-radius:10px;border:2px dashed #e8e8e8;text-align:center;cursor:pointer;background:#fafbff;}
+.image-placeholder img{max-width:100%;border-radius:8px;}
+.small{font-size:13px;color:var(--muted);}
+.delete-btn-cross{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:#ff6b6b;color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;z-index:10;}
+.textarea{width:100%;min-height:80px;border-radius:10px;border:1px solid #e6e6e9;padding:10px;margin-top:8px;background:#fbfbfb;}
+
+@media(max-width:992px){
+  .container{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;}
+  .right{border-left:none;border-top:1px solid #e6e6e6;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <h2>CARD TEMPLATES</h2>
+    <div class="template concept" onclick="navigateToCardEditor('concept')">
+      <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(255,198,0,0.15);display:grid;place-items:center;color:#ffb400;font-weight:800">📘</span>Concept Card</div>
+      <div class="desc">Explain Concepts Clearly</div>
+      <ul><li>Theory Explanation</li><li>Notes</li><li>Summary Points</li></ul>
+      <button class="select">SELECT →</button>
+    </div>
+
+    <div class="template quiz" onclick="navigateToCardEditor('quiz')">
+      <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(255,107,91,0.12);display:grid;place-items:center;color:var(--danger);font-weight:800">❓</span>Quiz Card</div>
+      <div class="desc">Multiple Choice Questions</div>
+      <ul><li>MCQ</li><li>True/False</li><li>Match Columns</li></ul>
+      <button class="select">SELECT →</button>
+    </div>
+
+    <div class="template interactive" onclick="navigateToCardEditor('interactive')">
+      <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(140,40,255,0.12);display:grid;place-items:center;color:#7b2cff;font-weight:800">🧩</span>Interactive Card</div>
+      <div class="desc">Engaging Activities</div>
+      <ul><li>Fill Blanks</li><li>Drag & Drop</li><li>Label Diagram</li></ul>
+      <button class="select">SELECT →</button>
+    </div>
+
+    <div class="template video" onclick="navigateToCardEditor('video')">
+      <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(45,177,76,0.12);display:grid;place-items:center;color:#2db14c;font-weight:800">🎬</span>Video Card</div>
+      <div class="desc">Video Questions</div>
+      <ul><li>Play & Ask</li><li>Time Based MCQ</li></ul>
+      <button class="select">SELECT →</button>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <main class="main">
+    <div class="preview-wrap">
+      <section class="card-preview">
+        <div id="cardTitleBig" class="card-title-big" contenteditable="true" role="textbox" aria-multiline="true" tabindex="0">Enter title here</div>
+        <div class="card-body">
+          <div id="blocksContainer" class="blocks-area" aria-label="Content blocks">
+            <div id="emptyPlaceholder" class="small" style="text-align:center;padding:18px;color:var(--muted)">Click on block types on the right to add content blocks.</div>
+          </div>
+          <div style="text-align:center;margin-top:18px">
+            <button id="publishBtn" class="btn primary">Continue</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside class="right">
+    <h3 style="margin-top:0">Blocks</h3>
+    <div id="blocksList">
+      <div class="block-item" data-type="image-main"><strong>Main Image</strong><div class="small">Large banner image</div></div>
+      <div class="block-item" data-type="text"><strong>Text Block</strong><div class="small">Add paragraphs / explanations</div></div>
+      <div class="block-item" data-type="image"><strong>Image Block</strong><div class="small">Supporting image + caption</div></div>
+      <div class="block-item" data-type="divider"><strong>Divider</strong><div class="small">Visual separator</div></div>
+      <div class="block-item" data-type="keypoints"><strong>Key Points</strong><div class="small">Bullet style highlights</div></div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+const blocksContainer = document.getElementById('blocksContainer');
+const emptyPlaceholder = document.getElementById('emptyPlaceholder');
+const blocksList = document.querySelectorAll('.block-item');
+const cardTitle = document.getElementById('cardTitleBig');
+let dragSrcEl = null;
+
+function switchCard(type){
+  cardTitle.innerText = type.charAt(0).toUpperCase() + type.slice(1) + ' Card Title';
+  blocksContainer.innerHTML = '<div id="emptyPlaceholder" class="small" style="text-align:center;padding:18px;color:var(--muted)">Click on block types on the right to add content blocks.</div>';
+}
+
+function navigateToCardEditor(cardType){
+  // Get URL parameters from current page
+  const currentParams = new URLSearchParams(window.location.search);
+  const topicId = currentParams.get('topic_id');
+  const lessonId = currentParams.get('lesson_id');
+  const displayOrder = currentParams.get('display_order');
+  
+  // Build new URL with card type - use /admin/ routes or direct template paths
+  let newUrl = `/admin/${cardType}-editor`;
+  const params = new URLSearchParams();
+  
+  if(topicId) params.append('topic_id', topicId);
+  if(lessonId) params.append('lesson_id', lessonId);
+  if(displayOrder) params.append('display_order', displayOrder);
+  
+  const queryString = params.toString();
+  if(queryString) newUrl += `?${queryString}`;
+  
+  window.location.href = newUrl;
+}
+
+// Add block
+blocksList.forEach(block => {
+  block.addEventListener('click', () => addBlock(block.dataset.type));
+});
+
+function addBlock(type){
+  const placeholder = document.getElementById('emptyPlaceholder');
+  if(placeholder) placeholder.style.display = 'none';
+
+  const block = document.createElement('div');
+  block.className = 'block';
+  block.draggable = true;
+  block.dataset.type = type;
+
+  switch(type){
+    case 'text':
+      block.innerHTML = `<div class="header"><span>Text Block</span><button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();event.stopPropagation()">×</button></div>
+      <div contenteditable="true" class="textarea" role="textbox"></div>`;
+      break;
+    case 'image-main':
+      block.innerHTML = `<div class="header"><span>Main Image</span><button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();event.stopPropagation()">×</button></div>
+      <div class="image-placeholder" onclick="uploadImage(this)">Click to upload image</div>`;
+      break;
+    case 'image':
+      block.innerHTML = `<div class="header"><span>Image Block</span><button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();event.stopPropagation()">×</button></div>
+      <div class="image-placeholder" onclick="uploadImage(this)">Click to upload image</div>`;
+      break;
+    case 'divider':
+      block.innerHTML = `<div class="header"><span>Divider</span><button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();event.stopPropagation()">×</button></div>
+      <hr style="border:1px dashed #ccc">`;
+      break;
+    case 'keypoints':
+      block.innerHTML = `<div class="header"><span>Key Points</span><button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();event.stopPropagation()">×</button></div>
+      <ul contenteditable="true" class="textarea"><li>Point 1</li><li>Point 2</li></ul>`;
+      break;
+  }
+
+  addDragEvents(block);
+  blocksContainer.appendChild(block);
+}
+
+function addDragEvents(block){
+  block.addEventListener('dragstart', (e)=>{
+    dragSrcEl = block;
+    block.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  block.addEventListener('dragend', ()=>{ block.classList.remove('dragging'); });
+  block.addEventListener('dragover', (e)=>{
+    e.preventDefault();
+    const dragging = document.querySelector('.dragging');
+    const afterElement = getDragAfterElement(blocksContainer, e.clientY);
+    if(afterElement == null) blocksContainer.appendChild(dragging);
+    else blocksContainer.insertBefore(dragging, afterElement);
+  });
+}
+
+function getDragAfterElement(container, y){
+  const draggableElements = [...container.querySelectorAll('.block:not(.dragging)')];
+  return draggableElements.reduce((closest, child)=>{
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height/2;
+    if(offset < 0 && offset > closest.offset) return {offset: offset, element: child};
+    else return closest;
+  }, {offset: Number.NEGATIVE_INFINITY}).element;
+}
+
+function checkEmpty(){
+  if(blocksContainer.children.length === 0) emptyPlaceholder.style.display = 'block';
+}
+
+function uploadImage(el){
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if(file){
+      const reader = new FileReader();
+      reader.onload = function(ev){ el.innerHTML = `<img src="${ev.target.result}" alt="Uploaded Image">`; }
+      reader.readAsDataURL(file);
+    }
+  }
+  input.click();
+}
+
+document.getElementById('publishBtn').addEventListener('click', async ()=>{
+  const title = cardTitle.innerText.trim();
+  if(!title || title === 'Enter title here'){
+    alert('Please enter a card title');
+    return;
+  }
+
+  const topicId = getTopicIdFromURL();
+  const lessonId = getLessonIdFromURL();
+  const displayOrder = getDisplayOrderFromURL();
+
+  if(!topicId && !lessonId){
+    alert('Error: This card must be associated with either a topic or a lesson.');
+    return;
+  }
+
+  const blocks = [...blocksContainer.querySelectorAll('.block')].map(b=>{
+    const type = b.dataset.type;
+    let content = '';
+    if(type==='text'||type==='keypoints') content = b.querySelector('[contenteditable]').innerHTML;
+    else if(type==='image-main'||type==='image'){ const img = b.querySelector('img'); content = img?img.src:''; }
+    return {type, content};
+  });
+
+  const cardData = {
+    card_type: 'concept',
+    title: title,
+    data_json: { blocks: blocks },
+    display_order: parseInt(displayOrder),
+    published: false
+  };
+
+  if(topicId) cardData.topic_id = parseInt(topicId);
+  if(lessonId) cardData.lesson_id = parseInt(lessonId);
+
+  try {
+    const tokenResponse = await fetch('/admin/api/get-jwt-token', { 
+      credentials: 'include',
+      method: 'GET'
+    });
+
+    if(!tokenResponse.ok) {
+      alert('Failed to authenticate. Please login again.');
+      window.location.href = '/admin/login';
+      return;
+    }
+
+    const tokenData = await tokenResponse.json();
+    if(!tokenData.access_token) {
+      alert('Failed to get access token');
+      return;
+    }
+
+    const token = tokenData.access_token;
+    localStorage.setItem('admin_jwt_token', token);
+
+    const response = await fetch('/api/v1/cards', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      credentials: 'include',
+      body: JSON.stringify(cardData)
+    });
+
+    const result = await response.json();
+    if(result.success){
+      alert('Concept card saved successfully!');
+      const confirmContinue = confirm('Click OK to add another card, or Cancel to go back to dashboard');
+      if(confirmContinue){
+        cardTitle.innerText = 'Enter title here';
+        blocksContainer.innerHTML = '<div id="emptyPlaceholder" class="small" style="text-align:center;padding:18px;color:var(--muted)">Click on block types on the right to add content blocks.</div>';
+      } else {
+        window.location.href = '/admin/dashboard';
+      }
+    } else {
+      const errorMsg = result.error || result.detail || JSON.stringify(result);
+      alert(`Failed to save card: ${errorMsg}`);
+    }
+  } catch(err){
+    console.error('Save error:', err);
+    alert('Failed to save card: ' + err.message);
+  }
+});
+
+function getTopicIdFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get('topic_id');
+}
+
+function getLessonIdFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get('lesson_id');
+}
+
+function getDisplayOrderFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get('display_order') || '0';
+}
+</script>
+</body>
+</html>

@@ -14,6 +14,13 @@
 	<!-- External CSS -->
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/create_course.css') }}" />
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}" />
+
+	<style>
+	/* Make tag chips and the remove icon show pointer cursor */
+	.tags-input-container .tag, .tags-input-container .tag-remove, .upload-btn {
+		cursor: pointer;
+	}
+	</style>
 </head>
 	<body>
 	<div class="dashboard">
@@ -376,6 +383,56 @@
 				}
 			});
 		}
+
+			// Tags input: allow removing tags by clicking the × and maintain the
+			// value of the tags input (comma-separated) so server receives them.
+			const tagsContainer = document.querySelector('.tags-input-container');
+			if (tagsContainer) {
+				const tagsInput = tagsContainer.querySelector('.tags-input');
+
+				function updateTagsValue() {
+					const tags = Array.from(tagsContainer.querySelectorAll('.tag'))
+						.map(t => {
+							// text content of tag element without the remove character
+							const node = t.cloneNode(true);
+							const rem = node.querySelector('.tag-remove');
+							if (rem) rem.remove();
+							return node.textContent.trim();
+						})
+						.filter(Boolean);
+					if (tagsInput) tagsInput.value = tags.join(',');
+				}
+
+				// Delegate click for remove buttons
+				tagsContainer.addEventListener('click', function (ev) {
+					if (ev.target && ev.target.classList.contains('tag-remove')) {
+						const tagEl = ev.target.closest('.tag');
+						if (tagEl) tagEl.remove();
+						updateTagsValue();
+					}
+				});
+
+				// Add tag on Enter or comma from the input
+				if (tagsInput) {
+					tagsInput.addEventListener('keydown', function (ev) {
+						if (ev.key === 'Enter' || ev.key === ',') {
+							ev.preventDefault();
+							const val = tagsInput.value.trim().replace(/,$/, '');
+							if (val) {
+								const tag = document.createElement('div');
+								tag.className = 'tag';
+								tag.innerHTML = `${val} <span class="tag-remove">×</span>`;
+								tagsContainer.insertBefore(tag, tagsInput);
+								tagsInput.value = '';
+								updateTagsValue();
+							}
+						}
+					});
+				}
+
+				// Initialize tags input value on load
+				updateTagsValue();
+			}
 	});
 	</script>
 	<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>

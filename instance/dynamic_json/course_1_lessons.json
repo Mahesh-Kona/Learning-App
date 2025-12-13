@@ -1,0 +1,12 @@
+{
+  "course_id": 1,
+  "lessons": [
+    {
+      "id": 1,
+      "title": "Intro Lesson",
+      "description": "",
+      "duration": null,
+      "level": null
+    }
+  ]
+}
