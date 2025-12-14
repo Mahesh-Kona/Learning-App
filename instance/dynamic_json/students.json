@@ -109,7 +109,18 @@
       "xp": 0,
       "lastLogin": "",
       "status": "active"
+    },
+    {
+      "id": 18,
+      "name": "API Test Student",
+      "email": "student.api.test@example.com",
+      "enrollmentDate": "2025-12-13",
+      "courses": "",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
     }
   ],
-  "total": 10
+  "total": 11
 }

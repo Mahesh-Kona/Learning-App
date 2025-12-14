@@ -96,7 +96,10 @@ def upload():
             return {"success": False, "error": "upload failed", "code": 500}, 500
     else:
         UP = current_app.config.get("UPLOAD_PATH", "/tmp/uploads")
-        filepath = _save_local(f, UP, filename)
+        # Store videos under a dedicated subfolder for organization
+        subfolder = "videos" if (f.mimetype or "").startswith("video/") else ""
+        upload_path = os.path.join(UP, subfolder) if subfolder else UP
+        filepath = _save_local(f, upload_path, filename)
         size = os.path.getsize(filepath)
         # Validate saved size against configured limit
         if max_len and size and size > max_len:
@@ -106,7 +109,7 @@ def upload():
                 current_app.logger.exception("failed to remove oversize file")
             return {"success": False, "error": "file too large", "code": 413}, 413
         mime_type = f.mimetype
-        url = f"/uploads/{filename}"
+        url = f"/uploads/{(subfolder + '/' if subfolder else '')}{filename}"
 
     # uploader id - try to get from JWT if present (optional)
     uploader_id = None

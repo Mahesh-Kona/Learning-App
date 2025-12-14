@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, render_template_string, request, redirect, url_for, session, flash, current_app, send_from_directory
 from app.extensions import db
 from app.models import User
-from app.models import Course, Lesson, Topic, Asset
+from app.models import Course, Lesson, Topic, Asset, Student
 from sqlalchemy import func
 from werkzeug.utils import secure_filename
 import uuid
@@ -201,8 +201,15 @@ def admin_dashboard():
     # Prefer the packaged `dashboard.html`. If rendering fails (missing or broken),
     # try the project-level `templates/dashboard.html` and finally show the
     # admin_dashboard_missing fallback.
+    # Fetch recently added students ordered by join date (students.date)
+    recent_students = []
     try:
-        return render_template('dashboard.html', user=user, active='dashboard')
+        recent_students = Student.query.order_by(Student.date.desc()).limit(10).all()
+    except Exception:
+        recent_students = []
+
+    try:
+        return render_template('dashboard.html', user=user, active='dashboard', recent_students=recent_students)
     except Exception:
         project_root = os.path.abspath(os.path.join(current_app.root_path, '..'))
         candidate = os.path.join(project_root, 'templates', 'dashboard.html')
@@ -210,7 +217,7 @@ def admin_dashboard():
             try:
                 with open(candidate, 'r', encoding='utf8') as fh:
                     content = fh.read()
-                return render_template_string(content, user=user, active='dashboard')
+                return render_template_string(content, user=user, active='dashboard', recent_students=recent_students)
             except Exception:
                 current_app.logger.exception('Failed to render project-level dashboard.html')
         # final fallback
@@ -250,6 +257,49 @@ def students_page():
     return render_template('student.html', user=user, active='students')
 
 
+@admin_bp.route('/students/<int:student_id>', methods=['GET'])
+def view_student(student_id: int):
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    student = None
+    try:
+        student = Student.query.get(student_id)
+    except Exception:
+        student = None
+
+    if not student:
+        flash('Student not found', 'error')
+        return redirect(url_for('admin_bp.admin_dashboard'))
+
+    # Build avatar URL for the template, mapping stored path to /uploads route
+    avatar_url = None
+    try:
+        img_path = (student.image or '').strip()
+        if img_path:
+            # remove any leading slash
+            img_path = img_path.lstrip('/')
+            # ensure path points to avatars folder under uploads
+            # if not already under 'avatars/', take basename and prepend
+            first_segment = img_path.split('/')[0]
+            if first_segment.lower() != 'avatars':
+                fname = os.path.basename(img_path)
+                img_path = f"avatars/{fname}"
+            avatar_url = url_for('uploaded_file', filename=img_path)
+    except Exception:
+        avatar_url = None
+
+    return render_template('student_detail.html', user=user, active='students', student=student, avatar_url=avatar_url)
+
+
 @admin_bp.route('/create_topic', methods=['GET'])
 def create_topic_page():
     uid = session.get('admin_user_id')
@@ -284,7 +334,24 @@ def concept_editor():
 
 @admin_bp.route('/video-editor', methods=['GET'])
 def video_editor():
-    return render_template('video.html')
+    # Require admin session similar to other admin pages
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    # Pass through optional context for saving cards
+    topic_id = request.args.get('topic_id')
+    lesson_id = request.args.get('lesson_id')
+    display_order = request.args.get('display_order', 0)
+
+    return render_template('video.html', user=user, topic_id=topic_id, lesson_id=lesson_id, display_order=display_order)
 
 
 @admin_bp.route('/interactive-editor', methods=['GET'])

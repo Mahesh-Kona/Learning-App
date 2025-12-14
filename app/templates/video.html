@@ -166,26 +166,13 @@
       </div>
 
       <div style="margin-bottom:12px">
-        <label>Video URL *</label>
-        <input id="videoUrl" type="text" placeholder="Paste video URL here (YouTube, Vimeo, or direct video URL)" />
+        <label>Video URL / File *</label>
+        <div id="videoUrlWrapper">
+          <input id="videoUrl" type="text" placeholder="Paste video URL here (YouTube, Vimeo, or direct video URL)" />
+        </div>
       </div>
 
-      <div class="form-row" style="margin-bottom:12px">
-        <div class="col">
-          <label>Category</label>
-          <select id="category">
-            <option value="">Select category</option>
-            <option>Math</option><option>Science</option><option>Programming</option>
-          </select>
-        </div>
-        <div class="col">
-          <label>Topic</label>
-          <select id="topic">
-            <option value="">Select topic</option>
-            <option>Algebra</option><option>Physics</option><option>Flutter</option>
-          </select>
-        </div>
-      </div>
+      
 
       <button id="loadVideoBtn" class="btn primary"><span>▶</span> Load Video</button>
     </div>
@@ -271,9 +258,9 @@
         <div id="quizBuilder" class="quiz-builder">
           <label class="small">Quiz Type *</label>
           <select id="quizType" class="select-field">
-            <option>Multiple Choice (MCQ)</option>
-            <option>True / False</option>
-            <option>Match Columns</option>
+                    <option value="mcq">Multiple Choice (MCQ)</option>
+                    <option value="tf">True / False</option>
+                    <option value="match">Match Columns</option>
           </select>
 
           <label class="small">Question *</label>
@@ -345,7 +332,8 @@ let app = {
 /* ========= DOM refs ========= */
 const videoPreview = document.getElementById('videoPreview');
 const loadVideoBtn = document.getElementById('loadVideoBtn');
-const videoUrlInput = document.getElementById('videoUrl');
+const videoUrlWrapper = document.getElementById('videoUrlWrapper');
+let videoUrlInput = document.getElementById('videoUrl');
 const videoSourceType = document.getElementById('videoSourceType');
 const videoTitleInput = document.getElementById('videoTitle');
 const statDuration = document.getElementById('statDuration');
@@ -379,6 +367,13 @@ const explainInput = document.getElementById('explainInput');
 const previewBtn = document.getElementById('previewBtn');
 const exportBtn = document.getElementById('exportBtn');
 const saveBtn = document.getElementById('saveBtn');
+// Disable save until a title is entered
+function updateSaveEnabled(){
+  const hasTitle = (videoTitleInput.value || '').trim().length > 0;
+  saveBtn.disabled = !hasTitle;
+}
+updateSaveEnabled();
+videoTitleInput.addEventListener('input', updateSaveEnabled);
 
 /* ========= Interactions for tiles (select type) ========= */
 tiles.forEach(t=>{
@@ -398,8 +393,58 @@ tiles.forEach(t=>{
 });
 
 /* ========= VIDEO LOAD ========= */
+// Switch URL input to file upload when sourceType is 'direct'
+videoSourceType.addEventListener('change', ()=>{
+  const source = videoSourceType.value;
+  if(source === 'direct'){
+    // Render file input
+    videoUrlWrapper.innerHTML = `
+      <input id="videoFile" type="file" accept="video/mp4,video/*" />
+      <div class="small-muted">Select an MP4 file to upload; it will be stored under uploads and a URL will be auto-filled.</div>
+    `;
+    const fileInput = document.getElementById('videoFile');
+    fileInput.addEventListener('change', async (e)=>{
+      const file = e.target.files && e.target.files[0];
+      if(!file){ return; }
+      try {
+        const tokenRes = await fetch('/admin/api/get-jwt-token', { credentials: 'include', method: 'GET' });
+        if(!tokenRes.ok){ alert('Auth failed. Please login again.'); window.location.href='/admin/login'; return; }
+        const tokenData = await tokenRes.json();
+        const token = tokenData.access_token;
+        if(!token){ alert('Failed to get access token'); return; }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        const upRes = await fetch('/api/v1/uploads', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include',
+          body: formData
+        });
+        const upData = await upRes.json();
+        if(!upRes.ok || !upData.success){
+          const msg = upData.error || upData.detail || 'Upload failed';
+          alert(msg);
+          return;
+        }
+        const url = upData.url; // e.g., /uploads/filename.mp4
+        videoUrlWrapper.innerHTML = `<input id="videoUrl" type="text" value="${url}" />`;
+        videoUrlInput = document.getElementById('videoUrl');
+        loadVideo(url, 'direct');
+      } catch(err){
+        console.error('Upload error:', err);
+        alert('Failed to upload video: ' + err.message);
+      }
+    });
+  } else {
+    // Restore text input for non-direct sources
+    videoUrlWrapper.innerHTML = `<input id=\"videoUrl\" type=\"text\" placeholder=\"Paste video URL here (YouTube, Vimeo, or direct video URL)\" />`;
+    videoUrlInput = document.getElementById('videoUrl');
+  }
+});
+
 loadVideoBtn.addEventListener('click', ()=>{
-  const url = videoUrlInput.value.trim();
+  const url = (videoUrlInput && videoUrlInput.value ? videoUrlInput.value : '').trim();
   const source = videoSourceType.value;
   if(!url || !source){ alert('Please select source type and enter a URL'); return; }
   loadVideo(url, source);
@@ -562,27 +607,92 @@ addOptionBtn.addEventListener('click', ()=>{
 });
 ensureTwoOptions();
 
+// Adapt options UI by quiz type selection
+quizTypeSelect.addEventListener('change', ()=>{
+  const type = quizTypeSelect.value;
+  optionsContainer.innerHTML = '';
+  addOptionBtn.style.display = '';
+  // Show/hide points for types
+  // Keep points for all for now
+  if(type === 'tf'){
+    // True/False fixed options
+    const optTrue = createOptionRow('True');
+    const optFalse = createOptionRow('False');
+    optionsContainer.appendChild(optTrue);
+    optionsContainer.appendChild(optFalse);
+    addOptionBtn.style.display = 'none';
+    // default correct True
+    const el = optionsContainer.querySelector('input[name="correctOpt"]');
+    if(el) el.checked = true;
+  } else if(type === 'match'){
+    // Render match columns builder
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="small-muted" style="margin-bottom:8px">Enter pairs (Left ↔ Right). Add at least 2 pairs.</div>
+      <div id="matchPairs"></div>
+      <button id="addPairBtn" class="btn ghost" style="margin-top:8px">+ Add Pair</button>
+    `;
+    optionsContainer.appendChild(wrap);
+    const pairsContainer = wrap.querySelector('#matchPairs');
+    const addPairBtn = wrap.querySelector('#addPairBtn');
+    function addPair(left='', right=''){
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `
+        <input type="text" placeholder="Left" value="${left}" />
+        <span style="font-weight:700">↔</span>
+        <input type="text" placeholder="Right" value="${right}" />
+        <button class="remove" title="Remove">✕</button>
+      `;
+      row.querySelector('.remove').addEventListener('click', ()=> row.remove());
+      pairsContainer.appendChild(row);
+    }
+    addPairBtn.addEventListener('click', ()=> addPair('', ''));
+    addPair('A', '1');
+    addPair('B', '2');
+    // Hide addOption and radio correct for match type
+    addOptionBtn.style.display = 'none';
+  } else {
+    // mcq default
+    ensureTwoOptions();
+    addOptionBtn.style.display = '';
+  }
+});
+
 /* ========= Add Quiz Interaction ========= */
 addQuizInteraction.addEventListener?.('click', addQuizInteractionHandler);
 function addQuizInteractionHandler(){
-  // validate
+  // validate (allow adding even without loaded video; timeline control will be limited)
   if(!app.videoElement){
-    alert('Load a video first (prefer direct mp4 for timeline features). You can still add interactions without timeline control.');
-    return;
+    alert('No video loaded. You can still add interactions; timeline control features will be limited until a direct video is loaded.');
   }
   const ts = timestampInput.value.trim();
   const seconds = parseHMS(ts);
   const question = quizQuestionInput.value.trim();
   if(!question){ alert('Enter quiz question'); return; }
   // gather options
-  const opts = Array.from(optionsContainer.querySelectorAll('.option-row')).map(row=>{
-    const txt = row.querySelector('input[type="text"]').value.trim();
-    const id = row.dataset.id;
-    return {id, text:txt};
-  }).filter(o=>o.text);
-  if(opts.length < 2){ alert('Provide at least 2 answer options'); return; }
-  const correctRadio = optionsContainer.querySelector('input[type="radio"]:checked');
-  const correctId = correctRadio ? correctRadio.value : opts[0].id;
+  const typeSel = quizTypeSelect.value;
+  let opts = [];
+  let correctId = null;
+  if(typeSel === 'match'){
+    const pairs = Array.from(optionsContainer.querySelectorAll('#matchPairs .option-row')).map(row=>{
+      const left = row.querySelector('input[placeholder="Left"]').value.trim();
+      const right = row.querySelector('input[placeholder="Right"]').value.trim();
+      return { left, right };
+    }).filter(p=>p.left && p.right);
+    if(pairs.length < 2){ alert('Add at least 2 match pairs'); return; }
+    opts = pairs; // store as pairs
+  } else {
+    opts = Array.from(optionsContainer.querySelectorAll('.option-row')).map(row=>{
+      const txt = row.querySelector('input[type="text"]').value.trim();
+      const id = row.dataset.id;
+      return {id, text:txt};
+    }).filter(o=>o.text);
+    if(typeSel === 'mcq' && opts.length < 2){ alert('Provide at least 2 answer options'); return; }
+    if(typeSel === 'tf' && opts.length !== 2){ alert('True/False must have exactly 2 options'); return; }
+    const correctRadio = optionsContainer.querySelector('input[type="radio"]:checked');
+    correctId = correctRadio ? correctRadio.value : (opts[0]?.id || null);
+  }
   // build interaction object
   const inter = {
     id: 'i_' + Math.random().toString(36).slice(2,9),
@@ -591,7 +701,7 @@ function addQuizInteractionHandler(){
     timestampStr: ts,
     data: {
       question: question,
-      type: quizTypeSelect.value,
+      type: typeSel,
       options: opts,
       correctOptionId: correctId,
       points: Number(pointsInput.value) || 0,
@@ -614,7 +724,10 @@ function addQuizInteractionHandler(){
   quizQuestionInput.value = '';
   optionsContainer.innerHTML = '';
   ensureTwoOptions();
-  document.querySelector('input[name="correctOpt"]')?.checked = true;
+  (function(){
+    const el = document.querySelector('input[name="correctOpt"]');
+    if(el) el.checked = true;
+  })();
   explainInput.value = '';
   alert('Quiz Interaction added');
 }
@@ -683,8 +796,6 @@ exportBtn.addEventListener('click', ()=>{
     title: videoTitleInput.value || '',
     sourceType: videoSourceType.value || '',
     url: videoUrlInput.value || '',
-    category: document.getElementById('category').value || '',
-    topic: document.getElementById('topic').value || '',
     duration: app.duration || null,
     interactions: app.interactions
   };
@@ -696,17 +807,86 @@ exportBtn.addEventListener('click', ()=>{
   URL.revokeObjectURL(a.href);
 });
 
-saveBtn.addEventListener('click', ()=>{
-  // simulate server save & response
-  const data = { title: videoTitleInput.value, interactions: app.interactions };
-  // fake network delay
-  saveBtn.textContent = 'Saving...';
-  saveBtn.disabled = true;
-  setTimeout(()=>{
+saveBtn.addEventListener('click', async ()=>{
+  // Require title before saving
+  const titleVal = (videoTitleInput.value || '').trim();
+  if(!titleVal){
+    alert('Please enter a Video Title before saving.');
+    videoTitleInput.focus();
+    return;
+  }
+  const topicId = getTopicIdFromURL();
+  const lessonId = getLessonIdFromURL();
+  const displayOrder = getDisplayOrderFromURL();
+
+  const cardData = {
+    card_type: 'video',
+    title: titleVal,
+    topic_id: topicId ? parseInt(topicId, 10) : undefined,
+    lesson_id: lessonId ? parseInt(lessonId, 10) : undefined,
+    display_order: displayOrder ? parseInt(displayOrder, 10) : 0,
+    data_json: {
+      sourceType: videoSourceType.value || '',
+      url: videoUrlInput.value || '',
+      duration: app.duration || null,
+      interactions: app.interactions
+    }
+  };
+
+  if(!cardData.topic_id && !cardData.lesson_id){
+    alert('Missing context: provide topic_id or lesson_id in the URL.');
+    return;
+  }
+
+  try {
+    saveBtn.textContent = 'Saving...';
+    saveBtn.disabled = true;
+
+    // Get admin JWT via helper endpoint (session-based)
+    const tokenResponse = await fetch('/admin/api/get-jwt-token', { credentials: 'include', method: 'GET' });
+    if(!tokenResponse.ok){
+      alert('Failed to authenticate. Please login again.');
+      window.location.href = '/admin/login';
+      return;
+    }
+    const tokenData = await tokenResponse.json();
+    const token = tokenData.access_token;
+    if(!token){
+      alert('Failed to get access token');
+      return;
+    }
+
+    // Persist card
+    const resp = await fetch('/api/v1/cards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
+      body: JSON.stringify(cardData)
+    });
+
+    const result = await resp.json();
+    if(result.success){
+      alert('Video card saved successfully!');
+      const again = confirm('Click OK to add another video card, or Cancel to go back to dashboard');
+      if(again){
+        // Reset minimal state
+        videoTitleInput.value = '';
+        app.interactions = [];
+        renderInteractionsList();
+      } else {
+        window.location.href = '/admin/dashboard';
+      }
+    } else {
+      const errorMsg = result.error || result.detail || JSON.stringify(result);
+      alert(`Failed to save video card: ${errorMsg}`);
+    }
+  } catch(err){
+    console.error('Save error:', err);
+    alert('Failed to save video card: ' + err.message);
+  } finally {
     saveBtn.textContent = '💾 Save to Database';
     saveBtn.disabled = false;
-    alert('Saved to database (simulated). Project ID: ' + Math.random().toString(36).slice(2,9));
-  }, 900);
+  }
 });
 
 previewBtn.addEventListener('click', ()=>{
@@ -722,6 +902,11 @@ renderInteractionsList();
 
 // When direct video loaded, set duration variable to update slider behaviour
 // Already handled in loadVideo's loadedmetadata listener for video tag.
+
+// Helpers to read context from URL
+function getTopicIdFromURL(){ const params = new URLSearchParams(window.location.search); return params.get('topic_id'); }
+function getLessonIdFromURL(){ const params = new URLSearchParams(window.location.search); return params.get('lesson_id'); }
+function getDisplayOrderFromURL(){ const params = new URLSearchParams(window.location.search); return params.get('display_order') || '0'; }
 
 </script>
 </body>

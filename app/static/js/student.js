@@ -315,16 +315,14 @@ function clearFilters() {
 
 
 function viewStudent(id) {
-  const s = findStudent(id);
-  if (!s) return alert('Student not found');
-  const info = [
-    `Name: ${s.name || ''}`,
-    `Email: ${s.email || ''}`,
-    `Enrollment: ${s.enrollmentDate || 'N/A'}`,
-    `Courses: ${s.courses || ''}`,
-    `Status: ${s.status || ''}`
-  ].join('\n');
-  alert(info);
+  // Navigate to the admin student detail page
+  try {
+    const base = window.API_BASE || window.location.origin;
+    const url = `${base}/admin/students/${id}`;
+    window.location.href = url;
+  } catch (e) {
+    console.error('Failed to navigate to student detail:', e);
+  }
 }
 
 function editStudent(id) {

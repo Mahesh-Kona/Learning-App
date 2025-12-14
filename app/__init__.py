@@ -162,10 +162,22 @@ def create_app():
                 resolved_up = up
             # safety: ensure the directory exists and file is present
             fp = os.path.join(resolved_up, filename)
-            if not os.path.exists(fp):
-                app.logger.debug('Uploaded file not found on disk: %s (resolved path: %s)', filename, fp)
-                return jsonify({'success': False, 'error': 'file not found', 'code': 404}), 404
-            return send_from_directory(resolved_up, filename)
+            if os.path.exists(fp):
+                return send_from_directory(resolved_up, filename)
+
+            # Fallback: also check project-root uploads directory explicitly
+            project_root = os.path.abspath(os.path.join(app.root_path, '..'))
+            alt_up = os.path.join(project_root, 'uploads')
+            # If the incoming filename accidentally includes a leading 'uploads/' segment, strip it for alt search
+            alt_filename = filename
+            if alt_filename.lower().startswith('uploads/'):
+                alt_filename = alt_filename.split('/', 1)[1]
+            alt_fp = os.path.join(alt_up, alt_filename)
+            if os.path.exists(alt_fp):
+                return send_from_directory(alt_up, alt_filename)
+
+            app.logger.debug('Uploaded file not found: %s; checked %s and %s', filename, fp, alt_fp)
+            return jsonify({'success': False, 'error': 'file not found', 'code': 404}), 404
         except Exception as e:
             app.logger.exception('Failed to serve uploaded file')
             return jsonify({'success': False, 'error': 'file not found', 'code': 404}), 404

@@ -66,7 +66,8 @@ def resolve_user_and_student_ids():
         return None, None
 
     uid = current.get('user_id') if isinstance(current, dict) else None
-    sid = None
+    # Prefer explicit student_id from identity if present
+    sid = current.get('student_id') if isinstance(current, dict) else None
     if uid is not None:
         Student = get_student_model()
         if Student:
@@ -223,20 +224,24 @@ def register():
                 'error': 'Email already registered'
             }), 400
         
-        # Create user
-        user = User(email=email.strip(), role=role)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.flush()  # Get user ID before committing
-        
-        user_id = user.id
-        
-        # Create Student record if role is student
-        if role == 'student':
+        user_id = None
+        student_id = None
+
+        if role == 'admin':
+            # Admins are stored in users table
+            user = User(email=email.strip(), role='admin')
+            user.set_password(password)
+            db.session.add(user)
+            db.session.flush()
+            user_id = user.id
+        else:
+            # Students are stored only in students table
             new_student = Student(
                 name=name.strip(),
                 email=email.strip(),
-                password='',  # Password stored in User table
+                # Store raw password in Student table (legacy behavior)
+                # Consider hashing in future migrations
+                password=password,
                 syllabus=data.get('syllabus', ''),
                 class_=data.get('class', ''),
                 subjects=data.get('subjects', ''),
@@ -245,36 +250,45 @@ def register():
                 date=datetime.utcnow()
             )
             db.session.add(new_student)
+            db.session.flush()
+            student_id = new_student.id
         
         db.session.commit()
         
         # Regenerate students JSON for cloud sync
-        if role == 'student':
+        if role != 'admin':
             try:
                 generate_students_json()
             except Exception as e:
                 current_app.logger.exception('Failed to regenerate students.json after registration')
         
         # Create profile
-        Profile = get_profile_model()
-        if Profile:
-            try:
-                profile = Profile(
-                    user_id=user_id,
-                    name=name.strip(),
-                    email=email.strip()
-                )
-                db.session.add(profile)
-                db.session.commit()
-            except Exception as e:
-                current_app.logger.error(f'Failed to create profile: {e}')
-                # Don't fail registration if profile creation fails
+        # Create profile only for admins (users table)
+        if role == 'admin':
+            Profile = get_profile_model()
+            if Profile and user_id is not None:
+                try:
+                    profile = Profile(
+                        user_id=user_id,
+                        name=name.strip(),
+                        email=email.strip()
+                    )
+                    db.session.add(profile)
+                    db.session.commit()
+                except Exception as e:
+                    current_app.logger.error(f'Failed to create profile: {e}')
+                    # Don't fail registration if profile creation fails
         
-        return jsonify({
+        # Return appropriate identifier depending on role
+        payload = {
             'success': True,
-            'message': 'User registered successfully',
-            'user_id': user_id
-        }), 201
+            'message': 'User registered successfully'
+        }
+        if role == 'admin':
+            payload['user_id'] = user_id
+        else:
+            payload['student_id'] = student_id
+        return jsonify(payload), 201
         
     except Exception as e:
         db.session.rollback()
@@ -329,45 +343,62 @@ def login():
                 'error': 'Email and password are required'
             }), 400
         
-        # Find user
-        user = User.query.filter_by(email=email).first()
-        
-        if not user or not user.check_password(password):
+        # Admin login via users table
+        user = User.query.filter_by(email=email, role='admin').first()
+        if user and user.check_password(password):
+            name = email
+            Profile = get_profile_model()
+            if Profile:
+                try:
+                    profile = Profile.query.filter_by(user_id=user.id).first()
+                    if profile:
+                        name = profile.name
+                except Exception:
+                    pass
+            identity = {
+                'user_id': user.id,
+                'email': user.email,
+                'role': 'admin'
+            }
+            access_token = create_access_token(identity=identity)
+            refresh_token = create_refresh_token(identity=identity)
+            return jsonify({
+                'success': True,
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'name': name,
+                    'role': 'admin'
+                }
+            }), 200
+
+        # Fallback: student login via students table
+        s = Student.query.filter_by(email=email).first()
+        if not s or (s.password or '') != (password or ''):
             return jsonify({
                 'success': False,
                 'error': 'Invalid credentials'
             }), 401
-        
-        # Get profile name
-        name = email  # fallback
-        Profile = get_profile_model()
-        if Profile:
-            try:
-                profile = Profile.query.filter_by(user_id=user.id).first()
-                if profile:
-                    name = profile.name
-            except Exception:
-                pass
-        
-        # Create JWT tokens
+
         identity = {
-            'user_id': user.id,
-            'email': user.email,
-            'role': user.role
+            'student_id': s.id,
+            'email': s.email,
+            'role': 'student'
         }
-        
         access_token = create_access_token(identity=identity)
         refresh_token = create_refresh_token(identity=identity)
-        
+
         return jsonify({
             'success': True,
             'access_token': access_token,
             'refresh_token': refresh_token,
             'user': {
-                'id': user.id,
-                'email': user.email,
-                'name': name,
-                'role': user.role
+                'id': s.id,
+                'email': s.email,
+                'name': s.name or s.email,
+                'role': 'student'
             }
         }), 200
         

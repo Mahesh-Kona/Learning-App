@@ -133,6 +133,7 @@ textarea{min-height:110px;resize:vertical}
 
     <div style="margin-top:18px;display:flex;gap:8px;justify-content:center">
       <button id="exportBtn" class="btn-ghost">Export JSON</button>
+      <button id="viewCardsBtn" class="btn-ghost">View Existing Cards</button>
     </div>
   </div>
 
@@ -269,6 +270,7 @@ const previewMedia = document.getElementById('previewMedia');
 const previewGeneralFb = document.getElementById('previewGeneralFb');
 
 const exportBtn = document.getElementById('exportBtn');
+const viewCardsBtn = document.getElementById('viewCardsBtn');
 
 /* ========= Utilities ========= */
 function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
@@ -637,6 +639,94 @@ exportBtn.addEventListener('click', ()=>{
   const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'quiz.json'; a.click(); URL.revokeObjectURL(a.href);
 });
+
+/* ========= View existing cards (topic/lesson) ========= */
+viewCardsBtn.addEventListener('click', fetchAndShowCards);
+
+async function fetchAndShowCards(){
+  try{
+    const params = new URLSearchParams(window.location.search);
+    const topicId = params.get('topic_id');
+    const lessonId = params.get('lesson_id');
+    if(!topicId && !lessonId){
+      alert('No topic_id or lesson_id in URL');
+      return;
+    }
+
+    const tokenResp = await fetch('/admin/api/get-jwt-token', { credentials: 'include' });
+    const tokenData = await tokenResp.json();
+    if(!tokenResp.ok || !tokenData.access_token){
+      alert('Failed to get admin token. Please login again.');
+      return;
+    }
+    const token = tokenData.access_token;
+
+    let url = '';
+    if(topicId) url = `/api/v1/cards?topic_id=${encodeURIComponent(topicId)}`;
+    else url = `/api/v1/cards?lesson_id=${encodeURIComponent(lessonId)}`;
+
+    const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    const data = await resp.json();
+    if(!resp.ok || !data.success){
+      const msg = data.error || data.detail || resp.statusText;
+      alert('Failed to load cards: ' + msg);
+      return;
+    }
+
+    // Render a simple modal-like list in the right preview box for quick viewing
+    const items = (data.data || data.cards || []).slice();
+    if(items.length === 0){
+      alert('No cards found for this context');
+      return;
+    }
+
+    const container = document.createElement('div');
+    container.style.marginTop = '12px';
+    container.style.background = '#fff';
+    container.style.border = '1px solid #efe6ff';
+    container.style.borderRadius = '12px';
+    container.style.padding = '12px';
+
+    const title = document.createElement('div');
+    title.style.fontWeight = '700';
+    title.style.marginBottom = '8px';
+    title.innerText = 'Existing Cards';
+    container.appendChild(title);
+
+    items.forEach((c, idx)=>{
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.justifyContent = 'space-between';
+      row.style.alignItems = 'center';
+      row.style.padding = '8px';
+      row.style.border = '1px solid #eee';
+      row.style.borderRadius = '8px';
+      row.style.background = '#fbf9ff';
+      row.style.marginBottom = '6px';
+      const left = document.createElement('div');
+      left.innerHTML = `<strong>${idx+1}.</strong> <span style="margin-left:8px">[${c.card_type}] ${c.title || '(no title)'} </span>`;
+      const right = document.createElement('div');
+      right.style.fontSize = '12px';
+      right.style.color = '#9b93a8';
+      right.innerText = `id: ${c.id}`;
+      row.appendChild(left);
+      row.appendChild(right);
+      container.appendChild(row);
+    });
+
+    // Inject into right preview panel below existing preview
+    const previewBox = document.getElementById('previewBox');
+    // Remove any previous listing
+    const old = previewBox.querySelector('.existing-cards-box');
+    if(old) old.remove();
+    container.classList.add('existing-cards-box');
+    previewBox.appendChild(container);
+
+  }catch(err){
+    console.error('View cards error:', err);
+    alert('Error loading cards: ' + err.message);
+  }
+}
 
 /* ========= Save quiz to DB ========= */
 async function saveQuiz(){

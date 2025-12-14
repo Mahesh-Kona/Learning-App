@@ -1,0 +1,39 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Student Details - Admin{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/student.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" />
+{% endblock %}
+
+{% block content %}
+<div class="student-page">
+  <div class="top-header">
+    <h1><i class="bi bi-mortarboard"></i> Student Details</h1>
+    <div class="header-actions">
+      <a href="{{ url_for('admin_bp.students_page') }}" class="btn"><i class="bi bi-arrow-left"></i> Back to Students</a>
+    </div>
+  </div>
+
+  <div class="table-container" style="padding: 16px;">
+    <table class="student-table">
+      <tbody>
+        <tr><th style="width:200px;">Name</th><td>{{ student.name or '-' }}</td></tr>
+        <tr><th>Email</th><td>{{ student.email or '-' }}</td></tr>
+        <tr><th>Class</th><td>{{ student.class_ or '-' }}</td></tr>
+        <tr><th>Syllabus</th><td>{{ student.syllabus or '-' }}</td></tr>
+        <tr><th>Subjects</th><td>{{ student.subjects or '-' }}</td></tr>
+        <tr><th>Second Language</th><td>{{ student.second_language or '-' }}</td></tr>
+        <tr><th>Third Language</th><td>{{ student.third_language or '-' }}</td></tr>
+        <tr><th>Join Date</th><td>{{ (student.date.strftime('%d %b %Y') if student.date) or '-' }}</td></tr>
+        <tr><th>Status</th><td>{{ (student.status or 'inactive')|capitalize }}</td></tr>
+        <tr><th>Mobile</th><td>{{ student.mobile or '-' }}</td></tr>
+        <tr><th>Avatar</th><td>{% if avatar_url %}<img src="{{ avatar_url }}" alt="Avatar" style="width:64px;height:64px;border-radius:50%;object-fit:cover;">{% else %}-{% endif %}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}

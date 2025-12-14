@@ -1,5 +1,6 @@
 from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt
+from flask_jwt_extended import verify_jwt_in_request
 from ..models import Card, Topic, Lesson, User
 from ..extensions import db, limiter
 from . import bp
@@ -130,6 +131,9 @@ def create_card():
             created_by_val = None
 
     try:
+        # Business rule: all cards are published upon creation
+        pub_norm = True
+
         new_card = Card(
             card_type=card_type,
             title=title,
@@ -138,7 +142,8 @@ def create_card():
             lesson_id=lesson_id,
             display_order=data.get('display_order', 0),
             created_by=created_by_val,
-            published=data.get('published', False)
+            # Publish all newly created cards by design
+            published=pub_norm
         )
         
         db.session.add(new_card)
@@ -172,14 +177,124 @@ def create_card():
         return {"success": False, "error": "Failed to create card", "detail": detail, "code": 500}, 500
 
 
+@bp.route("/cards", methods=["GET"])
+def list_cards():
+    """List cards with optional filters and pagination.
+
+    Query params:
+      - topic_id: int
+      - lesson_id: int
+      - card_type: concept|quiz|video|interactive
+      - published: true|false
+      - page: int (default 1)
+      - per_page: int (default 20, max 100)
+    """
+    # Determine auth state; optional JWT
+    is_authenticated = False
+    try:
+        verify_jwt_in_request(optional=True)
+        claims = get_jwt() or {}
+        is_authenticated = True if claims else False
+    except Exception:
+        is_authenticated = False
+
+    # Build base query
+    query = Card.query
+
+    # Filters
+    topic_id = request.args.get("topic_id", type=int)
+    lesson_id = request.args.get("lesson_id", type=int)
+    card_type = request.args.get("card_type", type=str)
+    published = request.args.get("published", type=str)
+
+    if topic_id is not None:
+        query = query.filter(Card.topic_id == topic_id)
+    if lesson_id is not None:
+        query = query.filter(Card.lesson_id == lesson_id)
+    if card_type:
+        ct = card_type.strip().lower()
+        if ct in ["concept", "quiz", "video", "interactive"]:
+            query = query.filter(Card.card_type == ct)
+        else:
+            return {"success": False, "error": "Invalid card_type filter", "code": 400}, 400
+    if published is not None:
+        if published.lower() in ["true", "1", "yes"]:
+            query = query.filter(Card.published.is_(True))
+        elif published.lower() in ["false", "0", "no"]:
+            query = query.filter(Card.published.is_(False))
+        else:
+            return {"success": False, "error": "Invalid published filter; use true/false", "code": 400}, 400
+
+    # For unauthenticated requests, restrict results
+    if not is_authenticated:
+        # Only show published cards publicly
+        query = query.filter(Card.published.is_(True))
+        # Require at least one scoping filter to avoid listing all data
+        if topic_id is None and lesson_id is None:
+            return {
+                "success": False,
+                "error": "topic_id or lesson_id is required for public access",
+                "code": 400
+            }, 400
+
+    # Ordering: display_order, created_at
+    query = query.order_by(Card.display_order, Card.created_at)
+
+    # Pagination
+    page = request.args.get("page", default=1, type=int) or 1
+    per_page = request.args.get("per_page", default=20, type=int) or 20
+    per_page = max(1, min(per_page, 100))
+
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    items = pagination.items
+
+    return {
+        "success": True,
+        "page": page,
+        "per_page": per_page,
+        "total": pagination.total,
+        "pages": pagination.pages,
+        "data": [
+            {
+                "id": c.id,
+                "card_type": c.card_type,
+                "title": c.title,
+                "topic_id": c.topic_id,
+                "lesson_id": c.lesson_id,
+                "display_order": c.display_order,
+                "published": c.published,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+            }
+            for c in items
+        ],
+    }, 200
+
+
 @bp.route("/cards/<int:card_id>", methods=["GET"])
-@jwt_required()
 def get_card(card_id):
-    """Get a specific card by ID."""
+    """Get a specific card by ID.
+
+    Publicly accessible: unauthenticated users may fetch only published cards.
+    Authenticated users can fetch any card (subject to existence).
+    """
+    # Optional auth; detect whether a JWT is present
+    is_authenticated = False
+    try:
+        verify_jwt_in_request(optional=True)
+        claims = get_jwt() or {}
+        is_authenticated = True if claims else False
+    except Exception:
+        is_authenticated = False
+
     card = Card.query.get(card_id)
     if not card:
         return {"success": False, "error": "Card not found", "code": 404}, 404
-    
+
+    # If not authenticated, only allow access to published cards
+    if not is_authenticated and not card.published:
+        return {"success": False, "error": "Card is not published", "code": 403}, 403
+
     return {
         "success": True,
         "card": {
@@ -281,14 +396,25 @@ def delete_card(card_id):
 
 
 @bp.route("/topics/<int:topic_id>/cards", methods=["GET"])
-@jwt_required()
 def get_topic_cards(topic_id):
     """Get all cards for a specific topic."""
     topic = Topic.query.get(topic_id)
     if not topic:
         return {"success": False, "error": "Topic not found", "code": 404}, 404
     
-    cards = Card.query.filter_by(topic_id=topic_id).order_by(Card.display_order, Card.created_at).all()
+    # Optional auth; unauthenticated users see only published
+    is_authenticated = False
+    try:
+        verify_jwt_in_request(optional=True)
+        claims = get_jwt() or {}
+        is_authenticated = True if claims else False
+    except Exception:
+        is_authenticated = False
+
+    q = Card.query.filter_by(topic_id=topic_id)
+    if not is_authenticated:
+        q = q.filter(Card.published.is_(True))
+    cards = q.order_by(Card.display_order, Card.created_at).all()
     
     return {
         "success": True,
@@ -308,14 +434,25 @@ def get_topic_cards(topic_id):
 
 
 @bp.route("/lessons/<int:lesson_id>/cards", methods=["GET"])
-@jwt_required()
 def get_lesson_cards(lesson_id):
     """Get all cards for a specific lesson."""
     lesson = Lesson.query.get(lesson_id)
     if not lesson:
         return {"success": False, "error": "Lesson not found", "code": 404}, 404
     
-    cards = Card.query.filter_by(lesson_id=lesson_id).order_by(Card.display_order, Card.created_at).all()
+    # Optional auth; unauthenticated users see only published
+    is_authenticated = False
+    try:
+        verify_jwt_in_request(optional=True)
+        claims = get_jwt() or {}
+        is_authenticated = True if claims else False
+    except Exception:
+        is_authenticated = False
+
+    q = Card.query.filter_by(lesson_id=lesson_id)
+    if not is_authenticated:
+        q = q.filter(Card.published.is_(True))
+    cards = q.order_by(Card.display_order, Card.created_at).all()
     
     return {
         "success": True,

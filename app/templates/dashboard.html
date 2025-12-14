@@ -198,9 +198,9 @@
 
 				<!-- Recent Users Table -->
 				<div class="section-card">
-					<div class="section-header">
+					<div class="section-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
 						<h2>Recently Added Students</h2>
-						<a href="#" class="view-all">View All Students</a>
+						<a href="{{ url_for('admin_bp.students_page') }}" class="view-all">View All Students</a>
 					</div>
 					<table class="users-table">
 						<thead>
@@ -213,59 +213,33 @@
 							</tr>
 						</thead>
 						<tbody>
-							<tr>
-								<td>
-									<div style="display: flex; align-items: center; gap: 10px;">
-										<div class="user-avatar">RS</div>
-										<div>
-											<div style="font-weight: 500;">Rahul Sharma</div>
-											<div style="font-size: 0.8rem; color: var(--gray);">
-												rahul@edusaint.com
+							{% if recent_students and recent_students|length > 0 %}
+								{% for s in recent_students[:5] %}
+								<tr>
+									<td>
+										<div style="display: flex; align-items: center; gap: 10px;">
+											<div class="user-avatar">{{ (s.name[:2] if s.name else 'ST')|upper }}</div>
+											<div>
+												<div style="font-weight: 500;">{{ s.name or 'Unknown' }}</div>
+												<div style="font-size: 0.8rem; color: var(--gray);">{{ s.email or '' }}</div>
 											</div>
 										</div>
-									</div>
-								</td>
-								<td>10 Science</td>
-								<td>15 Mar 2024</td>
-								<td><span class="status active">Active</span></td>
-								<td>
-									<button class="view-btn">View</button>
-								</td>
-							</tr>
-							<tr>
-								<td>
-									<div style="display: flex; align-items: center; gap: 10px;">
-										<div class="user-avatar">PK</div>
-										<div>
-											<div style="font-weight: 500;">Priya Kumar</div>
-											<div style="font-size: 0.8rem; color: var(--gray);">
-												priya@edusaint.com
-											</div>
-										</div>
-									</div>
-								</td>
-								<td>12 Commerce</td>
-								<td>14 Mar 2024</td>
-								<td><span class="status active">Active</span></td>
-								<td><button class="view-btn">View</button></td>
-							</tr>
-							<tr>
-								<td>
-									<div style="display: flex; align-items: center; gap: 10px;">
-										<div class="user-avatar">AS</div>
-										<div>
-											<div style="font-weight: 500;">Amit Singh</div>
-											<div style="font-size: 0.8rem; color: var(--gray);">
-												amit@edusaint.com
-											</div>
-										</div>
-									</div>
-								</td>
-								<td>9 General</td>
-								<td>12 Mar 2024</td>
-								<td><span class="status pending">Pending</span></td>
-								<td><button class="view-btn">View</button></td>
-							</tr>
+									</td>
+									<td>{{ s.class_ or s.syllabus or '-' }}</td>
+									<td>{{ (s.date.strftime('%d %b %Y') if s.date) or '-' }}</td>
+									<td>
+										<span class="status {{ 'active' if s.status == 'active' else 'pending' }}">{{ (s.status or 'inactive')|capitalize }}</span>
+									</td>
+									<td>
+										<a class="view-btn" href="{{ url_for('admin_bp.view_student', student_id=s.id) }}">View</a>
+									</td>
+								</tr>
+								{% endfor %}
+							{% else %}
+								<tr>
+									<td colspan="5" style="text-align:center; color: var(--gray);">No students found</td>
+								</tr>
+							{% endif %}
 						</tbody>
 					</table>
 				</div>

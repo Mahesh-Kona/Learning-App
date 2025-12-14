@@ -68,7 +68,9 @@ class Config:
     CORS_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 
     # Uploads
-    UPLOAD_PATH = os.getenv("UPLOAD_PATH", "/tmp/uploads")
+    # Default to project-root uploads folder (parent of app): ../uploads
+    # Override with UPLOAD_PATH env var for production or custom setups.
+    UPLOAD_PATH = os.getenv("UPLOAD_PATH", "../uploads")
     # Allow larger uploads by default (64 MB). Can be overridden with env var MAX_CONTENT_LENGTH.
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 64 * 1024 * 1024))  # 64 MB
 
