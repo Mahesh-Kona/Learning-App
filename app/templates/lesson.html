@@ -357,6 +357,16 @@
 			color: #95a5a6;
 			transition: color 0.3s ease;
 		}
+		.btn-success {
+    background-color: #27ae60;
+    color: white;
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+.btn-success:hover {
+    background-color: #229954;
+}
 
 		.close-btn:hover {
 			color: #e74c3c;
@@ -500,33 +510,77 @@
 
 	<!-- Add/Edit Topic Modal -->
 	<div id="topicModal" class="modal">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h2 id="topicModalTitle">Add Topic</h2>
-				<button class="close-btn" onclick="closeTopicModal()">×</button>
-			</div>
-			<form id="topicForm">
-				<div class="form-group">
-					<label>Topic Title <span class="required">*</span></label>
-					<input type="text" id="topicTitle" placeholder="Enter topic title" required>
-				</div>
-
-				<div class="form-group">
-					<label>Topic Content</label>
-					<textarea id="topicContent" placeholder="Enter topic content or description" style="min-height: 120px;"></textarea>
-				</div>
-
-				<div class="form-group">
-					<label>Sequence Order</label>
-					<input type="number" id="topicOrder" placeholder="e.g., 1" min="1">
-				</div>
-
-				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" onclick="closeTopicModal()">Cancel</button>
-					<button type="submit" class="btn btn-primary">Add Topic</button>
-				</div>
-			</form>
-		</div>
+		 <div class="modal-content" style="max-width:900px;">
+			 <div class="modal-header">
+				 <h2 id="topicModalTitle">Add Topic</h2>
+				 <button class="close-btn" onclick="closeTopicModal()">×</button>
+			 </div>
+				 <form id="topicForm">
+					 <div class="form-row" id="topicCourseRow">
+					 <div class="form-group">
+						 <label>Course Category (Optional)</label>
+						 <select id="courseCategory" class="form-control" onchange="filterCourses()">
+							 <option value="">-- All Categories --</option>
+							 <option value="mathematics">Mathematics</option>
+							 <option value="science">Science</option>
+							 <option value="language">Language</option>
+							 <option value="social">Social Studies</option>
+							 <option value="technology">Technology</option>
+						 </select>
+					 </div>
+					 <div class="form-group">
+						 <label>Select Course <span class="required">*</span></label>
+						 <select id="selectCourse" class="form-control" required onchange="loadLessons()">
+							 <option value="">-- Select Course --</option>
+						 </select>
+					 </div>
+				 </div>
+				 <div class="form-row" id="topicLessonRow">
+					 <div class="form-group">
+						 <label>Attach to Lesson <span class="required">*</span></label>
+						 <select id="attachLesson" class="form-control" required disabled>
+							 <option value="">-- Select Lesson --</option>
+						 </select>
+					 </div>
+					 <div class="form-group">
+						 <label>Topic Title <span class="required">*</span></label>
+						 <input type="text" id="topicTitle" class="form-control" placeholder="e.g., Reflection of Light" required>
+					 </div>
+				 </div>
+				 <div class="form-group">
+					 <label>Topic Description</label>
+					 <textarea id="topicDescription" class="form-control" placeholder="Brief description of what this topic covers..."></textarea>
+				 </div>
+				 <div class="form-row">
+					 <div class="form-group">
+						 <label>Estimated Time (minutes)</label>
+						 <input type="number" id="estimatedTime" class="form-control" placeholder="e.g., 15" min="1">
+					 </div>
+					 <div class="form-group">
+						 <label>Difficulty Level</label>
+						 <select id="difficultyLevel" class="form-control">
+							 <option value="">Select Level</option>
+							 <option value="easy">Easy</option>
+							 <option value="medium" selected>Medium</option>
+							 <option value="hard">Hard</option>
+						 </select>
+					 </div>
+					 <div class="form-group">
+						 <label>Topic Order</label>
+						 <input type="number" id="topicOrder" class="form-control" placeholder="e.g., 1" min="1" value="1">
+					 </div>
+				 </div>
+				 <div class="form-group">
+					 <label>Learning Objectives</label>
+					 <div class="objectives-list" id="objectivesList"></div>
+					 <button type="button" class="btn btn-secondary" onclick="addObjective()">+ Add Learning Objective</button>
+				 </div>
+				 <div class="modal-footer">
+					 <button type="button" class="btn btn-secondary" onclick="closeTopicModal()">Cancel</button>
+					 <button type="submit" class="btn btn-primary">Save Topic</button>
+				 </div>
+			 </form>
+		 </div>
 	</div>
 
 	<script>
@@ -671,7 +725,9 @@
 														<small style="color: #95a5a6; font-size: 12px;">📝 ${topic.content || 'No content'}</small>
 													</div>
 													<div style="display: flex; gap: 6px;">
+													<button class="btn btn-success" onclick="openCardManager(${topic.id})">Add / Edit Cards</button>
 														<button class="btn btn-edit" onclick="editTopic(${topic.id})">Edit</button>
+														
 														<button class="btn btn-danger" onclick="deleteTopic(${topic.id})">Delete</button>
 													</div>
 												</div>
@@ -724,6 +780,7 @@
 						<span class="topic-type">${capitalizeFirst(topic.type)}</span>
 					</div>
 					<div class="topic-actions">
+						<button class="btn btn-success" onclick="openCardManager(${topic.id})">Add / Edit Cards</button>
 						<button class="btn btn-edit" onclick="editTopic(${topic.id})">Edit</button>
 						<button class="btn btn-danger" onclick="deleteTopic(${topic.id})">Delete</button>
 					</div>
@@ -916,11 +973,15 @@
 				showAlert('Please select a lesson first!', 'error');
 				return;
 			}
-			selectedLessonId = lessonId;
-			editingTopicId = null;
-			document.getElementById('topicModalTitle').textContent = 'Add Topic';
-			document.getElementById('topicForm').reset();
-			document.getElementById('topicModal').classList.add('active');
+			// Find the lesson and its course
+			const lesson = lessons.find(l => l.id === lessonId);
+			if (!lesson) {
+				showAlert('Lesson not found!', 'error');
+				return;
+			}
+			const courseId = lesson.courseId;
+			// Redirect to create_topic.html with course and lesson pre-filled
+			window.location.href = `/admin/create_topic?course_id=${encodeURIComponent(courseId)}&lesson_id=${encodeURIComponent(lessonId)}`;
 		}
 
 		// Close topic modal
@@ -928,13 +989,15 @@
 			document.getElementById('topicModal').classList.remove('active');
 			document.getElementById('topicForm').reset();
 		}
+		
+
 
 		// Handle topic form submission
 		function handleTopicSubmit(e) {
 			e.preventDefault();
 
 			const title = document.getElementById('topicTitle').value;
-			const content = document.getElementById('topicContent').value;
+			const content = document.getElementById('topicDescription').value;
 			const order = document.getElementById('topicOrder').value;
 
 			if (!title || !selectedLessonId) {
@@ -1032,20 +1095,42 @@
 		// Edit topic
 		function editTopic(id) {
 			// Fetch the topic from server to ensure latest data
-			fetch(`/admin/get_topic?id=${id}`, { credentials: 'same-origin' })
-			.then(res => res.json().then(body => ({ status: res.status, body })))
-			.then(({ status, body }) => {
-				if (status >= 200 && status < 300 && body && body.success) {
+			fetch(`/admin/get_topic?id=${encodeURIComponent(id)}`, {
+				credentials: 'same-origin',
+				headers: {
+					'Accept': 'application/json',
+					'X-Requested-With': 'XMLHttpRequest'
+				}
+			})
+			.then(async (res) => {
+				let body = {};
+				const ct = res.headers.get('content-type') || '';
+				if (ct.includes('application/json')) {
+					body = await res.json().catch(() => ({}));
+				}
+				if (res.ok && body && body.success) {
 					const topic = body.topic;
 					editingTopicId = topic.id;
 					selectedLessonId = topic.lesson_id;
 					document.getElementById('topicModalTitle').textContent = 'Edit Topic';
 					document.getElementById('topicTitle').value = topic.title || '';
-					document.getElementById('topicContent').value = topic.description || '';
+					document.getElementById('topicDescription').value = topic.description || '';
 					document.getElementById('topicOrder').value = topic.order || '';
+					// Hide course/category/attach fields while editing
+					const courseRow = document.getElementById('topicCourseRow');
+					const lessonRow = document.getElementById('topicLessonRow');
+					if (courseRow) courseRow.style.display = 'none';
+					if (lessonRow) lessonRow.style.display = 'none';
+					// Disable validation on hidden selects
+					const courseCategory = document.getElementById('courseCategory');
+					const selectCourse = document.getElementById('selectCourse');
+					const attachLesson = document.getElementById('attachLesson');
+					if (courseCategory) courseCategory.disabled = true;
+					if (selectCourse) { selectCourse.disabled = true; selectCourse.required = false; }
+					if (attachLesson) { attachLesson.disabled = true; attachLesson.required = false; }
 					document.getElementById('topicModal').classList.add('active');
 				} else {
-					const msg = (body && body.error) ? body.error : 'Failed to load topic';
+					const msg = (body && body.error) ? body.error : (res.status === 401 ? 'Not authenticated. Please log in again.' : 'Failed to load topic');
 					showAlert(msg, 'error');
 				}
 			})
@@ -1136,6 +1221,18 @@
 			}
 		}
 
+		function openCardManager(topicId) {
+			// Redirect to the cards_index page for this topic (and its lesson)
+			const topic = topics.find(t => t.id === topicId);
+			const params = new URLSearchParams();
+			if (topic && topic.lessonId) {
+				params.set('lesson_id', topic.lessonId);
+			}
+			params.set('topic_id', topicId);
+			const qs = params.toString();
+			const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
+			window.location.href = target;
+		}
 
 	</script>
 

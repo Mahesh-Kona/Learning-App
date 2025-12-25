@@ -1,0 +1,17 @@
+{
+  "lesson_id": 13,
+  "topics": [
+    {
+      "id": 21,
+      "lesson_id": 13,
+      "title": "Light",
+      "content_type": "text",
+      "content": "",
+      "description": "Covers the reflection of loight",
+      "duration": 2,
+      "order": 1,
+      "estimated_time": null,
+      "difficulty": "easy"
+    }
+  ]
+}

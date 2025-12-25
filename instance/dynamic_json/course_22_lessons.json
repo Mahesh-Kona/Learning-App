@@ -1,0 +1,12 @@
+{
+  "course_id": 22,
+  "lessons": [
+    {
+      "id": 14,
+      "title": "Intro Lesson",
+      "description": "fvrb ",
+      "duration": 13,
+      "level": "intermediate"
+    }
+  ]
+}

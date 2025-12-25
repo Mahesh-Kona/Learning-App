@@ -23,8 +23,8 @@ def register():
     except IntegrityError:
         db.session.rollback()
         return {"success": False, "error": "email already exists", "code": 400}, 400
-    access = create_access_token(identity={"id": user.id, "role": user.role})
-    refresh = create_refresh_token(identity={"id": user.id, "role": user.role})
+    access = create_access_token(identity=str(user.id))
+    refresh = create_refresh_token(identity=str(user.id))
     return {"success": True, "access_token": access, "refresh_token": refresh, "expires_in": current_app.config["JWT_ACCESS_TOKEN_EXPIRES"].total_seconds()}
 
 @auth_bp.route("/login", methods=["POST"])
@@ -38,8 +38,8 @@ def login():
     user = User.query.filter_by(email=email).first()
     if not user or not user.check_password(password):
         return {"success": False, "error": "invalid credentials", "code": 401}, 401
-    access = create_access_token(identity={"id": user.id, "role": user.role})
-    refresh = create_refresh_token(identity={"id": user.id, "role": user.role})
+    access = create_access_token(identity=str(user.id))
+    refresh = create_refresh_token(identity=str(user.id))
     return {"success": True, "access_token": access, "refresh_token": refresh, "expires_in": current_app.config["JWT_ACCESS_TOKEN_EXPIRES"].total_seconds()}
 
 # Example protected route (for manual testing)

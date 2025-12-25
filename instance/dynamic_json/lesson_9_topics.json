@@ -1,0 +1,77 @@
+{
+  "lesson_id": 9,
+  "topics": [
+    {
+      "id": 9,
+      "lesson_id": 9,
+      "title": "Iframe",
+      "content_type": "text",
+      "content": "",
+      "description": "It is a topic in frames",
+      "duration": 2,
+      "order": 0,
+      "estimated_time": null,
+      "difficulty": null
+    },
+    {
+      "id": 11,
+      "lesson_id": 9,
+      "title": "Frames",
+      "content_type": "text",
+      "content": "",
+      "description": "Frames",
+      "duration": 2,
+      "order": 1,
+      "estimated_time": 12,
+      "difficulty": "easy"
+    },
+    {
+      "id": 12,
+      "lesson_id": 9,
+      "title": "Frames",
+      "content_type": "text",
+      "content": "",
+      "description": "Identify incident ray, reflected ray",
+      "duration": 2,
+      "order": 1,
+      "estimated_time": 12,
+      "difficulty": "easy"
+    },
+    {
+      "id": 13,
+      "lesson_id": 9,
+      "title": "Test",
+      "content_type": "text",
+      "content": "",
+      "description": "Just test",
+      "duration": 2,
+      "order": 1,
+      "estimated_time": 12,
+      "difficulty": "medium"
+    },
+    {
+      "id": 14,
+      "lesson_id": 9,
+      "title": "fhgh",
+      "content_type": "text",
+      "content": "",
+      "description": "tdhtjtfuky",
+      "duration": 2,
+      "order": 1,
+      "estimated_time": 12,
+      "difficulty": "medium"
+    },
+    {
+      "id": 22,
+      "lesson_id": 9,
+      "title": "Frames",
+      "content_type": "text",
+      "content": "",
+      "description": "test",
+      "duration": 2,
+      "order": 1,
+      "estimated_time": 12,
+      "difficulty": "medium"
+    }
+  ]
+}

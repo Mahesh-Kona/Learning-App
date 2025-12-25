@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Notifications</title>
+  <!-- Font Awesome for sidebar icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
+</head>
+<body>
+  <div class="dashboard" style="margin-top:0;padding-top:0;">
+    {% set active = 'notifications' %}
+    {% include 'admin_sidebar.html' %}
+
+    <main class="main-content" style="padding-top:0;">
+      <div class="header" style="margin-top:0;padding-top:0;">
+        <div class="header-left">
+          <h1 style="margin-top:0;">Notifications</h1>
+          <p style="margin-top:0;">Create, schedule and manage notifications.</p>
+        </div>
+      </div>
+
+      <div class="layout">
+
+    <!-- SEND / EDIT NOTIFICATION -->
+    <div class="card">
+      <h2>Send Notification</h2>
+
+      <form id="notificationForm">
+        <label>Title</label>
+        <input id="titleInput" required>
+
+        <label>Message</label>
+        <textarea id="messageInput" rows="4" required></textarea>
+
+        <div class="row">
+          <div>
+            <label>Category</label>
+            <select id="categoryInput">
+              <option>Learning</option>
+              <option>Rewards</option>
+              <option>Friends</option>
+              <option>System</option>
+            </select>
+          </div>
+
+          <div>
+            <label>User Target</label>
+            <select id="targetInput">
+              <option>All Users</option>
+              <option>Students</option>
+              <option>Premium Users</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Schedule Date</label>
+            <input type="date" id="dateInput">
+          </div>
+
+          <div>
+            <label>Schedule Time</label>
+            <input type="time" id="timeInput">
+          </div>
+        </div>
+
+        <button type="submit">Send / Schedule</button>
+        <p id="status"></p>
+      </form>
+    </div>
+
+    <!-- NOTIFICATION HISTORY -->
+    <div class="card">
+      <h2>Notification History</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Target</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="historyTable"></tbody>
+      </table>
+    </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+</body>
+</html>

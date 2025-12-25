@@ -1,0 +1,17 @@
+{
+  "lesson_id": 15,
+  "topics": [
+    {
+      "id": 52,
+      "lesson_id": 15,
+      "title": "test",
+      "content_type": "text",
+      "content": "",
+      "description": " gvf",
+      "duration": 2,
+      "order": 1,
+      "estimated_time": 12,
+      "difficulty": "medium"
+    }
+  ]
+}

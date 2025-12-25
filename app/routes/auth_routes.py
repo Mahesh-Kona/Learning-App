@@ -91,15 +91,26 @@ def register():
     
     # Create Student record if role is student
     if new_user.role == 'student':
+        # Validate mobile (optional, 10 digits)
+        mobile_in = data.get('mobile')
+        mobile_val = None
+        if mobile_in:
+            m = str(mobile_in)
+            if len(m) == 10 and m.isdigit():
+                mobile_val = m
+            else:
+                return jsonify({"success": False, "error": "Mobile must be 10 digits", "code": 400}), 400
+
         new_student = Student(
             name=data.get('name', data['email'].split('@')[0]),
             email=data['email'],
             password='',  # Password stored in User table
             syllabus=data.get('syllabus', ''),
             class_=data.get('class', ''),
-            subjects=data.get('subjects', ''),
+            courses=data.get('courses', data.get('subjects', '')),
             second_language=data.get('second_language', ''),
             third_language=data.get('third_language', ''),
+            mobile=mobile_val,
             date=datetime.utcnow()
         )
         db.session.add(new_student)
@@ -146,6 +157,22 @@ def login():
 @jwt_required(refresh=True)
 def refresh_token():
     identity = get_jwt_identity()
-    # issue a new access token
-    access = create_access_token(identity=identity)
+    # Preserve role claim on refreshed access tokens
+    role = None
+    try:
+        # Try to get role from the refresh token claims first
+        claims = get_jwt() or {}
+        role = claims.get('role') if isinstance(claims, dict) else None
+    except Exception:
+        role = None
+    if not role:
+        # Fallback to DB lookup when claims are missing role
+        try:
+            uid = int(identity) if identity is not None else None
+            if uid is not None:
+                user = User.query.get(uid)
+                role = user.role if user else None
+        except Exception:
+            role = None
+    access = create_access_token(identity=str(identity), additional_claims={"role": role} if role else None)
     return jsonify({"success": True, "access_token": access}), 200

@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Quiz Builder — Full</title>
+<style>
+/* ---------------------------
+   Reset & base
+--------------------------- */
+*{box-sizing:border-box;margin:0;padding:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+body{background:#f7f3fb;color:#111;height:100vh;display:flex;overflow:hidden}
+
+/* ---------------------------
+   Layout columns
+--------------------------- */
+.app{display:flex;flex:1;height:100vh;width:100%}
+
+/* LEFT: questions */
+.left{
+  width:20%;
+  background:#fbf7ff;
+  border-right:1px solid #efe6ff;
+  padding:22px;
+  overflow:auto;
+}
+.left h2{font-size:20px;margin-bottom:18px}
+.q-list{color:#9b93a8;font-size:14px}
+.q-item{
+  background:#fff;border:1px solid #efe6ff;border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:grab;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.q-item.dragging{opacity:0.5}
+.q-item.selected{box-shadow:0 6px 18px rgba(125,77,255,0.08);border-color:#d6cfff}
+
+/* CENTER: editor */
+.center{
+  width:48%;
+  padding:24px 36px;
+  overflow:auto;
+}
+.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.header-row h1{font-size:22px}
+.field{margin-top:16px}
+.label{font-weight:600;margin-bottom:8px;color:#3a3440}
+.input,textarea,select{
+  width:100%;
+  padding:12px 14px;border-radius:10px;border:1px solid #e9e3f8;background:#fff;font-size:14px
+}
+textarea{min-height:110px;resize:vertical}
+.options{margin-top:10px}
+
+/* Option block with inline feedback */
+.option-block{
+  margin-top:12px;
+  background:#fff;
+  border-radius:10px;
+  border:1px solid #efe6ff;
+  padding:10px;
+}
+.option-row{
+  display:flex;gap:10px;align-items:center;
+}
+.option-row input[type="text"]{flex:1;padding:10px;border-radius:8px;border:1px solid #e6def8;background:#fff}
+.option-row .opt-radio{width:18px;height:18px}
+.option-row .remove{background:none;border:none;color:#d9534f;font-size:18px;cursor:pointer}
+
+.fb-labels{display:flex;gap:8px;margin-top:8px}
+.feedback-row{display:flex;gap:8px;margin-top:6px}
+.feedback-input{flex:1;padding:8px;border-radius:8px;border:1px solid #eee;background:#fafafa;font-size:13px}
+
+/* small action buttons */
+.small-btn{padding:8px 12px;border-radius:999px;border:none;background:#efeaff;color:#6b4fbd;cursor:pointer;font-weight:700}
+.small-ghost{padding:8px 12px;border-radius:8px;border:1px solid #efe6ff;background:#fff;cursor:pointer}
+
+/* action buttons */
+.row-actions{display:flex;gap:12px;margin-top:18px}
+.btn-primary{background:linear-gradient(90deg,#6f63ff,#7d4dff);color:white;padding:12px 20px;border-radius:28px;border:none;cursor:pointer;font-weight:700}
+.btn-ghost{background:#fff;border:1px solid #efe6ff;padding:10px 16px;border-radius:12px;cursor:pointer}
+
+/* MEDIA CONTAINER (fixed: full width, no overlap) */
+.media-wrapper{
+  margin-top:18px;
+  border-radius:12px;
+  background:#faf9ff;
+  border:1px solid #ece6ff;
+  padding:12px;
+}
+.media-heading{font-weight:700;margin-bottom:8px}
+.upload-box{
+  width:100%;
+  border:1px dashed #cfc6ff;
+  background:white;
+  border-radius:12px;
+  padding:18px;
+  text-align:center;
+  cursor:pointer;
+  display:block;
+}
+.upload-box:hover{background:#f7f5ff}
+.media-preview{margin-top:12px}
+.media-preview img, .media-preview video{max-width:100%;border-radius:10px;border:1px solid #e9e6ff}
+
+/* RIGHT: preview */
+.right{
+  width:32%;
+  background:#fff;padding:24px;border-left:1px solid #efe6ff;overflow:auto;
+}
+.right h3{font-size:18px;margin-bottom:14px}
+.preview-box{background:#fbf9ff;border:1px solid #efe6ff;padding:16px;border-radius:12px}
+.preview-question{font-weight:700;margin-bottom:12px}
+.preview-option{padding:10px;border-radius:8px;background:#fff;border:1px solid #eee;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.preview-feedback{font-size:13px;color:#6f6b78;margin-top:6px;padding-left:28px}
+
+/* helpers */
+.hint{color:#9b93a8;text-align:center;margin-top:18px}
+
+/* responsive */
+@media(max-width:1000px){
+  .left,.right{display:none}
+  .center{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- LEFT -->
+  <div class="left">
+    <h2>Questions</h2>
+    <div id="questionsContainer" class="q-list">
+      <div class="hint">No questions added yet</div>
+    </div>
+
+    <div style="margin-top:18px;display:flex;gap:8px;justify-content:center">
+      <button id="exportBtn" class="btn-ghost">Export JSON</button>
+      <button id="viewCardsBtn" class="btn-ghost">View Existing Cards</button>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+    <div class="field">
+      <div class="label">Quiz Title</div>
+      <input id="quizTitle" class="input" placeholder="Enter quiz title" />
+    </div>
+
+    <div class="header-row">
+      <h1>Create / Edit Question</h1>
+      <div style="width:46%">
+        <label class="label">Question Type</label>
+        <select id="questionType" class="input">
+          <option value="mcq">MCQ</option>
+          <option value="tf">True / False</option>
+          <option value="fib">Fill in the Blank</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="label">Question</div>
+      <textarea id="questionText" placeholder="Enter question text"></textarea>
+    </div>
+
+    <!-- OPTIONS AREA -->
+    <div id="optionsArea" class="field">
+      <div class="label">Options</div>
+      <div id="optionsContainer" class="options"></div>
+
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button id="addOptionBtn" class="small-btn">+ Add Option</button>
+        <button id="aiBtn" class="small-btn">AI Generate Options</button>
+        <div style="margin-left:auto;color:#9b93a8">Select radio for correct answer</div>
+      </div>
+    </div>
+
+    <!-- FILL BLANK AREA -->
+    <div id="fibArea" class="field" style="display:none">
+      <div class="label">Correct Answer</div>
+      <input id="fibAnswer" class="input" placeholder="Enter correct answer text">
+    </div>
+
+    <!-- MEDIA SECTION — full width container, WILL NOT OVERLAP -->
+    <div class="media-wrapper">
+      <div class="media-heading">Attach Media (optional)</div>
+      <label class="upload-box" id="uploadBox">📁 Click to upload image or video (JPG / PNG / MP4)</label>
+      <input type="file" id="fileInput" accept="image/*,video/*" style="display:none">
+      <div class="media-preview" id="mediaPreview"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="removeMediaBtn" class="small-ghost" style="display:none">Remove Media</button>
+        <div style="margin-left:auto;color:#9b93a8;font-size:13px" id="mediaInfo"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="label">General Correct Feedback (fallback)</div>
+      <textarea id="generalCorrectFb" placeholder="Fallback correct feedback"></textarea>
+    </div>
+
+    <div class="field">
+      <div class="label">General Incorrect Feedback (fallback)</div>
+      <textarea id="generalIncorrectFb" placeholder="Fallback incorrect feedback"></textarea>
+    </div>
+
+    <div class="row-actions">
+      <button id="addQuestionBtn" class="btn-primary">+ Add Question</button>
+      <button id="updateQuestionBtn" class="btn-ghost" style="display:none">Update Question</button>
+      <button id="clearBtn" class="btn-ghost">Clear</button>
+      <button id="saveQuizBtn" class="btn-primary" style="margin-left:auto">Save Quiz</button>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <h3>Preview</h3>
+    <div class="preview-box" id="previewBox">
+      <div class="preview-question" id="previewQ">No question</div>
+      <div id="previewOptionsArea"></div>
+      <div id="previewMedia" style="margin-top:12px"></div>
+      <div id="previewGeneralFb" style="margin-top:12px;color:#6f6b78;font-size:13px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========= State ========= */
+let questions = [];
+let selectedQuestionIndex = -1;
+
+/* Each question structure:
+{
+  id: 'q_xxx',
+  type: 'mcq'|'tf'|'fib',
+  text: '...',
+  options: [ { id:'o1', text:'A', correctFeedback:'', incorrectFeedback:'' }, ... ],
+  correctIndex: 0,
+  fibAnswer: '',
+  generalCorrectFb: '',
+  generalIncorrectFb: '',
+  media: { type: 'image'|'video', dataUrl: 'data:...' , name: 'file.jpg' } | null
+}
+*/
+
+/* ========= DOM refs ========= */
+const questionsContainer = document.getElementById('questionsContainer');
+const quizTitle = document.getElementById('quizTitle');
+const questionType = document.getElementById('questionType');
+const questionText = document.getElementById('questionText');
+const optionsContainer = document.getElementById('optionsContainer');
+const addOptionBtn = document.getElementById('addOptionBtn');
+const aiBtn = document.getElementById('aiBtn');
+const fibArea = document.getElementById('fibArea');
+const fibAnswer = document.getElementById('fibAnswer');
+const fileInput = document.getElementById('fileInput');
+const uploadBox = document.getElementById('uploadBox');
+const mediaPreview = document.getElementById('mediaPreview');
+const removeMediaBtn = document.getElementById('removeMediaBtn');
+const mediaInfo = document.getElementById('mediaInfo');
+
+const generalCorrectFb = document.getElementById('generalCorrectFb');
+const generalIncorrectFb = document.getElementById('generalIncorrectFb');
+
+const addQuestionBtn = document.getElementById('addQuestionBtn');
+const updateQuestionBtn = document.getElementById('updateQuestionBtn');
+const clearBtn = document.getElementById('clearBtn');
+const saveQuizBtn = document.getElementById('saveQuizBtn');
+
+const previewQ = document.getElementById('previewQ');
+const previewOptionsArea = document.getElementById('previewOptionsArea');
+const previewMedia = document.getElementById('previewMedia');
+const previewGeneralFb = document.getElementById('previewGeneralFb');
+
+const exportBtn = document.getElementById('exportBtn');
+const viewCardsBtn = document.getElementById('viewCardsBtn');
+
+/* ========= Utilities ========= */
+function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+function resetEditor(){
+  selectedQuestionIndex = -1;
+  questionText.value = '';
+  optionsContainer.innerHTML = '';
+  fibAnswer.value = '';
+  generalCorrectFb.value = '';
+  generalIncorrectFb.value = '';
+  questionType.value = 'mcq';
+  hideMediaPreview();
+  showTypeUI('mcq');
+  addQuestionBtn.style.display = '';
+  updateQuestionBtn.style.display = 'none';
+  updatePreview();
+}
+
+/* ========= Type UI handler ========= */
+function showTypeUI(type){
+  if(type === 'mcq'){
+    optionsAreaShow(true);
+    fibArea.style.display = 'none';
+    addOptionBtn.style.display = '';
+    aiBtn.style.display = '';
+    // ensure at least 2 options? not forced
+  } else if(type === 'tf'){
+    optionsAreaShow(true);
+    fibArea.style.display = 'none';
+    optionsContainer.innerHTML = '';
+    // create True/False with feedback fields
+    createOptionBlock('True', false, true, {correctFeedback:'', incorrectFeedback:''});
+    createOptionBlock('False', false, true, {correctFeedback:'', incorrectFeedback:''});
+    addOptionBtn.style.display = 'none';
+    aiBtn.style.display = 'none';
+  } else if(type === 'fib'){
+    optionsAreaShow(false);
+    fibArea.style.display = '';
+    addOptionBtn.style.display = 'none';
+    aiBtn.style.display = 'none';
+  }
+}
+function optionsAreaShow(show){
+  document.getElementById('optionsArea').style.display = show ? '' : 'none';
+}
+
+/* ========= Options / Option block ========= */
+function createOptionBlock(text='', checked=false, readOnly=false, optObj=null){
+  // wrapper
+  const wrapper = document.createElement('div');
+  wrapper.className = 'option-block';
+
+  // row: radio + text + remove
+  const row = document.createElement('div'); row.className = 'option-row';
+
+  const radio = document.createElement('input'); radio.type='radio'; radio.name='correctOpt'; radio.className='opt-radio'; radio.checked = checked;
+  radio.addEventListener('change', updatePreview);
+
+  const input = document.createElement('input'); input.type='text'; input.placeholder='Option text';
+  input.value = optObj ? (optObj.text||text) : text;
+  input.oninput = updatePreview;
+  if(readOnly){ input.readOnly = true; input.style.background = '#fafafa'; }
+
+  const removeBtn = document.createElement('button'); removeBtn.className='remove'; removeBtn.innerText='🗑';
+  removeBtn.title = 'Remove option';
+  removeBtn.onclick = ()=> wrapper.remove();
+
+  row.appendChild(radio);
+  row.appendChild(input);
+  if(!readOnly) row.appendChild(removeBtn);
+
+  // feedback labels
+  const fbLabels = document.createElement('div'); fbLabels.className='fb-labels';
+  const cLabel = document.createElement('div'); cLabel.className='label'; cLabel.style.fontSize='12px'; cLabel.style.fontWeight='600'; cLabel.style.flex='1'; cLabel.innerText='Correct Feedback';
+  const iLabel = document.createElement('div'); iLabel.className='label'; iLabel.style.fontSize='12px'; iLabel.style.fontWeight='600'; iLabel.style.flex='1'; iLabel.innerText='Incorrect Feedback';
+  fbLabels.appendChild(cLabel); fbLabels.appendChild(iLabel);
+
+  // feedback inputs
+  const fbRow = document.createElement('div'); fbRow.className='feedback-row';
+  const cInput = document.createElement('input'); cInput.type='text'; cInput.placeholder='Correct feedback for this option'; cInput.className='feedback-input';
+  const iInput = document.createElement('input'); iInput.type='text'; iInput.placeholder='Incorrect feedback for this option'; iInput.className='feedback-input';
+
+  if(optObj){
+    cInput.value = optObj.correctFeedback || '';
+    iInput.value = optObj.incorrectFeedback || '';
+    if(optObj.checked) radio.checked = true;
+  }
+
+  cInput.addEventListener('input', updatePreview);
+  iInput.addEventListener('input', updatePreview);
+
+  fbRow.appendChild(cInput); fbRow.appendChild(iInput);
+
+  wrapper.appendChild(row);
+  wrapper.appendChild(fbLabels);
+  wrapper.appendChild(fbRow);
+
+  optionsContainer.appendChild(wrapper);
+  updatePreview();
+  return wrapper;
+}
+
+/* Add option button */
+addOptionBtn.addEventListener('click', ()=> createOptionBlock('','',false,null));
+
+/* AI generate (simulated) */
+aiBtn.addEventListener('click', ()=>{
+  const q = questionText.value.trim();
+  if(!q){ alert('Enter question text to generate options'); return; }
+  // simple mock generation
+  const words = q.split(/\W+/).filter(w=>w.length>3);
+  const base = words[0] || 'Answer';
+  const opts = [
+    {text: `${base} (correct)`, correctFeedback:'Good job!', incorrectFeedback:''},
+    {text: `Not ${words[1]||'this'}`, correctFeedback:'', incorrectFeedback:'Close, but not correct.'},
+    {text: `${words[2]||'Another'} option`, correctFeedback:'', incorrectFeedback:'Incorrect.'},
+    {text: 'None of the above', correctFeedback:'', incorrectFeedback:'Incorrect.'}
+  ];
+  optionsContainer.innerHTML = '';
+  opts.forEach((o,i)=> createOptionBlock(o.text, i===0, false, { text: o.text, correctFeedback: o.correctFeedback, incorrectFeedback: o.incorrectFeedback, checked: i===0 }));
+});
+
+/* ========= Media upload handling ========= */
+let currentMedia = null; // { type:'image'|'video', dataUrl:'...', name:'' }
+
+uploadBox.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', handleFileSelect);
+removeMediaBtn.addEventListener('click', ()=> { currentMedia = null; hideMediaPreview(); });
+
+function handleFileSelect(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const allowed = ['image/', 'video/'];
+  if(!allowed.some(p=>file.type.startsWith(p))){ alert('Unsupported file type'); return; }
+
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const dataUrl = ev.target.result;
+    currentMedia = { type: file.type.startsWith('video') ? 'video' : 'image', dataUrl, name: file.name };
+    showMediaPreview();
+    updatePreview(); // update right preview
+  };
+  reader.readAsDataURL(file);
+}
+
+function showMediaPreview(){
+  if(!currentMedia) return hideMediaPreview();
+  mediaPreview.innerHTML = '';
+  if(currentMedia.type === 'video'){
+    const v = document.createElement('video'); v.controls = true; v.src = currentMedia.dataUrl; v.style.maxWidth='100%';
+    mediaPreview.appendChild(v);
+  } else {
+    const img = document.createElement('img'); img.src = currentMedia.dataUrl; img.alt = currentMedia.name;
+    mediaPreview.appendChild(img);
+  }
+  removeMediaBtn.style.display = '';
+  mediaInfo.innerText = currentMedia.name || '';
+}
+function hideMediaPreview(){
+  mediaPreview.innerHTML = '';
+  removeMediaBtn.style.display = 'none';
+  mediaInfo.innerText = '';
+  fileInput.value = ''; // reset file input
+}
+
+/* ========= Preview rendering ========= */
+function updatePreview(){
+  // question text
+  const qText = questionText.value.trim();
+  previewQ.innerText = qText || 'No question';
+
+  // options or fib
+  previewOptionsArea.innerHTML = '';
+  const type = questionType.value;
+  if(type === 'fib'){
+    const ans = fibAnswer.value.trim() || '_____';
+    const el = document.createElement('div'); el.className = 'preview-option'; el.innerText = 'Answer: ' + ans;
+    previewOptionsArea.appendChild(el);
+  } else {
+    const blocks = Array.from(document.querySelectorAll('.option-block'));
+    blocks.forEach((block, idx)=>{
+      const text = block.querySelector('input[type="text"]').value || `Option ${idx+1}`;
+      const radio = block.querySelector('.opt-radio');
+      const div = document.createElement('div'); div.className='preview-option';
+      const r = document.createElement('input'); r.type='radio'; r.disabled=true; r.checked = radio.checked || false;
+      const span = document.createElement('div'); span.style.marginLeft='10px'; span.innerText = text;
+      div.appendChild(r); div.appendChild(span);
+      previewOptionsArea.appendChild(div);
+
+      // per-option feedback preview (small)
+      const cf = block.querySelectorAll('.feedback-input')[0]?.value || '';
+      const icf = block.querySelectorAll('.feedback-input')[1]?.value || '';
+      if(cf || icf){
+        const pfb = document.createElement('div'); pfb.className='preview-feedback';
+        pfb.innerHTML = '';
+        if(cf) pfb.innerHTML += `<div style="color:#2b8a3e">✔ ${cf}</div>`;
+        if(icf) pfb.innerHTML += `<div style="color:#d33">✖ ${icf}</div>`;
+        previewOptionsArea.appendChild(pfb);
+      }
+    });
+  }
+
+  // media preview in right panel
+  previewMedia.innerHTML = '';
+  if(currentMedia){
+    if(currentMedia.type === 'video'){
+      const v = document.createElement('video'); v.controls = true; v.src = currentMedia.dataUrl; v.style.maxWidth='100%';
+      previewMedia.appendChild(v);
+    } else {
+      const img = document.createElement('img'); img.src = currentMedia.dataUrl; img.style.maxWidth='100%';
+      previewMedia.appendChild(img);
+    }
+  }
+
+  // general feedback hints
+  previewGeneralFb.innerHTML = '';
+  if(generalCorrectFb.value.trim()) previewGeneralFb.innerHTML += `<div style="color:#2b8a3e">General correct feedback set</div>`;
+  if(generalIncorrectFb.value.trim()) previewGeneralFb.innerHTML += `<div style="color:#d33;margin-top:6px">General incorrect feedback set</div>`;
+}
+
+/* live updates */
+questionText.addEventListener('input', updatePreview);
+fibAnswer.addEventListener('input', updatePreview);
+generalCorrectFb.addEventListener('input', updatePreview);
+generalIncorrectFb.addEventListener('input', updatePreview);
+
+/* type change */
+questionType.addEventListener('change', (e)=> { showTypeUI(e.target.value); updatePreview(); });
+
+/* ========= Gather question from editor ========= */
+function gatherQuestionFromEditor(){
+  const type = questionType.value;
+  const text = questionText.value.trim();
+  if(!text){ alert('Enter the question text'); return null; }
+  const obj = { id: uid('q'), type, text, options:[], correctIndex:null, fibAnswer:'', generalCorrectFb: generalCorrectFb.value.trim(), generalIncorrectFb: generalIncorrectFb.value.trim(), media: null };
+
+  if(type === 'fib'){
+    obj.fibAnswer = fibAnswer.value.trim();
+  } else {
+    const blocks = Array.from(document.querySelectorAll('.option-block'));
+    if(blocks.length === 0){ alert('Add at least one option'); return null; }
+    blocks.forEach((block, idx)=>{
+      const text = block.querySelector('input[type="text"]').value.trim();
+      const correctFb = block.querySelectorAll('.feedback-input')[0]?.value.trim() || '';
+      const incorrectFb = block.querySelectorAll('.feedback-input')[1]?.value.trim() || '';
+      obj.options.push({ id: uid('o'), text, correctFeedback: correctFb, incorrectFeedback: incorrectFb });
+      if(block.querySelector('.opt-radio')?.checked) obj.correctIndex = idx;
+    });
+  }
+
+  // attach currentMedia (make a shallow copy)
+  if(currentMedia){
+    obj.media = { type: currentMedia.type, dataUrl: currentMedia.dataUrl, name: currentMedia.name || '' };
+  } else obj.media = null;
+
+  return obj;
+}
+
+/* ========= Add / Update question ========= */
+addQuestionBtn.addEventListener('click', ()=>{
+  const qObj = gatherQuestionFromEditor();
+  if(!qObj) return;
+  questions.push(qObj);
+  renderQuestionsList();
+  resetEditor();
+});
+
+updateQuestionBtn.addEventListener('click', ()=>{
+  if(selectedQuestionIndex < 0) return;
+  const qObj = gatherQuestionFromEditor();
+  if(!qObj) return;
+  qObj.id = questions[selectedQuestionIndex].id;
+  questions[selectedQuestionIndex] = qObj;
+  renderQuestionsList();
+  resetEditor();
+});
+
+/* ========= Render questions list with drag/drop ========= */
+function renderQuestionsList(){
+  questionsContainer.innerHTML = '';
+  if(questions.length === 0){
+    const hint = document.createElement('div'); hint.className='hint'; hint.innerText='No questions added yet';
+    questionsContainer.appendChild(hint);
+    return;
+  }
+
+  questions.forEach((q, idx)=>{
+    const item = document.createElement('div'); item.className='q-item'; item.draggable = true;
+    if(idx === selectedQuestionIndex) item.classList.add('selected');
+
+    const left = document.createElement('div'); left.style.flex='1'; left.innerHTML = `<strong>${idx+1}.</strong> <span style="margin-left:8px">${q.text.substring(0,70) || '(no text)'}</span>`;
+    const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
+    const editBtn = document.createElement('button'); editBtn.className='btn-ghost'; editBtn.style.padding='6px 8px'; editBtn.innerText='Edit';
+    const delBtn = document.createElement('button'); delBtn.className='btn-ghost'; delBtn.style.padding='6px 8px'; delBtn.innerText='Delete';
+    right.appendChild(editBtn); right.appendChild(delBtn);
+
+    item.appendChild(left); item.appendChild(right);
+    questionsContainer.appendChild(item);
+
+    editBtn.addEventListener('click', ()=> loadQuestionToEditor(idx));
+    delBtn.addEventListener('click', ()=> { if(confirm('Delete this question?')){ questions.splice(idx,1); renderQuestionsList(); resetEditor(); }});
+
+    // DnD
+    item.addEventListener('dragstart', (e)=>{ item.classList.add('dragging'); e.dataTransfer.setData('text/plain', idx.toString()); e.dataTransfer.effectAllowed='move'; });
+    item.addEventListener('dragend', ()=> item.classList.remove('dragging'));
+    item.addEventListener('dragover', (e)=> { e.preventDefault(); e.dataTransfer.dropEffect='move'; });
+    item.addEventListener('drop', (e)=> { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); const to = idx; if(!isNaN(from)) moveQuestion(from,to); });
+  });
+}
+
+function moveQuestion(from,to){
+  if(from === to) return;
+  const it = questions.splice(from,1)[0];
+  questions.splice(to,0,it);
+  renderQuestionsList();
+}
+
+/* ========= Load question into editor for editing ========= */
+function loadQuestionToEditor(index){
+  const q = questions[index];
+  if(!q) return;
+  selectedQuestionIndex = index;
+  questionType.value = q.type;
+  showTypeUI(q.type);
+  questionText.value = q.text;
+  generalCorrectFb.value = q.generalCorrectFb || '';
+  generalIncorrectFb.value = q.generalIncorrectFb || '';
+  optionsContainer.innerHTML = '';
+  fibAnswer.value = q.fibAnswer || '';
+  // media
+  if(q.media){
+    currentMedia = { type: q.media.type, dataUrl: q.media.dataUrl, name: q.media.name || '' };
+    showMediaPreview();
+  } else { currentMedia = null; hideMediaPreview(); }
+
+  if(q.type !== 'fib'){
+    q.options.forEach((opt, i)=>{
+      createOptionBlock(opt.text, i===q.correctIndex, false, { text: opt.text, correctFeedback: opt.correctFeedback || '', incorrectFeedback: opt.incorrectFeedback || '', checked: i===q.correctIndex });
+    });
+  }
+  addQuestionBtn.style.display = 'none';
+  updateQuestionBtn.style.display = '';
+  updatePreview();
+  renderQuestionsList();
+}
+
+/* ========= Clear editor ========= */
+clearBtn.addEventListener('click', resetEditor);
+saveQuizBtn.addEventListener('click', saveQuiz);
+
+/* ========= Export quiz JSON ========= */
+exportBtn.addEventListener('click', ()=>{
+  // Note: media dataUrls are included (could be large).
+  const out = questions.map(q => ({
+    id: q.id,
+    type: q.type,
+    text: q.text,
+    options: q.options,
+    correctIndex: q.correctIndex,
+    fibAnswer: q.fibAnswer,
+    generalCorrectFb: q.generalCorrectFb,
+    generalIncorrectFb: q.generalIncorrectFb,
+    media: q.media // { type, dataUrl, name } or null
+  }));
+  const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'quiz.json'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+/* ========= View existing cards (topic/lesson) ========= */
+viewCardsBtn.addEventListener('click', fetchAndShowCards);
+
+async function fetchAndShowCards(){
+  try{
+    const params = new URLSearchParams(window.location.search);
+    const topicId = params.get('topic_id');
+    const lessonId = params.get('lesson_id');
+    if(!topicId && !lessonId){
+      alert('No topic_id or lesson_id in URL');
+      return;
+    }
+
+    const tokenResp = await fetch('/admin/api/get-jwt-token', { credentials: 'include' });
+    const tokenData = await tokenResp.json();
+    if(!tokenResp.ok || !tokenData.access_token){
+      alert('Failed to get admin token. Please login again.');
+      return;
+    }
+    const token = tokenData.access_token;
+
+    let url = '';
+    if(topicId) url = `/api/v1/cards?topic_id=${encodeURIComponent(topicId)}`;
+    else url = `/api/v1/cards?lesson_id=${encodeURIComponent(lessonId)}`;
+
+    const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    const data = await resp.json();
+    if(!resp.ok || !data.success){
+      const msg = data.error || data.detail || resp.statusText;
+      alert('Failed to load cards: ' + msg);
+      return;
+    }
+
+    // Render a simple modal-like list in the right preview box for quick viewing
+    const items = (data.data || data.cards || []).slice();
+    if(items.length === 0){
+      alert('No cards found for this context');
+      return;
+    }
+
+    const container = document.createElement('div');
+    container.style.marginTop = '12px';
+    container.style.background = '#fff';
+    container.style.border = '1px solid #efe6ff';
+    container.style.borderRadius = '12px';
+    container.style.padding = '12px';
+
+    const title = document.createElement('div');
+    title.style.fontWeight = '700';
+    title.style.marginBottom = '8px';
+    title.innerText = 'Existing Cards';
+    container.appendChild(title);
+
+    items.forEach((c, idx)=>{
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.justifyContent = 'space-between';
+      row.style.alignItems = 'center';
+      row.style.padding = '8px';
+      row.style.border = '1px solid #eee';
+      row.style.borderRadius = '8px';
+      row.style.background = '#fbf9ff';
+      row.style.marginBottom = '6px';
+      const left = document.createElement('div');
+      left.innerHTML = `<strong>${idx+1}.</strong> <span style="margin-left:8px">[${c.card_type}] ${c.title || '(no title)'} </span>`;
+      const right = document.createElement('div');
+      right.style.fontSize = '12px';
+      right.style.color = '#9b93a8';
+      right.innerText = `id: ${c.id}`;
+      row.appendChild(left);
+      row.appendChild(right);
+      container.appendChild(row);
+    });
+
+    // Inject into right preview panel below existing preview
+    const previewBox = document.getElementById('previewBox');
+    // Remove any previous listing
+    const old = previewBox.querySelector('.existing-cards-box');
+    if(old) old.remove();
+    container.classList.add('existing-cards-box');
+    previewBox.appendChild(container);
+
+  }catch(err){
+    console.error('View cards error:', err);
+    alert('Error loading cards: ' + err.message);
+  }
+}
+
+/* ========= Save quiz to DB ========= */
+async function saveQuiz(){
+  const title = quizTitle.value.trim();
+  if(!title){ alert('Please enter a quiz title'); return; }
+  if(questions.length === 0){ alert('Add at least one question before saving'); return; }
+
+  const topicId = getTopicIdFromURL();
+  const lessonId = getLessonIdFromURL();
+  const displayOrder = getDisplayOrderFromURL();
+
+  if(!topicId && !lessonId){
+    alert('Error: This quiz must be associated with either a topic or a lesson.');
+    return;
+  }
+
+  const payloadQuestions = questions.map(q => ({
+    id: q.id,
+    type: q.type,
+    text: q.text,
+    options: q.options,
+    correctIndex: q.correctIndex,
+    fibAnswer: q.fibAnswer,
+    generalCorrectFb: q.generalCorrectFb,
+    generalIncorrectFb: q.generalIncorrectFb,
+    // Avoid sending large base64 blobs that can exceed DB/mySQL packet size
+    media: q.media ? { type: q.media.type, name: q.media.name || '' } : null
+  }));
+
+  const cardData = {
+    card_type: 'quiz',
+    title: title,
+    data_json: { questions: payloadQuestions },
+    display_order: Number.isNaN(parseInt(displayOrder)) ? 0 : parseInt(displayOrder),
+    published: false
+  };
+
+  if(topicId) cardData.topic_id = parseInt(topicId);
+  if(lessonId) cardData.lesson_id = parseInt(lessonId);
+
+  try {
+    const tokenResponse = await fetch('/admin/api/get-jwt-token', { 
+      credentials: 'include',
+      method: 'GET'
+    });
+
+    if(!tokenResponse.ok) {
+      alert('Failed to authenticate. Please login again.');
+      window.location.href = '/admin/login';
+      return;
+    }
+
+    const tokenData = await tokenResponse.json();
+    if(!tokenData.access_token) {
+      alert('Failed to get access token');
+      return;
+    }
+
+    const token = tokenData.access_token;
+    localStorage.setItem('admin_jwt_token', token);
+
+    const response = await fetch('/api/v1/cards', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      credentials: 'include',
+      body: JSON.stringify(cardData)
+    });
+
+    const result = await response.json();
+    console.log('Save quiz result:', result);
+    if(result.success){
+      alert('Quiz card saved successfully!');
+      const confirmContinue = confirm('Click OK to add another quiz, or Cancel to go back to dashboard');
+      if(confirmContinue){
+        quizTitle.value = '';
+        questions = [];
+        resetEditor();
+        renderQuestionsList();
+      } else {
+        window.location.href = '/admin/dashboard';
+      }
+    } else {
+      const errorMsg = result.error || result.detail || JSON.stringify(result);
+      alert(`Failed to save quiz card: ${errorMsg}`);
+    }
+  } catch(err){
+    console.error('Save error:', err);
+    alert('Failed to save quiz card: ' + err.message);
+  }
+}
+
+function getTopicIdFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get('topic_id');
+}
+
+function getLessonIdFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get('lesson_id');
+}
+
+function getDisplayOrderFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get('display_order') || '0';
+}
+
+/* ========= Init ========= */
+showTypeUI('mcq');
+resetEditor();
+renderQuestionsList();
+updatePreview();
+
+</script>
+</body>
+</html>

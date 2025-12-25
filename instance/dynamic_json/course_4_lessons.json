@@ -1,0 +1,19 @@
+{
+  "course_id": 4,
+  "lessons": [
+    {
+      "id": 13,
+      "title": "Images in html",
+      "description": "how to insert images in html",
+      "duration": 23,
+      "level": "beginner"
+    },
+    {
+      "id": 9,
+      "title": "Frames in html",
+      "description": "Discussing about the frames in html",
+      "duration": 20,
+      "level": "intermediate"
+    }
+  ]
+}

@@ -69,6 +69,7 @@ def admin_login_post():
         # set session permanence before creating session values
         session.permanent = bool(remember)
         session['admin_user_id'] = 'dev_admin'
+        session['admin_role'] = 'admin'
         if not is_xhr:
             flash('Welcome, dev admin!', 'success')
         if is_xhr:
@@ -99,7 +100,14 @@ def admin_login_post():
         return redirect(url_for('admin_bp.admin_login_get'))
 
     # If standard DB user exists and is admin, use that.
+    selected_role = request.form.get('role') or (request.get_json(silent=True) or {}).get('role')
     if user and user.check_password(password) and user.role == 'admin':
+        if selected_role != 'admin':
+            msg = 'Invalid admin credentials'
+            if is_xhr:
+                return {"success": False, "error": msg}, 401
+            flash(msg, 'error')
+            return redirect(url_for('admin_bp.admin_login_get'))
         # honor remember flag for regular users as well
         remember_raw = None
         try:
@@ -121,6 +129,7 @@ def admin_login_post():
 
         session.permanent = bool(remember)
         session['admin_user_id'] = user.id
+        session['admin_role'] = 'admin'
         if is_xhr:
             expires = None
             try:
@@ -176,7 +185,24 @@ def get_jwt_token():
     }
     
     access_token = create_access_token(identity=user_id_str, additional_claims=additional_claims)
+    return jsonify({'success': True, 'access_token': access_token}), 200
     
+@admin_bp.route('/whoami')
+def whoami():
+    user_id = session.get('admin_user_id')
+    role = session.get('admin_role')
+    if not user_id:
+        return jsonify({'user': None, 'role': None}), 200
+    if user_id == 'dev_admin':
+        username = 'dev_admin'
+    else:
+        from app.models import User
+        try:
+            user = User.query.get(int(user_id))
+            username = user.username if user else str(user_id)
+        except Exception:
+            username = str(user_id)
+    return jsonify({'user': username, 'role': role}), 200
     return jsonify({
         'success': True,
         'access_token': access_token
@@ -203,13 +229,21 @@ def admin_dashboard():
     # admin_dashboard_missing fallback.
     # Fetch recently added students ordered by join date (students.date)
     recent_students = []
+    scheduled_notifications_count = 0
     try:
         recent_students = Student.query.order_by(Student.date.desc()).limit(10).all()
     except Exception:
         recent_students = []
 
+    # Count scheduled notifications
     try:
-        return render_template('dashboard.html', user=user, active='dashboard', recent_students=recent_students)
+        from app.models import Notification
+        scheduled_notifications_count = Notification.query.filter(Notification.status == 'scheduled').count()
+    except Exception:
+        scheduled_notifications_count = 0
+
+    try:
+        return render_template('dashboard.html', user=user, active='dashboard', recent_students=recent_students, scheduled_notifications_count=scheduled_notifications_count)
     except Exception:
         project_root = os.path.abspath(os.path.join(current_app.root_path, '..'))
         candidate = os.path.join(project_root, 'templates', 'dashboard.html')
@@ -217,7 +251,7 @@ def admin_dashboard():
             try:
                 with open(candidate, 'r', encoding='utf8') as fh:
                     content = fh.read()
-                return render_template_string(content, user=user, active='dashboard', recent_students=recent_students)
+                return render_template_string(content, user=user, active='dashboard', recent_students=recent_students, scheduled_notifications_count=scheduled_notifications_count)
             except Exception:
                 current_app.logger.exception('Failed to render project-level dashboard.html')
         # final fallback
@@ -316,9 +350,19 @@ def create_topic_page():
     selected_lesson = request.args.get('lesson_id')
     try:
         lessons = Lesson.query.order_by(Lesson.created_at.desc()).all()
+        # Fetch recent topics for the "Existing Topics" panel, ordered by creation time
+        topics = Topic.query.order_by(Topic.created_at.desc()).all()
     except Exception:
         lessons = []
-    return render_template('create_topic.html', user=user, active='create_topic', lessons=lessons, selected_lesson=selected_lesson)
+        topics = []
+    return render_template(
+        'create_topic.html',
+        user=user,
+        active='create_topic',
+        lessons=lessons,
+        selected_lesson=selected_lesson,
+        topics=topics,
+    )
 
 
 # Card Type Editors
@@ -357,6 +401,218 @@ def video_editor():
 @admin_bp.route('/interactive-editor', methods=['GET'])
 def interactive_editor():
     return render_template('interactive.html')
+
+
+@admin_bp.route('/notifications', methods=['GET'])
+def notifications_page():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    return render_template('notifications.html', user=user, active='notifications')
+
+
+@admin_bp.route('/notifications/api', methods=['GET'])
+def notifications_api_list():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    try:
+        from app.models import Notification
+        rows = Notification.query.order_by(Notification.created_at.desc()).all()
+        out = []
+        for n in rows:
+            out.append({
+                'id': n.id,
+                'title': n.title,
+                'message': n.message,
+                'category': n.category,
+                'target': n.target,
+                'status': n.status,
+                'scheduled_at': n.scheduled_at.isoformat() if getattr(n, 'scheduled_at', None) else None,
+                'created_at': n.created_at.isoformat() if getattr(n, 'created_at', None) else None
+            })
+        return jsonify(out), 200
+    except Exception:
+        current_app.logger.exception('Failed to list notifications')
+        return jsonify({'success': False, 'error': 'Failed to list'}), 500
+
+
+@admin_bp.route('/notifications/api', methods=['POST'])
+def notifications_api_create():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    try:
+        from app.models import Notification
+        from app.extensions import db
+        data = request.get_json(silent=True) or {}
+        title = (data.get('title') or '').strip()
+        message = (data.get('message') or '').strip()
+        category = (data.get('category') or 'info').strip()
+        target = (data.get('target') or '').strip()
+        date = data.get('date')
+        time = data.get('time')
+        if not title or not message:
+            return jsonify({'success': False, 'error': 'Title and message required'}), 400
+        scheduled_at = None
+        status = 'Sent'
+        if date and time:
+            try:
+                from datetime import datetime
+                scheduled_at = datetime.fromisoformat(f"{date} {time}")
+                status = 'Scheduled'
+                # Validate: scheduled time must be in the future
+                now = datetime.now()
+                if scheduled_at <= now:
+                    return jsonify({'success': False, 'error': 'Schedule must be in the future'}), 400
+            except Exception:
+                scheduled_at = None
+        n = Notification(title=title, message=message, category=category, target=target or 'all', status=status, scheduled_at=scheduled_at)
+        db.session.add(n)
+        db.session.commit()
+        return jsonify({'success': True, 'id': n.id}), 201
+    except Exception:
+        current_app.logger.exception('Failed to create notification')
+        try:
+            from app.extensions import db
+            db.session.rollback()
+        except Exception:
+            pass
+        return jsonify({'success': False, 'error': 'Failed to create'}), 500
+
+
+@admin_bp.route('/notifications/api/<int:notification_id>', methods=['PUT'])
+def notifications_api_update(notification_id):
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    try:
+        from app.models import Notification
+        from app.extensions import db
+        n = Notification.query.get(notification_id)
+        if not n:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+        data = request.get_json(silent=True) or {}
+        n.title = (data.get('title') or n.title)
+        n.message = (data.get('message') or n.message)
+        n.category = (data.get('category') or n.category)
+        n.target = (data.get('target') or n.target)
+        # Allow updating schedule with validation for future times only
+        date = data.get('date')
+        time = data.get('time')
+        if date and time:
+            try:
+                from datetime import datetime
+                new_sched = datetime.fromisoformat(f"{date} {time}")
+                now = datetime.now()
+                if new_sched <= now:
+                    return jsonify({'success': False, 'error': 'Schedule must be in the future'}), 400
+                n.scheduled_at = new_sched
+                n.status = 'Scheduled'
+            except Exception:
+                return jsonify({'success': False, 'error': 'Invalid schedule date/time'}), 400
+        elif date is not None or time is not None:
+            # If one of date/time was intentionally cleared, treat as immediate send
+            n.scheduled_at = None
+            n.status = 'Sent'
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception:
+        current_app.logger.exception('Failed to update notification')
+        try:
+            from app.extensions import db
+            db.session.rollback()
+        except Exception:
+            pass
+        return jsonify({'success': False, 'error': 'Failed to update'}), 500
+
+
+@admin_bp.route('/notifications/api/<int:notification_id>', methods=['DELETE'])
+def notifications_api_delete(notification_id):
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    try:
+        from app.models import Notification
+        from app.extensions import db
+        n = Notification.query.get(notification_id)
+        if not n:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+        db.session.delete(n)
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception:
+        current_app.logger.exception('Failed to delete notification')
+        try:
+            from app.extensions import db
+            db.session.rollback()
+        except Exception:
+            pass
+        return jsonify({'success': False, 'error': 'Failed to delete'}), 500
+
+
+@admin_bp.route('/notifications/api/<int:notification_id>/delete', methods=['POST'])
+def notifications_api_delete_fallback(notification_id):
+    """Fallback delete endpoint for environments where DELETE is blocked upstream.
+
+    Performs the same deletion as notifications_api_delete but via POST.
+    """
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    try:
+        from app.models import Notification
+        from app.extensions import db
+        n = Notification.query.get(notification_id)
+        if not n:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+        db.session.delete(n)
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception:
+        current_app.logger.exception('Failed to delete notification (POST fallback)')
+        try:
+            from app.extensions import db
+            db.session.rollback()
+        except Exception:
+            pass
+        return jsonify({'success': False, 'error': 'Failed to delete'}), 500
+
+
+@admin_bp.route('/notifications/api/<int:notification_id>', methods=['GET'])
+def notifications_api_get(notification_id):
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    try:
+        from app.models import Notification
+        n = Notification.query.get(notification_id)
+        if not n:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+        return jsonify({
+            'success': True,
+            'notification': {
+                'id': n.id,
+                'title': n.title,
+                'message': n.message,
+                'category': n.category,
+                'target': n.target,
+                'status': n.status,
+                'scheduled_at': n.scheduled_at.isoformat() if getattr(n, 'scheduled_at', None) else None,
+                'created_at': n.created_at.isoformat() if getattr(n, 'created_at', None) else None
+            }
+        }), 200
+    except Exception:
+        current_app.logger.exception('Failed to get notification')
+        return jsonify({'success': False, 'error': 'Failed to get'}), 500
 
 
 @admin_bp.route('/all_courses', methods=['GET'])
@@ -958,7 +1214,10 @@ def create_topic_post():
 @admin_bp.route('/get_topic', methods=['GET'])
 def get_topic():
     uid = session.get('admin_user_id')
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if not uid:
+        if is_xhr:
+            return {"success": False, "error": "not authenticated"}, 401
         return redirect(url_for('admin_bp.admin_login_get'))
     if uid == 'dev_admin':
         user = None
@@ -966,6 +1225,8 @@ def get_topic():
         user = User.query.get(uid)
         if not user or user.role != 'admin':
             session.pop('admin_user_id', None)
+            if is_xhr:
+                return {"success": False, "error": "not authorized"}, 403
             return redirect(url_for('admin_bp.admin_login_get'))
 
     tid = request.args.get('id')
@@ -1651,12 +1912,12 @@ def create_lesson_post():
 def update_lesson_post():
     """Update an existing lesson from admin UI. Accepts JSON or form data.
     Expected fields: id (or lesson_id), title, course_id, description, duration, level, objectives.
+   
     Returns JSON for XHR or redirects back to lesson page.
     """
     uid = session.get('admin_user_id')
     if not uid:
         return redirect(url_for('admin_bp.admin_login_get'))
-
     if uid == 'dev_admin':
         user = None
     else:
@@ -1772,3 +2033,12 @@ def admin_logout():
     flash('Logged out', 'info')
     # redirect to the site root (home endpoint)
     return redirect(url_for('home'))
+
+
+@admin_bp.route('/cards_index', methods=['GET'])
+def cards_index():
+    # Optionally, require admin session here if needed
+    lesson_id = request.args.get('lesson_id')
+    topic_id = request.args.get('topic_id')
+    display_order = request.args.get('display_order')
+    return render_template('cards_index.html', lesson_id=lesson_id, topic_id=topic_id, display_order=display_order)

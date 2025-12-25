@@ -10,6 +10,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Ensure .env is present in the image for Flask config
+COPY .env .env
+
 ENV FLASK_APP=wsgi.py
 ENV FLASK_ENV=production
 

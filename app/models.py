@@ -113,7 +113,7 @@ class Student(db.Model):  # type: ignore[name-defined]
     password = db.Column(db.String(255), nullable=True)
     syllabus = db.Column(db.String(255), nullable=True)
     class_ = db.Column(db.String(50), nullable=True, name='class')
-    subjects = db.Column(db.Text, nullable=True)
+    courses = db.Column(db.Text, nullable=True)
     second_language = db.Column(db.String(100), nullable=True)
     third_language = db.Column(db.String(100), nullable=True)
     # Default enrollment date to now when not provided
@@ -129,14 +129,13 @@ class Student(db.Model):  # type: ignore[name-defined]
 class Notification(db.Model):  # type: ignore[name-defined]
     __tablename__ = 'notifications'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=True)
-    title = db.Column(db.String(255), nullable=False)
-    body = db.Column(db.Text, nullable=True)
-    data = db.Column(JSON_COL, nullable=True)
-    is_read = db.Column(db.Boolean, default=False, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-
-    user = db.relationship('User')
+    title = db.Column(db.Text, nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    category = db.Column(db.Text, nullable=False)
+    target = db.Column(db.Text, nullable=False)
+    status = db.Column(db.Text, nullable=False)
+    scheduled_at = db.Column(db.TIMESTAMP, nullable=True)
+    created_at = db.Column(db.TIMESTAMP, nullable=False, default=datetime.utcnow, index=True)
 
 
 class Leaderboard(db.Model):  # type: ignore[name-defined]
@@ -172,3 +171,14 @@ class Card(db.Model):  # type: ignore[name-defined]
     topic = db.relationship('Topic', backref=db.backref('cards', lazy='dynamic'))
     lesson = db.relationship('Lesson', backref=db.backref('cards', lazy='dynamic'))
     creator = db.relationship('User', foreign_keys=[created_by])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'card_type': self.card_type,
+            'data_json': self.data_json,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'published': self.published
+        }

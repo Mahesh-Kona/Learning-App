@@ -10,10 +10,10 @@
 .menu .menu-item a span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sidebar-footer{padding-top:10px}
 .logout-btn{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:transparent;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:10px;border-radius:8px;cursor:pointer;text-decoration:none}
-.main-content{flex:1;padding:28px 36px;display:flex;flex-direction:column;margin-left:260px}
+.main-content{flex:1;padding:8px 24px 28px 24px;display:flex;flex-direction:column;margin-left:260px}
 @media (max-width: 900px){
   .sidebar{display:none;position:static}
-  .main-content{margin-left:0}
+  .main-content{margin-left:0;padding:8px 8px 20px 8px;}
   .content-grid{grid-template-columns:1fr}
   .search input{width:120px}
 }

@@ -1,15 +1,92 @@
 {
   "courses": [
     {
-      "id": 1,
-      "title": "Demo Course",
-      "description": "Demo course for recording",
+      "id": 15,
+      "title": "E2E Test Course",
+      "description": "created by automated test",
+      "category": null,
+      "thumbnail_url": "/uploads/test.png",
+      "difficulty": null,
+      "duration_weeks": null,
+      "total_lessons": 2,
+      "published": false
+    },
+    {
+      "id": 23,
+      "title": "ebfgfgh",
+      "description": "hgngfnh",
+      "category": null,
+      "thumbnail_url": "/uploads/passport_size.png",
+      "difficulty": "beginner",
+      "duration_weeks": 45,
+      "total_lessons": 0,
+      "published": true
+    },
+    {
+      "id": 18,
+      "title": "gfhhy",
+      "description": "ythyju",
+      "category": "physics",
+      "thumbnail_url": "/uploads/IMG20220228115358.jpg",
+      "difficulty": null,
+      "duration_weeks": null,
+      "total_lessons": 0,
+      "published": false
+    },
+    {
+      "id": 6,
+      "title": "Integration Test Course",
+      "description": "Created by automated test",
       "category": null,
       "thumbnail_url": null,
       "difficulty": null,
       "duration_weeks": null,
+      "total_lessons": 0,
+      "published": null
+    },
+    {
+      "id": 22,
+      "title": "JS Flow Course",
+      "description": "created via simulated js flow",
+      "category": null,
+      "thumbnail_url": "/uploads/jsflow.png",
+      "difficulty": "advanced",
+      "duration_weeks": 10,
       "total_lessons": 1,
-      "published": false
+      "published": true
+    },
+    {
+      "id": 4,
+      "title": "Mathematics",
+      "description": "Hyper text markup language",
+      "category": null,
+      "thumbnail_url": null,
+      "difficulty": null,
+      "duration_weeks": null,
+      "total_lessons": 2,
+      "published": null
+    },
+    {
+      "id": 25,
+      "title": "Maths for Class 10th",
+      "description": "cover all maths chapter",
+      "category": null,
+      "thumbnail_url": null,
+      "difficulty": "beginner",
+      "duration_weeks": null,
+      "total_lessons": 0,
+      "published": true
+    },
+    {
+      "id": 27,
+      "title": "New test course 15 dec",
+      "description": "test desuoc",
+      "category": "physics",
+      "thumbnail_url": null,
+      "difficulty": "beginner",
+      "duration_weeks": null,
+      "total_lessons": 0,
+      "published": true
     }
   ]
 }

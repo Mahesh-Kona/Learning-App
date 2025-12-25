@@ -1,0 +1,19 @@
+{
+  "course_id": 15,
+  "lessons": [
+    {
+      "id": 15,
+      "title": "rfe2",
+      "description": "hi",
+      "duration": 7,
+      "level": "beginner"
+    },
+    {
+      "id": 8,
+      "title": "geometry",
+      "description": "ertertr",
+      "duration": 34,
+      "level": "intermediate"
+    }
+  ]
+}

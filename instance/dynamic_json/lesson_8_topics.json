@@ -1,0 +1,17 @@
+{
+  "lesson_id": 8,
+  "topics": [
+    {
+      "id": 8,
+      "lesson_id": 8,
+      "title": "Prefab",
+      "content_type": "text",
+      "content": "",
+      "description": "intimatin to student",
+      "duration": 2,
+      "order": 0,
+      "estimated_time": null,
+      "difficulty": null
+    }
+  ]
+}

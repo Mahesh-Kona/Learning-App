@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Quiz Admin Panel</title>
+
+<script src="/static/admin_jwt_check.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --left-w:260px;
+  --bg:#f6f6f8; --card:#fff; --muted:#6b7280;
+  --accent:#7d4dff; --danger:#ff6b5b;
+}
+html,body{height:100%;font-family:Inter, system-ui}
+body{background:var(--bg);color:#111}
+
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* LEFT / SIDEBAR */
+.sidebar{
+  width:var(--left-w);
+  background:var(--card);
+  padding:22px;
+  border-right:1px solid #e6e6ea;
+  overflow:auto;
+}
+.sidebar h2{font-size:16px;margin-bottom:16px}
+
+.template{
+  border-radius:14px;
+  padding:18px;
+  margin-bottom:18px;
+  background:#fff;
+  border:2px solid #eee;
+  cursor:pointer;
+}
+.template .title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:700;
+  margin-bottom:6px
+}
+.template .desc{font-size:13px;color:var(--muted);margin-bottom:6px}
+
+.template ul{
+  font-size:13px;
+  color:var(--muted);
+  padding-left:18px;
+  margin-bottom:10px;
+}
+
+.template button{
+  width:100%;
+  margin-top:6px;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  font-weight:700;
+  cursor:pointer
+}
+.quiz button{background:var(--danger);color:#fff}
+.interactive button{background:#7b2cff;color:#fff}
+.video button{background:#2db14c;color:#fff}
+.concept button{background:#ffb400;color:#fff}
+
+/* CENTER */
+.center{
+  flex:1;
+  background:var(--card);
+  padding:40px 60px;
+  overflow:auto;
+}
+.preview{
+  max-width:900px;
+  margin:0 auto;
+  padding:40px;
+  border-radius:18px;
+  box-shadow:0 8px 30px rgba(0,0,0,0.08);
+  position:relative;
+}
+
+/* BACK BUTTON */
+.back-btn{
+  position:absolute;
+  top:18px;
+  right:18px;
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  border:none;
+  background:#f4f4f5;
+  font-size:20px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.preview h3{font-size:22px;margin-bottom:6px}
+.muted{color:var(--muted);margin-bottom:24px}
+
+.card-list{display:grid;gap:18px}
+
+.existing-card{
+  border:1px solid #eee;
+  border-radius:16px;
+  padding:18px;
+  background:#fff;
+  cursor:grab;
+}
+.existing-card.dragging{opacity:0.4}
+
+.existing-card h4{margin-bottom:4px}
+.existing-card p{font-size:13px;color:var(--muted)}
+
+.card-actions{
+  margin-top:14px;
+  display:flex;
+  gap:10px;
+}
+
+.btn{
+  padding:8px 14px;
+  border-radius:10px;
+  border:none;
+  cursor:pointer;
+  font-weight:700;
+}
+.btn.edit{background:#f3ecff;color:var(--accent)}
+.btn.delete{background:#ffecec;color:var(--danger)}
+
+.drag-hint{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:8px;
+}
+
+.empty{
+  text-align:center;
+  color:var(--muted);
+  padding:50px 0;
+}
+
+/* SAVE BUTTON */
+.save-wrap{
+  margin-top:30px;
+  text-align:right;
+}
+.save-btn{
+  padding:12px 26px;
+  border-radius:12px;
+  border:none;
+  background:var(--accent);
+  color:#fff;
+  font-weight:800;
+  cursor:pointer;
+}
+
+/* MOBILE */
+@media(max-width:1000px){
+  .sidebar{display:none}
+  .center{padding:20px}
+  .preview{padding:28px}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<!-- LEFT -->
+<aside class="sidebar">
+  <h2>CARD TEMPLATES</h2>
+
+  <div class="template quiz" onclick="openCardEditor('quiz')">
+    <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(255,107,91,0.12);display:grid;place-items:center;color:var(--danger);font-weight:800">❓</span>Quiz Card</div>
+    <div class="desc">Multiple Choice Questions</div>
+    <ul><li>MCQ</li><li>True/False</li><li>Match Columns</li></ul>
+    <button>SELECT →</button>
+  </div>
+
+  <div class="template interactive" onclick="openCardEditor('interactive')">
+    <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(140,40,255,0.12);display:grid;place-items:center;color:#7b2cff;font-weight:800">🧩</span>Interactive Card</div>
+    <div class="desc">Engaging Activities</div>
+    <ul><li>Fill Blanks</li><li>Drag & Drop</li><li>Label Diagram</li></ul>
+    <button>SELECT →</button>
+  </div>
+
+  <div class="template video" onclick="openCardEditor('video')">
+    <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(45,177,76,0.12);display:grid;place-items:center;color:#2db14c;font-weight:800">🎬</span>Video Card</div>
+    <div class="desc">Video Questions</div>
+    <ul><li>Play & Ask</li><li>Time Based MCQ</li></ul>
+    <button>SELECT →</button>
+  </div>
+
+  <div class="template concept" onclick="openCardEditor('concept')">
+    <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(255,198,0,0.15);display:grid;place-items:center;color:#ffb400;font-weight:800">📘</span>Concept Card</div>
+    <div class="desc">Explain Concepts Clearly</div>
+    <ul><li>Theory Explanation</li><li>Notes</li><li>Summary Points</li></ul>
+    <button>SELECT →</button>
+  </div>
+</aside>
+
+<!-- CENTER -->
+<div class="center">
+  <div class="preview">
+
+    <!-- BACK BUTTON -->
+    <button class="back-btn" onclick="goBack()">✕</button>
+
+    <h3>Topic Card Flow</h3>
+    <p class="muted">Drag cards to change learning sequence</p>
+
+    <div id="cardList" class="card-list"></div>
+
+    <div id="emptyState" class="empty" style="display:none">
+      No cards added yet.<br/>Select a template from the left.
+    </div>
+
+    <div class="save-wrap">
+      <button class="save-btn" onclick="saveFlow()">Save</button>
+    </div>
+
+  </div>
+</div>
+
+</div>
+<script>
+
+
+let cards = [];
+
+// Utility to get query params
+function getQueryParam(name) {
+  const url = new URL(window.location.href);
+  return url.searchParams.get(name);
+}
+
+const lessonId = getQueryParam('lesson_id');
+const topicId = getQueryParam('topic_id');
+
+function openCardEditor(type) {
+  const displayOrder = getQueryParam('display_order') || '1';
+  const params = new URLSearchParams();
+  if (lessonId) params.set('lesson_id', lessonId);
+  if (topicId) params.set('topic_id', topicId);
+  if (displayOrder) params.set('display_order', displayOrder);
+
+  let path = '/admin/concept-editor';
+  if (type === 'quiz') path = '/admin/quiz-editor';
+  else if (type === 'interactive') path = '/admin/interactive-editor';
+  else if (type === 'video') path = '/admin/video-editor';
+
+  const qs = params.toString();
+  window.location.href = qs ? `${path}?${qs}` : path;
+}
+
+async function fetchCards() {
+  if (!topicId) {
+    cards = [];
+    render();
+    alert('No topic_id provided');
+    return;
+  }
+  const url = `/api/v1/topics/${encodeURIComponent(topicId)}/cards`;
+  let data = null;
+  let res;
+  try {
+    res = await fetch(url);
+    data = await res.json().catch(() => null);
+  } catch (e) {
+    console.error('Network error while loading cards', e);
+    cards = [];
+    render();
+    alert('Failed to load cards (network error)');
+    return;
+  }
+
+  if (res.ok) {
+    if (data && data.success && Array.isArray(data.cards)) {
+      cards = data.cards;
+    } else {
+      cards = [];
+      alert('No cards found for this topic');
+    }
+    render();
+    return;
+  }
+
+  // Non-2xx status: surface a clearer message and avoid noisy alerts for 404
+  cards = [];
+  render();
+  const errMsg = (data && (data.error || data.message)) || '';
+  if (res.status === 404) {
+    // Likely topic not found or cards endpoint missing
+    alert(errMsg || 'No cards available for this topic yet');
+  } else {
+    alert('Failed to load cards' + (errMsg ? `: ${errMsg}` : ''));
+  }
+}
+
+const list=document.getElementById("cardList");
+const empty=document.getElementById("emptyState");
+
+function render(){
+  list.innerHTML="";
+  empty.style.display=cards.length?"none":"block";
+
+  cards.forEach((c,i)=>{
+    const div=document.createElement("div");
+    div.className="existing-card";
+    div.draggable=true;
+    div.dataset.id=c.id;
+
+    // Use c.title and type/card_type, with safe fallbacks
+    const cardTitle = c.title || '';
+    const rawType = c.card_type || c.type || '';
+    const cardType = rawType ? (rawType + ' card') : '';
+    // Optionally show content summary if available
+    let cardInfo = '';
+    if (c.content && typeof c.content === 'string') cardInfo = c.content;
+    else if (c.content && typeof c.content === 'object' && c.content.text) cardInfo = c.content.text;
+
+    div.innerHTML=`
+      <h4>${i+1}. ${cardType}</h4>
+      <strong>${cardTitle}</strong>
+      <p>${cardInfo}</p>
+      <div class="card-actions">
+        <button class="btn edit" onclick="editCard(${c.id})">Edit</button>
+        <button class="btn delete" onclick="deleteCard(${c.id})">Delete</button>
+      </div>
+      <div class="drag-hint">Drag to reorder</div>
+    `;
+    addDragEvents(div);
+    list.appendChild(div);
+  });
+}
+
+function addDragEvents(el){
+  el.addEventListener("dragstart",()=>el.classList.add("dragging"));
+  el.addEventListener("dragend",()=>{
+    el.classList.remove("dragging");
+    updateOrder();
+    // Re-render to refresh numbering and layout after reorder
+    render();
+  });
+}
+
+list.addEventListener("dragover",e=>{
+  e.preventDefault();
+  const after=getDragAfter(list,e.clientY);
+  const dragging=document.querySelector(".dragging");
+  if(!dragging) return;
+  after?list.insertBefore(dragging,after):list.appendChild(dragging);
+});
+
+function getDragAfter(container,y){
+  return [...container.querySelectorAll(".existing-card:not(.dragging)")]
+    .reduce((c,child)=>{
+      const box=child.getBoundingClientRect();
+      const offset=y-box.top-box.height/2;
+      return offset<0 && offset>c.offset?{offset,element:child}:c;
+    },{offset:-Infinity}).element;
+}
+
+function updateOrder(){
+  const order=[...list.children].map(el=>+el.dataset.id);
+  cards.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id));
+}
+
+async function saveFlow(){
+  // Persist new display_order to backend for DB-backed cards
+  try {
+    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!token) {
+      alert('Unable to get admin token. Please log in again as admin.');
+      return;
+    }
+
+    const updates = cards.map((c, idx) => {
+      if (!c.id) return null;
+      const payload = { display_order: idx + 1 };
+      return fetch(`/api/v1/cards/${c.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(payload),
+        credentials: 'include'
+      });
+    }).filter(Boolean);
+
+    await Promise.all(updates);
+    alert("Card flow saved successfully!");
+  } catch (e) {
+    alert('Failed to save card order: ' + (e.message || e));
+  }
+}
+
+async function editCard(id) {
+  const card = cards.find(c => c.id === id);
+  if (!card) {
+    alert('Card not found');
+    return;
+  }
+
+  // Determine editor type from card_type
+  const rawType = (card.card_type || card.type || 'concept').toLowerCase();
+  let path = '/admin/concept-editor';
+  if (rawType === 'quiz') path = '/admin/quiz-editor';
+  else if (rawType === 'interactive') path = '/admin/interactive-editor';
+  else if (rawType === 'video') path = '/admin/video-editor';
+
+  const params = new URLSearchParams();
+  if (lessonId) params.set('lesson_id', lessonId);
+  if (topicId) params.set('topic_id', topicId);
+  params.set('card_id', String(id));
+  if (card.display_order != null) {
+    params.set('display_order', String(card.display_order));
+  }
+
+  const qs = params.toString();
+  window.location.href = qs ? `${path}?${qs}` : path;
+}
+
+async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) {
+    return null;
+  }
+  try {
+    const res = await fetch('/api/v1/auth/refresh-token', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + refreshToken }
+    });
+    if (!res.ok) {
+      return null;
+    }
+    const data = await res.json();
+    if (data && data.access_token) {
+      localStorage.setItem('access_token', data.access_token);
+      return data.access_token;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+function switchCard(){window.location.href="concept.html"}
+function goBack(){window.history.back()}
+
+fetchCards();
+</script>
+
+</body>
+</html>

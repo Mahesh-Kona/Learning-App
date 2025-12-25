@@ -1,0 +1,2306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Course Content Manager</title>
+<style>
+/* Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+  color: #1a1a1a;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Admin Header */
+.admin-header {
+  background: white;
+  padding: 24px 32px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  border-left: 6px solid #076024ff;
+}
+
+/* Admin Breadcrumb */
+.admin-breadcrumb {
+  color: #64748b;
+  font-size: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-breadcrumb a {
+  color: #010407ff;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.admin-breadcrumb a:hover {
+  background: #f1f5f9;
+  color: #1b2c58ff;
+}
+
+.admin-breadcrumb .separator {
+  color: #cbd5e1;
+  font-weight: 300;
+}
+
+.admin-breadcrumb .current-course {
+  background: #f8fafc;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  color: #1e293b;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-badge {
+  background: linear-gradient(135deg, #094922ff 0%, #10492aff 100%);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Page Title */
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.page-title h1 {
+  font-size: 32px;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-title-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #0d5729ff 0%, #0c6d43ff 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: white;
+}
+
+.course-subtitle {
+  color: #64748b;
+  font-size: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.course-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.course-meta-item {
+  background: #f1f5f9;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Admin Warning */
+.admin-warning {
+  background: #d9bd4aff;
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.9; }
+}
+
+.admin-warning-icon {
+  font-size: 20px;
+  color: #9c0e0eff;
+}
+
+.admin-warning-content {
+  flex: 1;
+}
+
+.admin-warning strong {
+  color: #92400e;
+}
+
+.admin-warning p {
+  color: #92400e;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* Admin Stats - Simplified */
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+}
+
+.admin-stat {
+  text-align: center;
+  padding: 16px;
+  border-radius: 10px;
+  background: #f8fafc;
+  transition: transform 0.2s ease;
+}
+
+.admin-stat:hover {
+  transform: translateY(-2px);
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+/* Quick Actions */
+.quick-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.quick-actions .btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #0d5038ff 0%, #115c3dff 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+}
+
+/* Filter Bar - Simplified */
+.filter-bar {
+  background: white;
+  padding: 20px 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.search-box {
+  flex: 1;
+  min-width: 300px;
+  position: relative;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 12px 20px 12px 44px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: #f8fafc;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: white;
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+/* Lessons Container */
+.lessons-container {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  margin-bottom: 24px;
+}
+
+.lessons-header {
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #0d4d35ff 0%, #0f883aff 100%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lessons-header h2 {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Lesson Items */
+.lesson-list {
+  padding: 0;
+}
+
+.lesson-item {
+  border-bottom: 2px solid #f1f5f9;
+  transition: all 0.3s ease;
+}
+
+.lesson-item:last-child {
+  border-bottom: none;
+}
+
+.lesson-item-header {
+  padding: 20px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background: white;
+}
+
+.lesson-item-header:hover {
+  background: #f8fafc;
+}
+
+.lesson-main-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.lesson-number {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #216b3aff 0%, #4ba27bff 100%);
+  color: white;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.lesson-details {
+  flex: 1;
+}
+
+.lesson-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.lesson-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.lesson-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lesson-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.lesson-actions .btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lesson-actions .btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.lesson-actions .btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+}
+
+.lesson-actions .btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+}
+
+.lesson-actions .btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+.expand-icon {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+  color: #94a3b8;
+}
+
+.lesson-item.expanded .expand-icon {
+  transform: rotate(180deg);
+  color: #3b82f6;
+}
+
+/* Topics Container */
+.topics-container {
+  display: none;
+  background: #f8fafc;
+  padding: 0;
+}
+
+.lesson-item.expanded .topics-container {
+  display: block;
+  animation: slideDown 0.4s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.topics-header {
+  padding: 20px 32px;
+  background: white;
+  border-top: 2px solid #f1f5f9;
+  border-bottom: 2px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topics-header h3 {
+  font-size: 18px;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topics-header-actions .btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #2563eb 0%, #2563eb 100%);
+  color: white;
+}
+
+.topics-header-actions .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.2);
+}
+
+/* Topics Grid */
+.topics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+  padding: 24px 32px;
+}
+
+.topic-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+  border: 2px solid #e2e8f0;
+}
+
+.topic-card:hover {
+  border-color: #0f743bff;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.1);
+}
+
+.topic-card-header {
+  padding: 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topic-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #0b7036ff 0%, #115c38ff 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.topic-card-info {
+  flex: 1;
+}
+
+.topic-card-info h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.topic-card-info p {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.topic-card-body {
+  padding: 20px;
+}
+
+.topic-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.topic-stat {
+  text-align: center;
+}
+
+.topic-stat .value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  display: block;
+}
+
+.topic-stat .label {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.topic-card-footer {
+  display: flex;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 2px solid #f1f5f9;
+}
+
+.topic-card-footer .btn {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.topic-card-footer .btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.topic-card-footer .btn-primary:hover {
+  background: #2563eb;
+}
+
+.topic-card-footer .btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+}
+
+.topic-card-footer .btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+  grid-column: 1 / -1;
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 20px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+/* Add Lesson Button */
+.add-lesson-btn {
+  background: white;
+  border: 3px dashed #cbd5e1;
+  border-radius: 16px;
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.add-lesson-btn:hover {
+  border-color: #0c4c39ff;
+  color: #0a3f1cff;
+  background: #f0f9ff;
+  transform: translateY(-2px);
+}
+
+.add-lesson-btn .icon {
+  font-size: 32px;
+  width: 64px;
+  height: 64px;
+  background: #f1f5f9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+
+/* ========== MODAL STYLES ========== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-container {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.4s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  padding: 28px 32px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header.lesson {
+  background: linear-gradient(135deg, #025504ff 0%, #0d6f3bff 100%);
+}
+
+.modal-header.topic {
+  background: linear-gradient(135deg, #025504ff 0%, #0d6f3bff 100%);
+}
+
+.modal-header h2 {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.modal-content {
+  padding: 32px;
+  overflow-y: auto;
+  max-height: calc(90vh - 200px);
+}
+
+
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 24px;
+  
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #1e293b;
+  
+}
+
+.form-group label .required {
+  color: #ef4444;
+  margin-left: 4px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: #f8fafc;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: white;
+}
+
+.form-control::placeholder {
+  color: #94a3b8;
+}
+
+textarea.form-control {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* Form Row */
+.form-row {
+  display: grid;
+  font-family: "Segoe UI", sans-serif;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+.custom-input {
+  width: 300px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1.5px solid #cbd5e1;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.custom-input:focus {
+  border-color: #22c55e;
+}
+
+.form-helper {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+
+/* Form Hint */
+.form-hint {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Icon Selection */
+.icon-selection {
+  margin: 16px 0;
+}
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+  .icon-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.icon-option {
+  width: 48px;
+  height: 48px;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-option:hover {
+  background: #e2e8f0;
+  transform: scale(1.1);
+}
+
+.icon-option.selected {
+  background: #3bf6c7ff;
+  color: white;
+  border-color: #3b82f6;
+  transform: scale(1.1);
+}
+.custom-select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 2px solid #22c55e;
+  font-size: 15px;
+  cursor: pointer;
+  outline: none;
+  background-color: #fff;
+  transition: all 0.2s ease;
+}
+
+/* Modal Footer */
+.modal-footer {
+  padding: 24px 32px;
+  background: #f8fafc;
+  border-top: 2px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modal-footer .btn {
+  min-width: 120px;
+}
+
+/* Notification */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+}
+
+.notification.success {
+  background: #10b981;
+  color: white;
+}
+
+.notification.info {
+  background: #3b82f6;
+  color: white;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .topics-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .admin-header {
+    padding: 20px;
+  }
+  
+  .page-title h1 {
+    font-size: 24px;
+  }
+  
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-box {
+    min-width: 100%;
+  }
+  
+  .lesson-item-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .lesson-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .topics-grid {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  
+  .admin-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .modal-container {
+    max-width: 95%;
+  }
+  
+  .modal-content {
+    padding: 24px;
+  }
+  
+  .icon-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .quick-actions {
+    flex-direction: column;
+  }
+  
+  .quick-actions .btn {
+    justify-content: center;
+  }
+  
+  .lesson-meta {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .topic-card-footer {
+    flex-direction: column;
+  }
+  
+  .admin-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .course-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Admin Header -->
+  <div class="admin-header">
+    <!-- Admin Breadcrumb -->
+    <div class="admin-breadcrumb">
+      <a href="/admin">🚀 Admin Panel</a>
+      <span class="separator">></span>
+      <a href="/admin/courses">📋 Course Management</a>
+      <span class="separator">></span>
+      <span class="current-course">
+        🎓 Physics Grade 10
+        <span class="admin-badge">EDITING</span>
+      </span>
+      <span class="separator">></span>
+      <span style="color: #3b82f6; font-weight: 600;">
+        📖 Content Structure
+      </span>
+    </div>
+    
+    <!-- Page Title -->
+    <div class="page-title">
+      <div class="page-title-icon">⚙️</div>
+      <h1>
+        Course Content Manager
+        <span style="font-size: 14px; color: #64748b; font-weight: normal;">
+          | <strong style="color: #ef4444;">Physics Grade 10</strong>
+        </span>
+      </h1>
+    </div>
+    
+    <!-- Course Subtitle -->
+    <div class="course-subtitle">
+      Manage lessons and topics for this course
+    </div>
+    
+    <!-- Course Meta - Simplified -->
+    <div class="course-meta">
+      <div class="course-meta-item">
+        <span>🏷️</span> Category: Science
+      </div>
+      <div class="course-meta-item">
+        <span>🎯</span> Grade: 10th
+      </div>
+      <div class="course-meta-item">
+        <span>👥</span> Students: 245
+      </div>
+    </div>
+    
+    <!-- Admin Warning -->
+    <div class="admin-warning">
+      <div class="admin-warning-icon">⚠️</div>
+      <div class="admin-warning-content">
+        <strong>Admin Mode Active</strong>
+        <p>You are editing live course content. Changes will be visible to all students immediately after saving.</p>
+      </div>
+    </div>
+    
+    <!-- Admin Stats - Simplified -->
+    <div class="admin-stats">
+      <div class="admin-stat">
+        <div class="stat-label">📖 Total Lessons</div>
+        <div class="stat-value">8</div>
+      </div>
+      
+      <div class="admin-stat">
+        <div class="stat-label">📋 Total Topics</div>
+        <div class="stat-value">24</div>
+      </div>
+      
+      <div class="admin-stat">
+        <div class="stat-label">🎴 Total Cards</div>
+        <div class="stat-value">142</div>
+      </div>
+    </div>
+    
+    <!-- Quick Actions - Simplified -->
+    <div class="quick-actions">
+      <button class="btn btn-primary" onclick="openLessonModal('add')">
+        <span>➕</span> Add New Lesson
+      </button>
+      <button class="btn btn-secondary" onclick="editCourseSettings()">
+        <span>⚙️</span> Course Settings
+      </button>
+      <button class="btn btn-success" onclick="saveAndPublish()">
+        <span>🚀</span> Publish Changes
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Bar - Simplified -->
+  <div class="filter-bar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text"
+             placeholder="Search lessons or topics..."
+             oninput="filterContent(this.value)">
+    </div>
+  </div>
+
+  <!-- Lessons Container -->
+  <div class="lessons-container">
+    <div class="lessons-header">
+      <h2><span>📖</span> Lessons in This Course (8)</h2>
+    </div>
+
+    <div class="lesson-list" id="lessonList">
+      <!-- Lesson 1 -->
+      <div class="lesson-item expanded" id="lesson-1">
+        <div class="lesson-item-header" onclick="toggleLesson('lesson-1')">
+          <div class="lesson-main-info">
+            <div class="lesson-number">1</div>
+            <div class="lesson-details">
+              <div class="lesson-title">Light - Reflection & Refraction</div>
+              <div class="lesson-meta">
+                <span><span>⏱️</span> 45 min</span>
+                <span><span>📋</span> 4 Topics</span>
+                <span><span>🎴</span> 12 Cards</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="lesson-actions">
+            <button class="btn btn-primary" onclick="event.stopPropagation(); openLessonModal('edit', 1)">
+              <span>✏️</span> Edit
+            </button>
+            <span class="expand-icon">▼</span>
+          </div>
+        </div>
+
+        <!-- Topics Container -->
+        <div class="topics-container">
+          <div class="topics-header">
+            <h3><span>📋</span> Topics in This Lesson (4)</h3>
+            <div class="topics-header-actions">
+              <button class="btn" onclick="openTopicModal('add', 1)">
+                <span>➕</span> Add Topic
+              </button>
+            </div>
+          </div>
+
+          <div class="topics-grid">
+            <!-- Topic 1 -->
+            <div class="topic-card" onclick="openTopicEditor(1)">
+              <div class="topic-card-header">
+                <div class="topic-icon">💡</div>
+                <div class="topic-card-info">
+                  <h4>Reflection of Light</h4>
+                  <p>Understanding laws of reflection</p>
+                </div>
+              </div>
+              <div class="topic-card-body">
+                <div class="topic-stats">
+                  <div class="topic-stat">
+                    <span class="value">4</span>
+                    <span class="label">Cards</span>
+                  </div>
+                  
+                </div>
+                <div class="topic-card-footer">
+                  <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(1, 1)">
+                    <span>🎴</span> Manage Cards
+                  </button>
+                  <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', 1, 1)">
+                    <span>✏️</span> Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Topic 2 -->
+            <div class="topic-card" onclick="openTopicEditor(2)">
+              <div class="topic-card-header">
+                <div class="topic-icon">🔬</div>
+                <div class="topic-card-info">
+                  <h4>Mirror Types & Image Formation</h4>
+                  <p>Plane, concave and convex mirrors</p>
+                </div>
+              </div>
+              <div class="topic-card-body">
+                <div class="topic-stats">
+                  <div class="topic-stat">
+                    <span class="value">3</span>
+                    <span class="label">Cards</span>
+                  </div>
+                  
+                </div>
+                <div class="topic-card-footer">
+                  <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(1, 2)">
+                    <span>🎴</span> Manage Cards
+                  </button>
+                  <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', 1, 2)">
+                    <span>✏️</span> Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Topic 3 -->
+            <div class="topic-card" onclick="openTopicEditor(3)">
+              <div class="topic-card-header">
+                <div class="topic-icon">🌈</div>
+                <div class="topic-card-info">
+                  <h4>Refraction Through Lenses</h4>
+                  <p>Convex and concave lens properties</p>
+                </div>
+              </div>
+              <div class="topic-card-body">
+                <div class="topic-stats">
+                  <div class="topic-stat">
+                    <span class="value">5</span>
+                    <span class="label">Cards</span>
+                  </div>
+                  
+                </div>
+                <div class="topic-card-footer">
+                  <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(1, 3)">
+                    <span>🎴</span> Manage Cards
+                  </button>
+                  <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', 1, 3)">
+                    <span>✏️</span> Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Topic 4 -->
+            <div class="topic-card" onclick="openTopicEditor(4)">
+              <div class="topic-card-header">
+                <div class="topic-icon">⚡</div>
+                <div class="topic-card-info">
+                  <h4>Applications in Daily Life</h4>
+                  <p>Real-world examples and experiments</p>
+                </div>
+              </div>
+              <div class="topic-card-body">
+                <div class="topic-stats">
+                  <div class="topic-stat">
+                    <span class="value">2</span>
+                    <span class="label">Cards</span>
+                  </div>
+                  
+                </div>
+                <div class="topic-card-footer">
+                  <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(1, 4)">
+                    <span>🎴</span> Manage Cards
+                  </button>
+                  <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', 1, 4)">
+                    <span>✏️</span> Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lesson 2 -->
+      <div class="lesson-item" id="lesson-2">
+        <div class="lesson-item-header" onclick="toggleLesson('lesson-2')">
+          <div class="lesson-main-info">
+            <div class="lesson-number">2</div>
+            <div class="lesson-details">
+              <div class="lesson-title">Human Eye & Colorful World</div>
+              <div class="lesson-meta">
+                <span><span>⏱️</span> 50 min</span>
+                <span><span>📋</span> 5 Topics</span>
+                <span><span>🎴</span> 15 Cards</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="lesson-actions">
+            <button class="btn btn-primary" onclick="event.stopPropagation(); openLessonModal('edit', 2)">
+              <span>✏️</span> Edit
+            </button>
+            <span class="expand-icon">▼</span>
+          </div>
+        </div>
+
+        <div class="topics-container">
+          <div class="topics-header">
+            <h3><span>📋</span> Topics in This Lesson (5)</h3>
+            <div class="topics-header-actions">
+              <button class="btn" onclick="openTopicModal('add', 2)">
+                <span>➕</span> Add Topic
+              </button>
+            </div>
+          </div>
+
+          <div class="topics-grid">
+            <!-- Topic 5 -->
+            <div class="topic-card" onclick="openTopicEditor(5)">
+              <div class="topic-card-header">
+                <div class="topic-icon">👁️</div>
+                <div class="topic-card-info">
+                  <h4>Structure of Human Eye</h4>
+                  <p>Parts and functions of the eye</p>
+                </div>
+              </div>
+              <div class="topic-card-body">
+                <div class="topic-stats">
+                  <div class="topic-stat">
+                    <span class="value">3</span>
+                    <span class="label">Cards</span>
+                  </div>
+                  
+                </div>
+                <div class="topic-card-footer">
+                  <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(2, 5)">
+                    <span>🎴</span> Manage Cards
+                  </button>
+                  <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', 2, 5)">
+                    <span>✏️</span> Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add New Lesson Button -->
+    <div class="add-lesson-btn" onclick="openLessonModal('add')">
+      <div class="icon">➕</div>
+      <div>Add New Lesson to This Course</div>
+      <div style="font-size: 14px; font-weight: normal; color: #94a3b8;">
+        Create a new lesson with topics
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LESSON MODAL ========== -->
+<div class="modal-overlay" id="lessonModal">
+  <div class="modal-container">
+    <!-- Modal Header -->
+    <div class="modal-header lesson">
+      <h2 id="lessonModalTitle"><span>➕</span> Add New Lesson</h2>
+      <button class="modal-close" onclick="closeLessonModal()">×</button>
+    </div>
+    
+    <!-- Modal Content -->
+    <div class="modal-content">
+      <form id="lessonForm" onsubmit="submitLessonForm(event)">
+        <input type="hidden" id="lessonId">
+        
+        <!-- Basic Information -->
+        
+        <div class="form-group">
+          <label for="lessonTitle">Lesson Title <span class="required">*</span></label>
+          <input type="text"
+                 id="lessonTitle"
+                 class="form-control"
+                 placeholder="Enter lesson title"
+                 required>
+        </div>
+        <div class="form-row">
+        <div class="form-group">
+  <label class="form-label">Learning Level</label>
+  <select id="learningLevel" class="custom-select">
+    <option value="">Select Level</option>
+    <option value="beginner">Beginner</option>
+    <option value="intermediate">Intermediate</option>
+    <option value="advanced">Advanced</option>
+  </select>
+</div>
+
+
+        
+          <div class="form-group">
+            <label for="estimatedTime">Estimated Time (minutes)</label>
+            <input type="number"
+                   id="estimatedTime"
+                   class="form-control"
+                   placeholder="e.g., 45"
+                   min="5"
+                   max="240">
+          </div>
+          </div>
+          <div class="form-row">
+          <div class="form-group">
+            <label for="Learning">Lesson order</label>
+            <input type="number"
+                   id="lessonorder"
+                   class="form-control"
+                   placeholder="e.g., 5"
+                   min="0"
+                   >
+          </div>
+        <div class="form-group">
+  <label class="form-label">Prerequisites</label>
+  <input 
+      type="text"
+      id="prerequisiteInput"
+      class="custom-input"
+      placeholder="e.g., Basic HTML"
+  >
+  <br><small class="form-helper">Required knowledge before this lesson</small>
+  </div>
+  </div>
+        
+        <!-- Lesson Description -->
+        
+        <div class="form-group">
+          <label for="lessonDescription">Lesson Description</label>
+          <textarea id="lessonDescription"
+                    class="form-control"
+                    placeholder="Describe what students will learn in this lesson..."
+                    rows="3"></textarea>
+        
+      
+    </div>
+  
+</div>
+</form>
+    
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeLessonModal()">
+        <span>❌</span> Cancel
+      </button>
+      <button type="button" class="btn btn-danger" id="deleteLessonBtn" style="display: none;" onclick="deleteLesson()">
+        <span>🗑️</span> Delete
+      </button>
+      <button type="button" class="btn btn-primary" onclick="submitLessonForm()">
+        <span id="lessonSubmitBtnText">✅ Create Lesson</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== TOPIC MODAL ========== -->
+<div class="modal-overlay" id="topicModal">
+  <div class="modal-container">
+    <!-- Modal Header -->
+    <div class="modal-header topic">
+      <h2 id="topicModalTitle"><span>➕</span> Add New Topic</h2>
+      <button class="modal-close" onclick="closeTopicModal()">×</button>
+    </div>
+    
+    <!-- Modal Content -->
+    <div class="modal-content">
+      <form id="topicForm" onsubmit="submitTopicForm(event)">
+        <input type="hidden" id="topicId">
+        <input type="hidden" id="parentLessonId">
+        
+        <!-- Basic Information -->
+        <div class="form-group">
+          <label for="topicTitle">Topic Title <span class="required">*</span></label>
+          <input type="text"
+                 id="topicTitle"
+                 class="form-control"
+                 placeholder="Enter topic title"
+                 required>
+        </div>
+        
+        <div class="form-group">
+          <label for="topicDescription">Topic Description</label>
+          <textarea id="topicDescription"
+                    class="form-control"
+                    placeholder="Brief description of what this topic covers..."
+                    rows="3"></textarea>
+        </div>
+        <div class="form-group">
+						 <label>Difficulty Level</label>
+						 <select id="difficultyLevel" class="form-control">
+							 <option value="">Select Level</option>
+							 <option value="easy">Easy</option>
+							 <option value="medium" selected>Medium</option>
+							 <option value="hard">Hard</option>
+						 </select>
+					 </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="topicPoints">Estimated Time (minutes)</label>
+            <input type="number"
+                   id="estimatedTime"
+                   class="form-control"
+                   placeholder="e.g., 15"
+                   min="1"
+                   >
+          </div>
+          
+          <div class="form-group">
+            <label for="topicOrder">Topic Order</label>
+            <input type="number"
+                   id="topicOrder"
+                   class="form-control"
+                   placeholder="Auto-assigned"
+                   min="1">
+            <div class="form-hint">
+              <span>🔢</span> Position in the lesson (1 = first)
+            </div>
+          </div>
+        </div>
+        
+        
+        <!-- Icon Selection -->
+        <div class="form-group">
+          <label for="topicIcon">Topic Icon</label>
+          <div class="icon-selection">
+            <div class="icon-grid" id="iconGrid">
+              <!-- Icons will be added by JavaScript -->
+            </div>
+            <div class="form-hint">
+              <span>🎨</span> Select an icon to represent this topic
+            </div>
+          </div>
+        </div>
+        
+        <!-- Parent Lesson Info -->
+        <div class="form-group">
+          <div class="form-hint">
+            <span>📖</span> This topic will be added to:
+            <strong id="parentLessonName">Light - Reflection & Refraction</strong>
+          </div>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeTopicModal()">
+        <span>❌</span> Cancel
+      </button>
+      <button type="button" class="btn btn-danger" id="deleteTopicBtn" style="display: none;" onclick="deleteTopic()">
+        <span>🗑️</span> Delete
+      </button>
+      <button type="button" class="btn btn-primary" onclick="submitTopicForm()">
+        <span id="topicSubmitBtnText">✅ Create Topic</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// State Management
+let expandedLesson = 'lesson-1';
+let currentLessonModalMode = 'add';
+let currentTopicModalMode = 'add';
+let currentLessonId = null;
+let currentTopicId = null;
+let selectedIcon = '💡';
+let currentParentLessonId = null;
+
+// Icon options for topics
+const topicIcons = [
+  '💡', '🔬', '🌈', '⚡', '👁️', '🧠', '🔭', '🧪', '📚', '📖',
+  '🎯', '🧩', '🔍', '📊', '📈', '🔢', '🧮', '🌡️', '⚗️', '📋'
+];
+
+// ========== LESSON MODAL FUNCTIONS ==========
+function openLessonModal(mode, lessonId = null) {
+  currentLessonModalMode = mode;
+  currentLessonId = lessonId;
+  
+  const modal = document.getElementById('lessonModal');
+  const modalTitle = document.getElementById('lessonModalTitle');
+  const submitBtnText = document.getElementById('lessonSubmitBtnText');
+  const deleteBtn = document.getElementById('deleteLessonBtn');
+  
+  
+  if (mode === 'add') {
+    modalTitle.innerHTML = '<span>➕</span> Add New Lesson';
+    submitBtnText.textContent = '✅ Create Lesson';
+    deleteBtn.style.display = 'none';
+    resetLessonForm();
+  } else if (mode === 'edit' && lessonId) {
+    modalTitle.innerHTML = '<span>✏️</span> Edit Lesson';
+    submitBtnText.textContent = '✅ Update Lesson';
+    deleteBtn.style.display = 'flex';
+    document.getElementById("learningLevel").addEventListener("change", function () {
+  const selectedLevel = this.value;
+
+  if (selectedLevel === "") return;
+
+  console.log("Selected Level:", selectedLevel);
+
+  // Example: send to backend
+  fetch("/api/save-learning-level", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ level: selectedLevel })
+  });
+});
+    // Get lesson data from the DOM
+    const lessonElement = document.getElementById(`lesson-${lessonId}`);
+    if (lessonElement) {
+      const title = lessonElement.querySelector('.lesson-title').textContent;
+      const metaItems = lessonElement.querySelectorAll('.lesson-meta span');
+      
+      // Extract data from meta
+      let time = '45', points = '500';
+      metaItems.forEach(item => {
+        const text = item.textContent;
+        if (text.includes('min')) {
+          time = text.match(/\d+/)?.[0] || '45';
+        }
+        if (text.includes('Points')) {
+          points = text.match(/\d+/)?.[0] || '500';
+        }
+      });
+      
+      // Fill the form
+      document.getElementById('lessonId').value = lessonId;
+      document.getElementById('lessonTitle').value = title;
+      document.getElementById('estimatedTime').value = time;
+      document.getElementById('lessonPoints').value = points;
+      document.getElementById('lessonDescription').value = `Edit description for ${title}`;
+    }
+  }
+  
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLessonModal() {
+  document.getElementById('lessonModal').classList.remove('active');
+  document.body.style.overflow = '';
+  resetLessonForm();
+}
+
+function resetLessonForm() {
+  document.getElementById('lessonForm').reset();
+  document.getElementById('lessonId').value = '';
+}
+
+function submitLessonForm(event) {
+  if (event) event.preventDefault();
+  
+  const lessonId = document.getElementById('lessonId').value;
+  const title = document.getElementById('lessonTitle').value;
+  const time = document.getElementById('estimatedTime').value;
+  const points = document.getElementById('lessonPoints').value;
+  const description = document.getElementById('lessonDescription').value;
+  
+  // Validation
+  if (!title) {
+    showNotification('Please enter a lesson title', 'info');
+    return;
+  }
+  
+  if (currentLessonModalMode === 'add') {
+    // CREATE NEW LESSON
+    showNotification('Creating lesson...', 'info');
+    
+    setTimeout(() => {
+      const newLessonId = Date.now();
+      const lessonCount = document.querySelectorAll('.lesson-item').length + 1;
+      
+      const newLessonHTML = `
+        <div class="lesson-item" id="lesson-${newLessonId}">
+          <div class="lesson-item-header" onclick="toggleLesson('lesson-${newLessonId}')">
+            <div class="lesson-main-info">
+              <div class="lesson-number">${lessonCount}</div>
+              <div class="lesson-details">
+                <div class="lesson-title">${title}</div>
+                <div class="lesson-meta">
+                  <span><span>⏱️</span> ${time || 30} min</span>
+                  <span><span>📋</span> 0 Topics</span>
+                  <span><span>🎴</span> 0 Cards</span>
+                  <span><span>⭐</span> ${points || 0} Points</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="lesson-actions">
+              <button class="btn btn-primary" onclick="event.stopPropagation(); openLessonModal('edit', ${newLessonId})">
+                <span>✏️</span> Edit
+              </button>
+              <span class="expand-icon">▼</span>
+            </div>
+          </div>
+
+          <div class="topics-container">
+            <div class="topics-header">
+              <h3><span>📋</span> Topics in This Lesson (0)</h3>
+              <div class="topics-header-actions">
+                <button class="btn" onclick="openTopicModal('add', ${newLessonId})">
+                  <span>➕</span> Add Topic
+                </button>
+              </div>
+            </div>
+
+            <div class="topics-grid">
+              <div class="empty-state">
+                <div class="empty-state-icon">🔭</div>
+                <p>No topics in this lesson yet.</p>
+                <p style="margin-top: 8px; color: #94a3b8;">
+                  Start by adding your first topic!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Add to lesson list
+      const lessonList = document.querySelector('.lesson-list');
+      const addButton = document.querySelector('.add-lesson-btn');
+      lessonList.insertBefore(createElementFromHTML(newLessonHTML), addButton);
+      
+      // Update lesson count
+      updateLessonCount(1);
+      
+      closeLessonModal();
+      showNotification('Lesson created successfully!', 'success');
+      
+      // Auto-expand the new lesson
+      setTimeout(() => {
+        toggleLesson(`lesson-${newLessonId}`);
+      }, 300);
+      
+    }, 1000);
+    
+  } else if (currentLessonModalMode === 'edit' && lessonId) {
+    // UPDATE EXISTING LESSON
+    showNotification('Updating lesson...', 'info');
+    
+    setTimeout(() => {
+      const lessonElement = document.getElementById(`lesson-${lessonId}`);
+      if (lessonElement) {
+        // Update title
+        lessonElement.querySelector('.lesson-title').textContent = title;
+        
+        // Update meta
+        const metaItems = lessonElement.querySelectorAll('.lesson-meta span');
+        metaItems[0].innerHTML = `<span>⏱️</span> ${time || 30} min`;
+        metaItems[3].innerHTML = `<span>⭐</span> ${points || 0} Points`;
+      }
+      
+      closeLessonModal();
+      showNotification('Lesson updated successfully!', 'success');
+      
+    }, 1000);
+  }
+}
+
+function deleteLesson() {
+  if (!currentLessonId) return;
+  
+  if (confirm(`Are you sure you want to delete this lesson?\nThis action cannot be undone.`)) {
+    showNotification('Deleting lesson...', 'info');
+    
+    setTimeout(() => {
+      const lessonElement = document.getElementById(`lesson-${currentLessonId}`);
+      if (lessonElement) {
+        lessonElement.remove();
+        updateLessonCount(-1);
+        closeLessonModal();
+        showNotification('Lesson deleted successfully!', 'success');
+        
+        // Re-number lessons
+        renumberLessons();
+      }
+    }, 1000);
+  }
+}
+
+// ========== TOPIC MODAL FUNCTIONS ==========
+function openTopicModal(mode, lessonId, topicId = null) {
+  currentTopicModalMode = mode;
+  currentTopicId = topicId;
+  currentParentLessonId = lessonId;
+  
+  const modal = document.getElementById('topicModal');
+  const modalTitle = document.getElementById('topicModalTitle');
+  const submitBtnText = document.getElementById('topicSubmitBtnText');
+  const deleteBtn = document.getElementById('deleteTopicBtn');
+  const parentLessonNameEl = document.getElementById('parentLessonName');
+  
+  // Get parent lesson name
+  const lessonElement = document.getElementById(`lesson-${lessonId}`);
+  if (lessonElement) {
+    const lessonName = lessonElement.querySelector('.lesson-title').textContent;
+    parentLessonNameEl.textContent = lessonName;
+  }
+  
+  if (mode === 'add') {
+    modalTitle.innerHTML = '<span>➕</span> Add New Topic';
+    submitBtnText.textContent = '✅ Create Topic';
+    deleteBtn.style.display = 'none';
+    resetTopicForm();
+  } else if (mode === 'edit' && topicId) {
+    modalTitle.innerHTML = '<span>✏️</span> Edit Topic';
+    submitBtnText.textContent = '✅ Update Topic';
+    deleteBtn.style.display = 'flex';
+    
+    // Get topic data from the DOM
+    const topicCard = findTopicCard(topicId);
+    if (topicCard) {
+      const title = topicCard.querySelector('h4').textContent;
+      const description = topicCard.querySelector('p').textContent;
+      const stats = topicCard.querySelectorAll('.topic-stat .value');
+      const points = stats[1]?.textContent || '150';
+      const icon = topicCard.querySelector('.topic-icon').textContent;
+      
+      // Fill the form
+      document.getElementById('topicId').value = topicId;
+      document.getElementById('topicTitle').value = title;
+      document.getElementById('topicDescription').value = description;
+      document.getElementById('topicPoints').value = points;
+      document.getElementById('parentLessonId').value = lessonId;
+      
+      // Select icon
+      selectedIcon = icon;
+      updateIconSelection();
+    }
+  }
+  
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeTopicModal() {
+  document.getElementById('topicModal').classList.remove('active');
+  document.body.style.overflow = '';
+  resetTopicForm();
+}
+
+function resetTopicForm() {
+  document.getElementById('topicForm').reset();
+  document.getElementById('topicId').value = '';
+  document.getElementById('parentLessonId').value = '';
+  selectedIcon = '💡';
+  updateIconSelection();
+}
+
+function submitTopicForm(event) {
+  if (event) event.preventDefault();
+  
+  const topicId = document.getElementById('topicId').value;
+  const parentLessonId = document.getElementById('parentLessonId').value || currentParentLessonId;
+  const title = document.getElementById('topicTitle').value;
+  const description = document.getElementById('topicDescription').value;
+  const points = document.getElementById('topicPoints').value;
+  
+  // Validation
+  if (!title) {
+    showNotification('Please enter a topic title', 'info');
+    return;
+  }
+  
+  if (!parentLessonId) {
+    showNotification('Parent lesson not found', 'info');
+    return;
+  }
+  
+  if (currentTopicModalMode === 'add') {
+    // CREATE NEW TOPIC
+    showNotification('Creating topic...', 'info');
+    
+    setTimeout(() => {
+      const newTopicId = Date.now();
+      const lessonElement = document.getElementById(`lesson-${parentLessonId}`);
+      
+      if (lessonElement) {
+        const topicsGrid = lessonElement.querySelector('.topics-grid');
+        const topicsCount = lessonElement.querySelectorAll('.topic-card').length;
+        
+        // Create new topic card
+        const newTopicHTML = `
+          <div class="topic-card" onclick="openTopicEditor(${newTopicId})">
+            <div class="topic-card-header">
+              <div class="topic-icon">${selectedIcon}</div>
+              <div class="topic-card-info">
+                <h4>${title}</h4>
+                <p>${description || 'No description'}</p>
+              </div>
+            </div>
+            <div class="topic-card-body">
+              <div class="topic-stats">
+                <div class="topic-stat">
+                  <span class="value">0</span>
+                  <span class="label">Cards</span>
+                </div>
+                <div class="topic-stat">
+                  <span class="value">${points || 0}</span>
+                  <span class="label">Points</span>
+                </div>
+              </div>
+              <div class="topic-card-footer">
+                <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(${parentLessonId}, ${newTopicId})">
+                  <span>🎴</span> Manage Cards
+                </button>
+                <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', ${parentLessonId}, ${newTopicId})">
+                  <span>✏️</span> Edit
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Remove empty state if it exists
+        const emptyState = topicsGrid.querySelector('.empty-state');
+        if (emptyState) {
+          emptyState.remove();
+        }
+        
+        // Add new topic
+        topicsGrid.insertBefore(createElementFromHTML(newTopicHTML), topicsGrid.firstChild);
+        
+        // Update topic count
+        updateTopicCount(parentLessonId, 1);
+        updateTotalTopicCount(1);
+        
+        closeTopicModal();
+        showNotification('Topic created successfully!', 'success');
+      }
+      
+    }, 1000);
+    
+  } else if (currentTopicModalMode === 'edit' && topicId) {
+    // UPDATE EXISTING TOPIC
+    showNotification('Updating topic...', 'info');
+    
+    setTimeout(() => {
+      const topicCard = findTopicCard(topicId);
+      if (topicCard) {
+        // Update topic card
+        topicCard.querySelector('h4').textContent = title;
+        topicCard.querySelector('p').textContent = description || 'No description';
+        topicCard.querySelector('.topic-icon').textContent = selectedIcon;
+        
+        // Update points
+        const pointsElement = topicCard.querySelectorAll('.topic-stat .value')[1];
+        if (pointsElement) {
+          pointsElement.textContent = points || 0;
+        }
+      }
+      
+      closeTopicModal();
+      showNotification('Topic updated successfully!', 'success');
+      
+    }, 1000);
+  }
+}
+
+function deleteTopic() {
+  if (!currentTopicId || !currentParentLessonId) return;
+  
+  if (confirm(`Are you sure you want to delete this topic?\nThis action cannot be undone.`)) {
+    showNotification('Deleting topic...', 'info');
+    
+    setTimeout(() => {
+      const topicCard = findTopicCard(currentTopicId);
+      if (topicCard) {
+        const lessonElement = document.getElementById(`lesson-${currentParentLessonId}`);
+        
+        // Remove topic card
+        topicCard.remove();
+        
+        // Update counts
+        updateTopicCount(currentParentLessonId, -1);
+        updateTotalTopicCount(-1);
+        
+        // Add empty state if no topics left
+        const topicsGrid = lessonElement?.querySelector('.topics-grid');
+        if (topicsGrid && topicsGrid.children.length === 0) {
+          const emptyStateHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">🔭</div>
+              <p>No topics in this lesson yet.</p>
+              <p style="margin-top: 8px; color: #94a3b8;">
+                Start by adding your first topic!
+              </p>
+            </div>
+          `;
+          topicsGrid.appendChild(createElementFromHTML(emptyStateHTML));
+        }
+        
+        closeTopicModal();
+        showNotification('Topic deleted successfully!', 'success');
+      }
+    }, 1000);
+  }
+}
+
+// ========== HELPER FUNCTIONS ==========
+function findTopicCard(topicId) {
+  return document.querySelector(`.topic-card[onclick*="openTopicEditor(${topicId})"]`);
+}
+
+function updateIconSelection() {
+  const iconGrid = document.getElementById('iconGrid');
+  iconGrid.innerHTML = '';
+  
+  topicIcons.forEach(icon => {
+    const iconElement = document.createElement('div');
+    iconElement.className = `icon-option ${icon === selectedIcon ? 'selected' : ''}`;
+    iconElement.textContent = icon;
+    iconElement.onclick = () => {
+      selectedIcon = icon;
+      updateIconSelection();
+    };
+    iconGrid.appendChild(iconElement);
+  });
+}
+
+function createElementFromHTML(htmlString) {
+  const div = document.createElement('div');
+  div.innerHTML = htmlString.trim();
+  return div.firstChild;
+}
+
+function toggleLesson(lessonId) {
+  const lesson = document.getElementById(lessonId);
+  if (!lesson) return;
+  
+  const isExpanded = lesson.classList.contains('expanded');
+  
+  // Close all other lessons if opening this one
+  if (!isExpanded) {
+    document.querySelectorAll('.lesson-item.expanded').forEach(item => {
+      if (item.id !== lessonId) {
+        item.classList.remove('expanded');
+      }
+    });
+  }
+  
+  // Toggle current lesson
+  lesson.classList.toggle('expanded');
+  
+  // Update expanded state
+  if (lesson.classList.contains('expanded')) {
+    expandedLesson = lessonId;
+  } else {
+    expandedLesson = null;
+  }
+}
+
+function updateLessonCount(change) {
+  const header = document.querySelector('.lessons-header h2');
+  const currentCount = parseInt(header.textContent.match(/\((\d+)\)/)?.[1] || 0);
+  header.innerHTML = header.innerHTML.replace(/\(\d+\)/, `(${currentCount + change})`);
+}
+
+function updateTopicCount(lessonId, change) {
+  const lessonElement = document.getElementById(`lesson-${lessonId}`);
+  if (!lessonElement) return;
+  
+  const topicsHeader = lessonElement.querySelector('.topics-header h3');
+  const currentCount = parseInt(topicsHeader.textContent.match(/\((\d+)\)/)?.[1] || 0);
+  topicsHeader.innerHTML = topicsHeader.innerHTML.replace(/\(\d+\)/, `(${currentCount + change})`);
+  
+  // Update lesson meta
+  const lessonMeta = lessonElement.querySelector('.lesson-meta');
+  const topicMeta = lessonMeta.querySelectorAll('span')[1];
+  const currentTopicCount = parseInt(topicMeta.textContent.match(/\d+/)?.[0] || 0);
+  topicMeta.innerHTML = `<span>📋</span> ${currentTopicCount + change} Topics`;
+}
+
+function updateTotalTopicCount(change) {
+  const totalTopicsStat = document.querySelector('.admin-stat:nth-child(2) .stat-value');
+  const currentTotal = parseInt(totalTopicsStat.textContent) || 0;
+  totalTopicsStat.textContent = currentTotal + change;
+}
+
+function renumberLessons() {
+  const lessons = document.querySelectorAll('.lesson-item');
+  lessons.forEach((lesson, index) => {
+    const numberElement = lesson.querySelector('.lesson-number');
+    if (numberElement) {
+      numberElement.textContent = index + 1;
+    }
+  });
+}
+
+function openTopicEditor(topicId) {
+  showNotification(`Opening topic editor for topic ${topicId}`, 'info');
+}
+
+function manageCards(lessonId, topicId) {
+  showNotification(`Opening card manager for Lesson ${lessonId}, Topic ${topicId}`, 'info');
+  // This would typically navigate to a card management interface
+  // For now, just showing a notification
+}
+
+function editCourseSettings() {
+  showNotification('Opening course settings', 'info');
+}
+
+function saveAndPublish() {
+  if (confirm('Publish all changes to live course?\nThis will make changes visible to all students.')) {
+    showNotification('Publishing changes...', 'info');
+    setTimeout(() => {
+      showNotification('✔ Changes published successfully!', 'success');
+    }, 1500);
+  }
+}
+
+function filterContent(searchTerm) {
+  const searchLower = searchTerm.toLowerCase();
+  const lessons = document.querySelectorAll('.lesson-item');
+  
+  lessons.forEach(lesson => {
+    const lessonTitle = lesson.querySelector('.lesson-title')?.textContent.toLowerCase() || '';
+    const topics = lesson.querySelectorAll('.topic-card h4');
+    let hasMatch = lessonTitle.includes(searchLower);
+    
+    topics.forEach(topic => {
+      if (topic.textContent.toLowerCase().includes(searchLower)) {
+        hasMatch = true;
+      }
+    });
+    
+    lesson.style.display = searchTerm === '' || hasMatch ? 'flex' : 'none';
+  });
+}
+
+function showNotification(message, type = 'info') {
+  // Remove existing notifications
+  document.querySelectorAll('.notification').forEach(n => n.remove());
+  
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.innerHTML = `
+    <span>${type === 'success' ? '✔' : '💡'}</span> ${message}
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Remove after 3 seconds
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => {
+      notification.remove();
+    }, 300);
+  }, 3000);
+}
+
+// ========== EVENT LISTENERS ==========
+document.getElementById('lessonModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeLessonModal();
+  }
+});
+
+document.getElementById('topicModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeTopicModal();
+  }
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeLessonModal();
+    closeTopicModal();
+  }
+  if (e.ctrlKey && e.key === 'n') {
+    e.preventDefault();
+    openLessonModal('add');
+  }
+  if (e.ctrlKey && e.key === 't') {
+    e.preventDefault();
+    if (expandedLesson) {
+      const lessonId = expandedLesson.replace('lesson-', '');
+      openTopicModal('add', lessonId);
+    }
+  }
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+  const firstLesson = document.getElementById('lesson-1');
+  if (firstLesson) {
+    firstLesson.classList.add('expanded');
+  }
+  
+  // Initialize icon grid
+  updateIconSelection();
+});
+</script>
+
+</body>
+</html>

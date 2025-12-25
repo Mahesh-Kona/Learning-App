@@ -5,6 +5,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title> Video-Editor Card</title>
+<script src="/static/admin_jwt_check.js"></script>
 <style>
   /* ========== Global ========== */
   :root{
@@ -468,10 +469,27 @@ function loadVideo(url, source){
   app.videoType = source;
   // sanitize url
   if(source === 'youtube'){
-    // extract video id: support typical youtube urls
-    const ytMatch = url.match(/(?:v=|\/v\/|youtu\.be\/|\/embed\/)([A-Za-z0-9_-]{6,})/);
-    const id = ytMatch ? ytMatch[1] : null;
-    if(!id){ alert('Unable to parse YouTube ID from URL'); return; }
+    // Improved YouTube ID extraction for various formats
+    function extractYouTubeId(url) {
+      // Handles: youtu.be/ID, youtube.com/watch?v=ID, youtube.com/embed/ID, youtube.com/v/ID
+      let id = null;
+      try {
+        let match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/);
+        if (match && match[1]) return match[1];
+        // Try to get v= param
+        const urlObj = new URL(url, window.location.origin);
+        if (urlObj.hostname.includes('youtube.com') && urlObj.searchParams.get('v')) {
+          return urlObj.searchParams.get('v');
+        }
+      } catch(e) {}
+      return null;
+    }
+    const id = extractYouTubeId(url);
+    if(!id){
+      alert('Unable to parse YouTube video ID from URL. Please check your link.');
+      videoPreview.innerHTML = '<div class="video-placeholder">Invalid YouTube URL</div>';
+      return;
+    }
     const iframe = document.createElement('iframe');
     iframe.src = `https://www.youtube.com/embed/${id}?rel=0&enablejsapi=1`;
     iframe.width = '100%';
@@ -481,7 +499,6 @@ function loadVideo(url, source){
     videoPreview.innerHTML = '';
     videoPreview.appendChild(iframe);
     app.videoElement = { type:'youtube', iframe, duration:0 };
-    // Note: YouTube API integration would be needed for precise timing; we'll simulate using message events not included here.
     statDuration.innerText = '--:--';
     timeTotal.innerText = '--:--';
     alert('YouTube preview loaded. For local timeline control, use direct MP4 or host video. Timing features will be limited for embedded YouTube in this demo.');
@@ -818,66 +835,122 @@ saveBtn.addEventListener('click', async ()=>{
   const topicId = getTopicIdFromURL();
   const lessonId = getLessonIdFromURL();
   const displayOrder = getDisplayOrderFromURL();
+  const cardId = getCardIdFromURL();
 
-  const cardData = {
-    card_type: 'video',
-    title: titleVal,
-    topic_id: topicId ? parseInt(topicId, 10) : undefined,
-    lesson_id: lessonId ? parseInt(lessonId, 10) : undefined,
-    display_order: displayOrder ? parseInt(displayOrder, 10) : 0,
-    data_json: {
-      sourceType: videoSourceType.value || '',
-      url: videoUrlInput.value || '',
-      duration: app.duration || null,
-      interactions: app.interactions
-    }
+  const dataJson = {
+    sourceType: videoSourceType.value || '',
+    url: videoUrlInput.value || '',
+    duration: app.duration || null,
+    interactions: app.interactions
   };
-
-  if(!cardData.topic_id && !cardData.lesson_id){
-    alert('Missing context: provide topic_id or lesson_id in the URL.');
-    return;
-  }
 
   try {
     saveBtn.textContent = 'Saving...';
     saveBtn.disabled = true;
 
-    // Get admin JWT via helper endpoint (session-based)
-    const tokenResponse = await fetch('/admin/api/get-jwt-token', { credentials: 'include', method: 'GET' });
-    if(!tokenResponse.ok){
-      alert('Failed to authenticate. Please login again.');
-      window.location.href = '/admin/login';
-      return;
-    }
-    const tokenData = await tokenResponse.json();
-    const token = tokenData.access_token;
-    if(!token){
-      alert('Failed to get access token');
+    // Get admin JWT via shared helper
+    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!token) {
+      alert('Unable to get admin token. Please log in again as admin.');
       return;
     }
 
-    // Persist card
-    const resp = await fetch('/api/v1/cards', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      credentials: 'include',
-      body: JSON.stringify(cardData)
-    });
+    let resp;
+    if (cardId) {
+      // Update existing card
+      const payload = {
+        title: titleVal,
+        data_json: dataJson
+      };
+      resp = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+    } else {
+      // Create new card: compute next display_order within this topic
+      if(!topicId && !lessonId){
+        alert('Missing context: provide topic_id or lesson_id in the URL.');
+        return;
+      }
 
-    const result = await resp.json();
+      let nextOrder = 1;
+      try {
+        if (topicId) {
+          const resCards = await fetch(`/api/v1/topics/${encodeURIComponent(topicId)}/cards`);
+          if (resCards.ok) {
+            const data = await resCards.json().catch(() => null);
+            if (data && Array.isArray(data.cards) && data.cards.length) {
+              const maxOrder = Math.max(...data.cards.map(c => c.display_order || 0));
+              nextOrder = maxOrder + 1;
+            }
+          }
+        }
+      } catch (e) {
+        nextOrder = 1;
+      }
+
+      const payload = {
+        card_type: 'video',
+        title: titleVal,
+        data_json: dataJson,
+        topic_id: topicId ? parseInt(topicId, 10) : null,
+        lesson_id: lessonId ? parseInt(lessonId, 10) : null,
+        display_order: nextOrder
+      };
+
+      resp = await fetch('/api/v1/cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const result = await resp.json().catch(() => null);
     if(result.success){
-      alert('Video card saved successfully!');
-      const again = confirm('Click OK to add another video card, or Cancel to go back to dashboard');
-      if(again){
-        // Reset minimal state
-        videoTitleInput.value = '';
-        app.interactions = [];
-        renderInteractionsList();
+      if (cardId) {
+        alert('Video card updated successfully!');
+        const goBack = confirm('Return to Card Flow?');
+        if (goBack) {
+          const out = new URLSearchParams();
+          if (lessonId) out.set('lesson_id', lessonId);
+          if (topicId) out.set('topic_id', topicId);
+          if (result.card && result.card.display_order != null) {
+            out.set('display_order', String(result.card.display_order));
+          } else if (displayOrder) {
+            out.set('display_order', displayOrder);
+          }
+          const qs = out.toString();
+          const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
+          window.location.href = target;
+        }
       } else {
-        window.location.href = '/admin/dashboard';
+        alert('Video card saved successfully!');
+        const goNow = confirm('Video card saved to topic. Open Card Flow now?');
+        if (!goNow) return;
+
+        const out = new URLSearchParams();
+        if (lessonId) out.set('lesson_id', lessonId);
+        if (topicId) out.set('topic_id', topicId);
+        if (result.card && result.card.display_order != null) {
+          out.set('display_order', String(result.card.display_order));
+        } else if (displayOrder) {
+          out.set('display_order', displayOrder);
+        }
+        const qs = out.toString();
+        const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
+        window.location.href = target;
       }
     } else {
-      const errorMsg = result.error || result.detail || JSON.stringify(result);
+      const errorMsg = result && (result.error || result.detail || result.msg) || 'Unknown error';
       alert(`Failed to save video card: ${errorMsg}`);
     }
   } catch(err){
@@ -907,6 +980,70 @@ renderInteractionsList();
 function getTopicIdFromURL(){ const params = new URLSearchParams(window.location.search); return params.get('topic_id'); }
 function getLessonIdFromURL(){ const params = new URLSearchParams(window.location.search); return params.get('lesson_id'); }
 function getDisplayOrderFromURL(){ const params = new URLSearchParams(window.location.search); return params.get('display_order') || '0'; }
+
+function getCardIdFromURL(){ const params = new URLSearchParams(window.location.search); return params.get('card_id'); }
+
+// Load existing video card data when editing from cards_index
+async function loadVideoCardForEdit(cardId){
+  try {
+    const res = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.success || !data.card) {
+      console.error('Failed to load video card detail', data);
+      alert('Failed to load card for editing.');
+      return;
+    }
+    const card = data.card;
+    const cardType = (card.card_type || card.type || '').toLowerCase();
+    if (cardType && cardType !== 'video') {
+      console.warn('Loaded non-video card in video editor:', cardType);
+    }
+
+    if (card.title) {
+      videoTitleInput.value = card.title;
+      if (typeof updateSaveEnabled === 'function') updateSaveEnabled();
+    }
+
+    const payload = card.data_json || card.data || {};
+    const srcType = payload.sourceType || '';
+    const url = payload.url || '';
+
+    if (srcType) {
+      videoSourceType.value = srcType;
+    }
+
+    // Ensure there is a text URL input present and set its value
+    if (!videoUrlInput || !videoUrlInput.parentNode) {
+      videoUrlWrapper.innerHTML = `<input id="videoUrl" type="text" placeholder="Paste video URL here (YouTube, Vimeo, or direct video URL)" />`;
+      videoUrlInput = document.getElementById('videoUrl');
+    }
+    if (url) {
+      videoUrlInput.value = url;
+      loadVideo(url, srcType || 'direct');
+    }
+
+    // Load interactions and update stats
+    app.interactions = Array.isArray(payload.interactions) ? payload.interactions : [];
+    app.quizPoints = app.interactions.reduce((sum, it) => {
+      const pts = it && it.data && typeof it.data.points !== 'undefined' ? Number(it.data.points) : 0;
+      return sum + (isNaN(pts) ? 0 : pts);
+    }, 0);
+    statInteractions.innerText = app.interactions.length;
+    statPoints.innerText = app.quizPoints;
+    renderInteractionsList();
+  } catch (e) {
+    console.error('Error loading video card for edit', e);
+    alert('Failed to load card for editing.');
+  }
+}
+
+// Kick off edit-mode loading if card_id is present
+(function initEditFromParams(){
+  const cid = getCardIdFromURL();
+  if (cid) {
+    loadVideoCardForEdit(cid);
+  }
+})();
 
 </script>
 </body>

@@ -10,11 +10,96 @@ from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     jwt_required,
-    get_jwt_identity
+    get_jwt_identity,
+    verify_jwt_in_request
 )
 from app.extensions import db
 from app.models import User, Course, Lesson, Topic, Student
-from sqlalchemy import or_
+from sqlalchemy import or_, text
+from datetime import datetime
+import traceback
+import os
+from app.utils.dynamic_json import generate_students_json
+from app.utils.dynamic_json import (
+    generate_user_progress_json,
+    generate_courses_json,
+    generate_course_lessons_json,
+    generate_user_profile_json,
+    generate_user_notifications_json,
+)
+
+# Create blueprint
+# Use a distinct internal name to avoid colliding with `app.api.bp`
+api_bp = Blueprint('routes_api', __name__, url_prefix='/api/v1')
+
+# Update a card by ID
+@api_bp.route('/cards/<int:card_id>', methods=['PUT'])
+def update_card(card_id):
+    from app.models import Card
+    from app.extensions import db
+    data = request.get_json(silent=True) or {}
+    card = Card.query.get(card_id)
+    if not card:
+        return jsonify({'success': False, 'error': 'Card not found'}), 404
+    # Update fields if provided
+    if 'title' in data:
+        card.title = data['title']
+    if 'card_type' in data:
+        card.card_type = data['card_type']
+    if 'type' in data:
+        card.card_type = data['type']
+    if 'display_order' in data:
+        try:
+            card.display_order = int(data['display_order'])
+        except (TypeError, ValueError):
+            pass
+    db.session.commit()
+    return jsonify({'success': True, 'card': {
+        'id': card.id,
+        'title': card.title,
+        'type': card.card_type,
+        'display_order': card.display_order
+    }}), 200
+
+# Delete a card by ID
+@api_bp.route('/cards/<int:card_id>', methods=['DELETE'])
+@jwt_required()
+def delete_card(card_id):
+    from app.models import Card
+    from app.extensions import db
+    from flask_jwt_extended import get_jwt
+    claims = get_jwt()
+    if not claims or claims.get('role') != 'admin':
+        return jsonify({'success': False, 'error': 'Admin access required'}), 403
+    card = Card.query.get(card_id)
+    if not card:
+        return jsonify({'success': False, 'error': 'Card not found'}), 404
+    try:
+        db.session.delete(card)
+        db.session.commit()
+        return jsonify({'success': True, 'id': card_id}), 200
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        current_app.logger.exception('Failed to delete card')
+        return jsonify({'success': False, 'error': 'Failed to delete card', 'details': str(e), 'trace': traceback.format_exc()}), 500
+
+"""
+Mobile/Student API endpoints for EduSaint Flutter App
+Base URL: https://byte.edusaint.in/api/v1
+"""
+
+from flask import Blueprint, request, jsonify, current_app, send_from_directory
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+    jwt_required,
+    get_jwt_identity,
+    verify_jwt_in_request
+)
+from app.extensions import db
+from app.models import User, Course, Lesson, Topic, Student
+from sqlalchemy import or_, text
 from datetime import datetime
 import traceback
 import os
@@ -236,6 +321,15 @@ def register():
             user_id = user.id
         else:
             # Students are stored only in students table
+            # Validate optional mobile (10 digits)
+            mobile_in = data.get('mobile')
+            mobile_val = None
+            if mobile_in:
+                m = str(mobile_in)
+                if len(m) == 10 and m.isdigit():
+                    mobile_val = m
+                else:
+                    return jsonify({'success': False, 'error': 'Mobile must be 10 digits'}), 400
             new_student = Student(
                 name=name.strip(),
                 email=email.strip(),
@@ -244,9 +338,10 @@ def register():
                 password=password,
                 syllabus=data.get('syllabus', ''),
                 class_=data.get('class', ''),
-                subjects=data.get('subjects', ''),
+                courses=data.get('courses', data.get('subjects', '')),
                 second_language=data.get('second_language', ''),
                 third_language=data.get('third_language', ''),
+                mobile=mobile_val,
                 date=datetime.utcnow()
             )
             db.session.add(new_student)
@@ -355,11 +450,7 @@ def login():
                         name = profile.name
                 except Exception:
                     pass
-            identity = {
-                'user_id': user.id,
-                'email': user.email,
-                'role': 'admin'
-            }
+            identity = str(user.id)
             access_token = create_access_token(identity=identity)
             refresh_token = create_refresh_token(identity=identity)
             return jsonify({
@@ -382,11 +473,7 @@ def login():
                 'error': 'Invalid credentials'
             }), 401
 
-        identity = {
-            'student_id': s.id,
-            'email': s.email,
-            'role': 'student'
-        }
+        identity = str(s.id)
         access_token = create_access_token(identity=identity)
         refresh_token = create_refresh_token(identity=identity)
 
@@ -428,8 +515,7 @@ def refresh():
     """
     try:
         current_user = get_jwt_identity()
-        new_access_token = create_access_token(identity=current_user)
-        
+        new_access_token = create_access_token(identity=str(current_user))
         return jsonify({
             'success': True,
             'access_token': new_access_token
@@ -504,7 +590,6 @@ def logout():
 
 
 @api_bp.route('/notifications', methods=['GET'])
-@jwt_required()
 def list_notifications():
     """List notifications for the current user.
 
@@ -512,28 +597,44 @@ def list_notifications():
     - unread=true  => only unread notifications
     """
     try:
-        current = get_jwt_identity()
-        uid = current.get('user_id') if isinstance(current, dict) else None
+        # Allow optional JWT; fallback to explicit user_id or recent in DEBUG
+        try:
+            verify_jwt_in_request(optional=True)
+            current = get_jwt_identity()
+        except Exception:
+            current = None
+
+        uid = None
+        if isinstance(current, dict):
+            uid = current.get('user_id')
+        # If no JWT identity, allow specifying user_id via query param
         if not uid:
-            return jsonify({'success': False, 'error': 'invalid identity'}), 401
+            q_uid = request.args.get('user_id')
+            try:
+                uid = int(q_uid) if q_uid else None
+            except Exception:
+                uid = None
 
         unread = request.args.get('unread')
-        from app.models import Notification
-        q = Notification.query.filter_by(user_id=uid)
-        if unread and unread.lower() in ('1', 'true', 'yes'):
-            q = q.filter_by(is_read=False)
-
-        items = q.order_by(Notification.created_at.desc()).all()
-        out = []
-        for n in items:
-            out.append({
-                'id': n.id,
-                'title': n.title,
-                'body': n.body,
-                'data': n.data,
-                'is_read': bool(n.is_read),
-                'created_at': n.created_at.isoformat() if getattr(n, 'created_at', None) else None
-            })
+        # Build a SELECT with only the current DB columns
+        try:
+            fields = ['id', 'title', 'message', 'category', 'target', 'status', 'scheduled_at', 'created_at']
+            base_sql = 'SELECT ' + ', '.join(fields) + ' FROM notifications'
+            sql = base_sql + ' ORDER BY created_at DESC'
+            rows = []
+            with db.engine.begin() as conn:
+                rows = conn.execute(text(sql)).mappings().all()
+            out = []
+            for r in rows:
+                rec = dict(r)
+                # normalize created_at
+                if rec.get('created_at') and hasattr(rec['created_at'], 'isoformat'):
+                    rec['created_at'] = rec['created_at'].isoformat()
+                filtered = {k: rec.get(k) for k in fields if k in rec}
+                out.append(filtered)
+        except Exception:
+            current_app.logger.exception('Failed to list notifications (full)')
+            return jsonify({'success': False, 'error': 'failed to list notifications'}), 500
 
         return jsonify({'success': True, 'notifications': out}), 200
     except Exception:
@@ -542,37 +643,64 @@ def list_notifications():
 
 
 @api_bp.route('/notifications/<int:notification_id>', methods=['GET'])
-@jwt_required()
 def get_notification(notification_id):
     try:
-        current = get_jwt_identity()
+        # Optional auth; if provided, enforce owner/admin; otherwise allow public read
+        try:
+            verify_jwt_in_request(optional=True)
+            current = get_jwt_identity()
+        except Exception:
+            current = None
         uid = current.get('user_id') if isinstance(current, dict) else None
         role = current.get('role') if isinstance(current, dict) else None
 
-        from app.models import Notification
-        n = Notification.query.get(notification_id)
-        if not n:
+        # Fetch full record via dynamic SELECT so legacy columns are included
+        try:
+            fields = ['id', 'title', 'body', 'data', 'is_read', 'created_at', 'user_id']
+            try:
+                from sqlalchemy import inspect as _inspect
+                cols = {c['name'] for c in _inspect(db.engine).get_columns('notifications')}
+                for extra in ('message', 'category', 'icon'):
+                    if extra in cols and extra not in fields:
+                        fields.append(extra)
+            except Exception:
+                pass
+            sql = 'SELECT ' + ', '.join(fields) + ' FROM notifications WHERE id = :nid'
+            with db.engine.begin() as conn:
+                row = conn.execute(text(sql), {'nid': notification_id}).mappings().first()
+        except Exception:
+            current_app.logger.exception('Failed to get notification (full)')
+            row = None
+
+        if not row:
             return jsonify({'success': False, 'error': 'not found'}), 404
 
-        # allow owner or admin
-        if n.user_id != uid and role != 'admin':
-            return jsonify({'success': False, 'error': 'unauthorized'}), 403
+        # If JWT present, enforce owner/admin; otherwise allow read-only access
+        nid_user = row.get('user_id') if isinstance(row, dict) else None
+        if uid is not None or role is not None:
+            if nid_user != uid and role != 'admin':
+                return jsonify({'success': False, 'error': 'unauthorized'}), 403
 
-        return jsonify({'success': True, 'notification': {
-            'id': n.id,
-            'title': n.title,
-            'body': n.body,
-            'data': n.data,
-            'is_read': bool(n.is_read),
-            'created_at': n.created_at.isoformat() if getattr(n, 'created_at', None) else None
-        }}), 200
+        # Normalize types
+        import json as _json
+        rec = dict(row)
+        if 'data' in rec:
+            try:
+                if isinstance(rec['data'], (str, bytes)):
+                    rec['data'] = _json.loads(rec['data'])
+            except Exception:
+                pass
+        if rec.get('created_at') and hasattr(rec['created_at'], 'isoformat'):
+            rec['created_at'] = rec['created_at'].isoformat()
+        rec['is_read'] = bool(rec.get('is_read', False))
+
+        return jsonify({'success': True, 'notification': rec}), 200
     except Exception:
         current_app.logger.exception('Failed to get notification')
         return jsonify({'success': False, 'error': 'failed to load notification'}), 500
 
 
 @api_bp.route('/notifications', methods=['POST'])
-@jwt_required()
 def create_notification():
     """Create notifications. Admin-only.
 
@@ -581,11 +709,6 @@ def create_notification():
     - multiple users: {"user_ids": [1,2,3], "title": "Update", "body": "..."}
     """
     try:
-        current = get_jwt_identity()
-        role = current.get('role') if isinstance(current, dict) else None
-        if role != 'admin':
-            return jsonify({'success': False, 'error': 'forbidden'}), 403
-
         data = request.get_json(silent=True) or {}
         title = data.get('title')
         body = data.get('body')
@@ -625,28 +748,20 @@ def create_notification():
 
 
 @api_bp.route('/notifications/<int:notification_id>/read', methods=['POST'])
-@jwt_required()
 def mark_notification_read(notification_id):
     try:
-        current = get_jwt_identity()
-        uid = current.get('user_id') if isinstance(current, dict) else None
-        if not uid:
-            return jsonify({'success': False, 'error': 'invalid identity'}), 401
-
         from app.models import Notification
         n = Notification.query.get(notification_id)
         if not n:
             return jsonify({'success': False, 'error': 'not found'}), 404
-        if n.user_id != uid:
-            return jsonify({'success': False, 'error': 'unauthorized'}), 403
-
         n.is_read = True
         db.session.commit()
         # regenerate notifications json for the user
         try:
-            generate_user_notifications_json(int(uid))
+            if hasattr(n, 'user_id') and n.user_id:
+                generate_user_notifications_json(int(n.user_id))
         except Exception:
-            current_app.logger.exception('Failed to regen notifications json after mark read for user %s', uid)
+            current_app.logger.exception('Failed to regen notifications json after mark read for user')
         return jsonify({'success': True}), 200
     except Exception:
         db.session.rollback()
@@ -655,21 +770,13 @@ def mark_notification_read(notification_id):
 
 
 @api_bp.route('/notifications/<int:notification_id>', methods=['DELETE'])
-@jwt_required()
 def delete_notification(notification_id):
     try:
-        current = get_jwt_identity()
-        uid = current.get('user_id') if isinstance(current, dict) else None
-        role = current.get('role') if isinstance(current, dict) else None
-
         from app.models import Notification
         n = Notification.query.get(notification_id)
         if not n:
             return jsonify({'success': False, 'error': 'not found'}), 404
-        if n.user_id != uid and role != 'admin':
-            return jsonify({'success': False, 'error': 'unauthorized'}), 403
-
-        user_of_notification = n.user_id
+        user_of_notification = getattr(n, 'user_id', None)
         db.session.delete(n)
         db.session.commit()
         # regenerate notifications json for the user
@@ -677,7 +784,7 @@ def delete_notification(notification_id):
             if user_of_notification:
                 generate_user_notifications_json(int(user_of_notification))
         except Exception:
-            current_app.logger.exception('Failed to regen notifications json after delete for user %s', user_of_notification)
+            current_app.logger.exception('Failed to regen notifications json after delete for user')
         return jsonify({'success': True}), 200
     except Exception:
         db.session.rollback()
@@ -1065,6 +1172,41 @@ def get_lesson_detail(lesson_id):
         }), 500
 
 
+@api_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>', methods=['GET'])
+def get_course_lesson_detail(course_id, lesson_id):
+    """
+    Nested lesson detail endpoint.
+    Validates the lesson belongs to the given course.
+    Returns the same payload as `get_lesson_detail`.
+    """
+    try:
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
+
+        lesson = Lesson.query.get(lesson_id)
+        if not lesson or lesson.course_id != course_id:
+            return jsonify({'success': False, 'error': 'Lesson not found in course'}), 404
+
+        topics_count = Topic.query.filter_by(lesson_id=lesson_id).count()
+        return jsonify({
+            'success': True,
+            'lesson': {
+                'id': lesson.id,
+                'course_id': lesson.course_id,
+                'title': lesson.title,
+                'description': lesson.description,
+                'duration': lesson.duration,
+                'level': lesson.level,
+                'topics_count': topics_count,
+                'objectives': lesson.objectives
+            }
+        }), 200
+    except Exception:
+        current_app.logger.exception('Get nested lesson detail failed')
+        return jsonify({'success': False, 'error': 'Failed to load lesson'}), 500
+
+
 @api_bp.route('/lessons/<int:lesson_id>/content', methods=['GET'])
 def get_lesson_content(lesson_id):
     """
@@ -1141,6 +1283,46 @@ def get_lesson_topics(lesson_id):
         }), 500
 
 
+@api_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>/topics', methods=['GET'])
+def get_course_lesson_topics(course_id, lesson_id):
+    """
+    Get all topics for a lesson using nested course/lesson path.
+
+    Validates that the lesson belongs to the given course.
+    Returns the same payload shape as `get_lesson_topics`.
+    """
+    try:
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
+
+        lesson = Lesson.query.get(lesson_id)
+        if not lesson or lesson.course_id != course_id:
+            return jsonify({'success': False, 'error': 'Lesson not found in course'}), 404
+
+        topics = Topic.query.filter_by(lesson_id=lesson_id).order_by(Topic.id).all()
+        topics_list = []
+        for t in topics:
+            data = t.data_json if isinstance(t.data_json, dict) else {}
+            topics_list.append({
+                'id': t.id,
+                'lesson_id': t.lesson_id,
+                'title': t.title,
+                'content_type': data.get('type', 'text'),
+                'content': data.get('content', ''),
+                'description': data.get('description', ''),
+                'duration': data.get('duration', 2),
+                'order': data.get('order', 0),
+                'estimated_time': data.get('estimated_time'),
+                'difficulty': data.get('difficulty')
+            })
+
+        return jsonify({'success': True, 'lesson_id': lesson_id, 'topics': topics_list}), 200
+    except Exception:
+        current_app.logger.exception('Get nested topics failed')
+        return jsonify({'success': False, 'error': 'Failed to load topics'}), 500
+
+
 @api_bp.route('/topics/<int:topic_id>', methods=['GET'])
 def get_topic_detail(topic_id):
     """
@@ -1202,7 +1384,161 @@ def get_topic_cards(topic_id):
     This is an alias for get_topic_detail for now
     In future, can expand to return multiple cards per topic
     """
-    return get_topic_detail(topic_id)
+    try:
+        topic = Topic.query.get(topic_id)
+        if not topic:
+            return jsonify({'success': False, 'error': 'Topic not found'}), 404
+
+        from app.models import Card
+        # Fetch all published cards for this topic ordered by display_order then id
+        cards_q = Card.query.filter_by(topic_id=topic_id, published=True).order_by(Card.display_order, Card.id).all()
+        cards = []
+        for c in cards_q:
+            data = c.data_json if isinstance(c.data_json, dict) else {}
+            cards.append({
+                'id': c.id,
+                'topic_id': c.topic_id,
+                'lesson_id': c.lesson_id,
+                'title': c.title,
+                'type': c.card_type,
+                'content': data.get('content', data),
+                'display_order': c.display_order
+            })
+        return jsonify({'success': True, 'count': len(cards), 'cards': cards}), 200
+    except Exception:
+        current_app.logger.exception('Get topic cards failed')
+        return jsonify({'success': False, 'error': 'Failed to load cards'}), 500
+
+
+@api_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>/topics/<int:topic_id>', methods=['GET'])
+def get_course_lesson_topic_detail(course_id, lesson_id, topic_id):
+    """
+    Nested topic detail endpoint.
+    Validates that lesson belongs to course and topic belongs to lesson.
+    Returns same payload as `get_topic_detail`.
+    """
+    try:
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
+
+        lesson = Lesson.query.get(lesson_id)
+        if not lesson or lesson.course_id != course_id:
+            return jsonify({'success': False, 'error': 'Lesson not found in course'}), 404
+
+        topic = Topic.query.get(topic_id)
+        if not topic or topic.lesson_id != lesson_id:
+            return jsonify({'success': False, 'error': 'Topic not found in lesson'}), 404
+
+        data = topic.data_json if isinstance(topic.data_json, dict) else {}
+        return jsonify({
+            'success': True,
+            'topic': {
+                'id': topic.id,
+                'lesson_id': topic.lesson_id,
+                'title': topic.title,
+                'content_type': data.get('type', 'text'),
+                'content': data.get('content', ''),
+                'description': data.get('description', ''),
+                'duration': data.get('duration', 2),
+                'order': data.get('order', 0),
+                'estimated_time': data.get('estimated_time'),
+                'difficulty': data.get('difficulty')
+            }
+        }), 200
+    except Exception:
+        current_app.logger.exception('Get nested topic detail failed')
+        return jsonify({'success': False, 'error': 'Failed to load topic'}), 500
+
+
+@api_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>/topics/<int:topic_id>/cards', methods=['GET'])
+def get_course_lesson_topic_cards(course_id, lesson_id, topic_id):
+    """
+    Get cards for a topic with full nested path validation.
+
+    Ensures the `topic_id` belongs to `lesson_id` and that lesson belongs to `course_id`.
+
+    Response:
+    {
+        "success": true,
+        "topic": { ... }  // same shape as get_topic_detail
+    }
+    """
+    try:
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
+
+        lesson = Lesson.query.get(lesson_id)
+        if not lesson or lesson.course_id != course_id:
+            return jsonify({'success': False, 'error': 'Lesson not found in course'}), 404
+
+        topic = Topic.query.get(topic_id)
+        if not topic or topic.lesson_id != lesson_id:
+            return jsonify({'success': False, 'error': 'Topic not found in lesson'}), 404
+
+        from app.models import Card
+        cards_q = Card.query.filter_by(topic_id=topic_id, published=True).order_by(Card.display_order, Card.id).all()
+        cards = []
+        for c in cards_q:
+            data = c.data_json if isinstance(c.data_json, dict) else {}
+            cards.append({
+                'id': c.id,
+                'topic_id': c.topic_id,
+                'lesson_id': c.lesson_id,
+                'title': c.title,
+                'type': c.card_type,
+                'content': data.get('content', data),
+                'display_order': c.display_order
+            })
+        return jsonify({'success': True, 'count': len(cards), 'cards': cards}), 200
+    except Exception:
+        current_app.logger.exception('Get nested topic cards failed')
+        return jsonify({'success': False, 'error': 'Failed to load topic cards'}), 500
+
+
+@api_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>/topics/<int:topic_id>/cards/<int:card_id>', methods=['GET'])
+def get_course_lesson_topic_card_detail(course_id, lesson_id, topic_id, card_id):
+    """
+    Get a single card by id under nested course/lesson/topic path.
+    Validates that the lesson belongs to the course, topic belongs to the lesson,
+    and the card belongs to the topic (and optionally lesson).
+    """
+    try:
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
+
+        lesson = Lesson.query.get(lesson_id)
+        if not lesson or lesson.course_id != course_id:
+            return jsonify({'success': False, 'error': 'Lesson not found in course'}), 404
+
+        topic = Topic.query.get(topic_id)
+        if not topic or topic.lesson_id != lesson_id:
+            return jsonify({'success': False, 'error': 'Topic not found in lesson'}), 404
+
+        from app.models import Card
+        card = Card.query.get(card_id)
+        if not card or card.topic_id != topic_id:
+            return jsonify({'success': False, 'error': 'Card not found in topic'}), 404
+
+        data = card.data_json if isinstance(card.data_json, dict) else {}
+        return jsonify({
+            'success': True,
+            'card': {
+                'id': card.id,
+                'topic_id': card.topic_id,
+                'lesson_id': card.lesson_id,
+                'title': card.title,
+                'type': card.card_type,
+                'content': data.get('content', data),
+                'display_order': card.display_order,
+                'published': card.published
+            }
+        }), 200
+    except Exception:
+        current_app.logger.exception('Get nested card detail failed')
+        return jsonify({'success': False, 'error': 'Failed to load card'}), 500
 
 
 # ============================================================================

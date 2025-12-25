@@ -45,6 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const json = await resp.json().catch(() => null);
       if (json && json.success) {
+        // Store tokens in localStorage for admin checks and API calls
+        if (json.access_token) {
+          localStorage.setItem('access_token', json.access_token);
+        }
+        if (json.refresh_token) {
+          localStorage.setItem('refresh_token', json.refresh_token);
+        }
         // redirect to server-specified URL or default dashboard
         window.location.href = json.redirect || '/admin/dashboard';
         return;

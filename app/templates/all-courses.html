@@ -678,44 +678,6 @@
                 </div>
             `).join('');
 
-            // Attach explicit listeners to action buttons (works even if delegated handler misses)
-            attachCourseListeners();
-        }
-
-        function attachCourseListeners() {
-            const viewBtns = document.querySelectorAll('.btn.btn-view[data-course-id]');
-            viewBtns.forEach(b => {
-                b.removeEventListener('click', viewBtnHandler);
-                b.addEventListener('click', viewBtnHandler);
-            });
-            const editBtns = document.querySelectorAll('.btn.btn-edit[data-course-id]');
-            editBtns.forEach(b => {
-                b.removeEventListener('click', editBtnHandler);
-                b.addEventListener('click', editBtnHandler);
-            });
-            const delBtns = document.querySelectorAll('.btn.btn-delete[data-course-id]');
-            delBtns.forEach(b => {
-                b.removeEventListener('click', deleteBtnHandler);
-                b.addEventListener('click', deleteBtnHandler);
-            });
-        }
-
-        function viewBtnHandler(e) {
-            const id = e.currentTarget.getAttribute('data-course-id');
-            console.debug('viewBtnHandler', id);
-            viewLessons(id);
-        }
-
-        function editBtnHandler(e) {
-            const id = e.currentTarget.getAttribute('data-course-id');
-            console.debug('editBtnHandler', id);
-            editCourse(id);
-        }
-
-        function deleteBtnHandler(e) {
-            const id = e.currentTarget.getAttribute('data-course-id');
-            console.debug('deleteBtnHandler', id);
-            deleteCourse(id);
         }
 
         // Open add modal

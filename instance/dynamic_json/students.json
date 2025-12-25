@@ -89,38 +89,60 @@
       "status": "active"
     },
     {
-      "id": 12,
-      "name": "Shrusti",
-      "email": "kshitij@gmail.com",
-      "enrollmentDate": "2025-12-11",
-      "courses": "English,Hindi,Maths",
-      "progress": 0,
-      "xp": 0,
-      "lastLogin": "",
-      "status": "active"
-    },
-    {
       "id": 16,
       "name": "ayush",
       "email": "ayush@gmail.com",
       "enrollmentDate": "2025-12-11",
-      "courses": "French",
+      "courses": "Mathematics",
       "progress": 0,
       "xp": 0,
       "lastLogin": "",
       "status": "active"
     },
     {
-      "id": 18,
-      "name": "API Test Student",
-      "email": "student.api.test@example.com",
+      "id": 17,
+      "name": "Mek",
+      "email": "mek@gmail.com",
+      "enrollmentDate": "2025-12-12",
+      "courses": "english , hindi",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 20,
+      "name": "Parth Goel",
+      "email": "parth12@gmail.com",
       "enrollmentDate": "2025-12-13",
-      "courses": "",
+      "courses": "english, hindi",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 23,
+      "name": "xyzx",
+      "email": "xyzx@gmail.com",
+      "enrollmentDate": "2025-12-19",
+      "courses": "Mathematics",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 24,
+      "name": "man",
+      "email": "man@gmail.com",
+      "enrollmentDate": "2025-12-19",
+      "courses": "Mathematics",
       "progress": 0,
       "xp": 0,
       "lastLogin": "",
       "status": "active"
     }
   ],
-  "total": 11
+  "total": 13
 }

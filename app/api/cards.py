@@ -395,6 +395,17 @@ def delete_card(card_id):
         return {"success": False, "error": "Failed to delete card", "detail": str(e), "code": 500}, 500
 
 
+@bp.route("/cards/<int:card_id>/delete", methods=["POST"])
+@jwt_required()
+@limiter.limit("30/minute")
+def delete_card_via_post(card_id):
+    """Delete a card using POST for environments that block DELETE.
+
+    This simply forwards to delete_card to keep logic in one place.
+    """
+    return delete_card(card_id)
+
+
 @bp.route("/topics/<int:topic_id>/cards", methods=["GET"])
 def get_topic_cards(topic_id):
     """Get all cards for a specific topic."""

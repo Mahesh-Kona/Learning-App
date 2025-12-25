@@ -30,7 +30,7 @@ with app.app_context():
                 password="",
                 syllabus="",
                 class_="",
-                subjects="Math,Science"
+                courses="Math,Science"
             )
             db.session.add(student)
             db.session.commit()

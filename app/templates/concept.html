@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EduSaint — Concept Card Editor</title>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="/static/admin_jwt_check.js"></script>
+
 <style>
 :root{
   --primary:#4361ee; --secondary:#3a0ca3;
@@ -12,339 +15,790 @@
   --bg:#f5f7fb; --card:#fff;
   --accent:#7d4dff; --danger:#ff6b5b;
 }
+
 *{box-sizing:border-box;font-family:Inter,Segoe UI,Arial,system-ui;margin:0;padding:0;}
-body{background:var(--bg);color:#222;height:100vh;display:flex;overflow:hidden;}
-/* GRID LAYOUT: left/right panels small, main large */
-.container{display:grid;grid-template-columns:1fr 3fr 1fr;overflow:hidden;height:100vh;}
+body{background:var(--bg);color:#222;min-height:100vh;display:flex;overflow:hidden;}
+
+.container{
+  display:grid;
+  grid-template-columns:1fr 3fr 1fr;
+  height:100vh;
+  width:100vw;
+  overflow:hidden;
+  min-height:0;
+}
 
 /* LEFT SIDEBAR */
-.sidebar{background:var(--card);padding:20px;border-right:1px solid #e6e6ea;overflow:auto;}
-.sidebar h2{font-size:16px;margin-bottom:16px;letter-spacing:0.4px;}
-.template{border-radius:14px;padding:18px;margin-bottom:18px;background:linear-gradient(180deg,#fff,#fcfcfd);box-shadow:0 2px 8px rgba(16,24,40,0.03);border:2px solid transparent;cursor:pointer;}
-.template .title{display:flex;align-items:center;gap:12px;font-weight:700;font-size:16px;margin-bottom:8px;}
-.template .desc{color:var(--muted);font-size:13px;margin-bottom:10px;}
-.template ul{color:var(--muted);font-size:13px;padding-left:18px;margin-bottom:14px;}
-.template .select{display:block;width:100%;padding:12px;border-radius:10px;border:none;font-weight:700;cursor:pointer;}
-.template.quiz{border-color:rgba(255,107,91,0.2)}.template.quiz .select{background:var(--danger);color:#fff}
-.template.interactive{border-color:rgba(140,40,255,0.12)}.template.interactive .select{background:#7b2cff;color:#fff}
-.template.video{border-color:rgba(45,177,76,0.12)}.template.video .select{background:#2db14c;color:#fff}
-.template.concept{border-color:rgba(255,198,0,0.25)}.template.concept .select{background:#ffb400;color:#fff}
+.sidebar{
+  background:var(--card);
+  padding:20px;
+  border-right:1px solid #e6e6ea;
+  height:100vh;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+.sidebar h2{font-size:16px;margin-bottom:16px}
 
-/* MAIN AREA */
-.main{padding:28px;overflow:auto;}
-.preview-wrap{max-width:1080px;margin:0 auto;}
-.card-preview{background:var(--card);border-radius:18px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,0.06);padding-bottom:20px;}
-.card-title-big{font-size:44px;font-weight:800;padding:36px 28px 6px 28px;text-align:center;}
-.card-body{padding:8px 28px 0 28px;}
-.blocks-area{min-height:120px;padding:18px;border-radius:12px;border:2px dashed #e8e8e8;background:#fafbff;margin-top:12px;}
-.block{background:#fff;border-radius:10px;padding:14px;margin:12px 0;border:1px solid #eee;position:relative;cursor:grab;}
-.block.dragging{opacity:0.5;}
-.block .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-.btn{padding:6px 10px;border-radius:8px;border:none;cursor:pointer;font-size:13px;}
-.btn.gray{background:#f0f2f5;}
-.btn.primary{background:var(--primary);color:#fff;}
-.btn.danger{background:#ff6b6b;color:#fff;}
-.btn.small{padding:4px 8px;font-size:12px;}
+.template{
+  border-radius:14px;
+  padding:18px;
+  margin-bottom:18px;
+  background:linear-gradient(180deg,#fff,#fcfcfd);
+  box-shadow:0 2px 8px rgba(16,24,40,0.03);
+  border:2px solid rgba(255,198,0,0.25);
+  cursor:pointer;
+}
+.template .title{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-weight:700;
+  font-size:16px;
+  margin-bottom:8px;
+}
+.template .desc{color:var(--muted);font-size:13px;margin-bottom:10px}
+.template ul{color:var(--muted);font-size:13px;padding-left:18px;margin-bottom:14px}
+.template .select{
+  display:block;
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  font-weight:700;
+  cursor:pointer;
+  color:#fff;
+}
+.quiz .select { background: var(--danger, #ff6b5b); }
+.interactive .select { background: #7b2cff; }
+.video .select { background: #2db14c; }
+.concept .select { background: #ffb400; }
 
-/* RIGHT PANEL */
-.right{background:var(--card);padding:20px;border-left:1px solid #e6e6e6;overflow:auto;}
-.block-item{border:2px solid #eee;padding:12px;border-radius:10px;margin-bottom:12px;cursor:pointer;background:#fff;transition:all 0.2s;}
-.block-item:hover{border-color:var(--primary);background:#f8faff;}
-.image-placeholder{padding:22px;border-radius:10px;border:2px dashed #e8e8e8;text-align:center;cursor:pointer;background:#fafbff;}
-.image-placeholder img{max-width:100%;border-radius:8px;}
-.small{font-size:13px;color:var(--muted);}
-.delete-btn-cross{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:#ff6b6b;color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;z-index:10;}
-.textarea{width:100%;min-height:80px;border-radius:10px;border:1px solid #e6e6e9;padding:10px;margin-top:8px;background:#fbfbfb;}
+/* MAIN */
+.main{
+  padding:28px;
+  flex: 1 1 0%;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  height:100%;
+}
+.preview-wrap{
+  max-width:1080px;
+  margin:0 auto;
+}
+
+.card-preview{
+  background:var(--card);
+  border-radius:18px;
+  box-shadow:0 18px 40px rgba(0,0,0,0.06);
+  padding-bottom:20px;
+}
+
+.card-title-big{
+  font-size:44px;
+  font-weight:800;
+  padding:36px 28px 6px;
+  text-align:center;
+}
+
+.card-body{padding:8px 28px 0}
+
+.blocks-area{
+  min-height:120px;
+  padding:18px;
+  border-radius:12px;
+  border:2px dashed #e8e8e8;
+  background:#fafbff;
+  margin-top:12px;
+}
+
+.block{
+  background:#fff;
+  border-radius:10px;
+  padding:14px;
+  margin:12px 0;
+  border:1px solid #eee;
+  position:relative;
+  cursor:grab;
+}
+.block.dragging{opacity:0.5}
+
+.block .header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:8px;
+}
+
+.btn{
+  padding:6px 10px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  font-size:13px;
+}
+.btn.primary{background:var(--primary);color:#fff}
+
+.delete-btn-cross{
+  position:absolute;
+  top:-8px;
+  right:-8px;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:#ff6b6b;
+  color:white;
+  border:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+}
+
+.textarea{
+  width:100%;
+  min-height:80px;
+  border-radius:10px;
+  border:1px solid #e6e6e9;
+  padding:10px;
+  margin-top:8px;
+  background:#fbfbfb;
+}
+
+.image-placeholder{
+  padding:22px;
+  border-radius:10px;
+  border:2px dashed #e8e8e8;
+  text-align:center;
+  cursor:pointer;
+  background:#fafbff;
+}
+
+.small{font-size:13px;color:var(--muted)}
+
+.right{
+  background:var(--card);
+  padding:20px;
+  border-left:1px solid #e6e6e6;
+  overflow:auto;
+}
+
+.block-item{
+  border:2px solid #eee;
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:12px;
+  cursor:pointer;
+  background:#fff;
+  transition:0.2s;
+}
+.block-item:hover{
+  border-color:var(--primary);
+  background:#f8faff;
+}
+
+/* Saved concepts container styling */
+#savedConceptsContainer h3{
+  margin-bottom:12px;
+}
+#conceptsList div{
+  margin-bottom:6px;
+  padding:8px;
+  border-bottom:1px solid #eee;
+  cursor:grab;
+  background:#f8faff;
+  border-radius:6px;
+}
+
+#conceptsList div.dragging{opacity:0.5;}
+
+#pushAllBtn{
+  margin-top:8px;
+  width:100%;
+}
 
 @media(max-width:992px){
-  .container{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;}
-  .right{border-left:none;border-top:1px solid #e6e6e6;}
+  .container{grid-template-columns:1fr}
+  .right{border-left:none;border-top:1px solid #e6e6e6}
 }
 </style>
 </head>
+
 <body>
 <div class="container">
 
-  <!-- LEFT SIDEBAR -->
-  <aside class="sidebar">
-    <h2>CARD TEMPLATES</h2>
-    <div class="template concept" onclick="navigateToCardEditor('concept')">
-      <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(255,198,0,0.15);display:grid;place-items:center;color:#ffb400;font-weight:800">📘</span>Concept Card</div>
-      <div class="desc">Explain Concepts Clearly</div>
-      <ul><li>Theory Explanation</li><li>Notes</li><li>Summary Points</li></ul>
-      <button class="select">SELECT →</button>
-    </div>
 
-    <div class="template quiz" onclick="navigateToCardEditor('quiz')">
-      <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(255,107,91,0.12);display:grid;place-items:center;color:var(--danger);font-weight:800">❓</span>Quiz Card</div>
-      <div class="desc">Multiple Choice Questions</div>
-      <ul><li>MCQ</li><li>True/False</li><li>Match Columns</li></ul>
-      <button class="select">SELECT →</button>
-    </div>
+<aside class="sidebar">
+  <h2>CARD TEMPLATES</h2>
 
-    <div class="template interactive" onclick="navigateToCardEditor('interactive')">
-      <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(140,40,255,0.12);display:grid;place-items:center;color:#7b2cff;font-weight:800">🧩</span>Interactive Card</div>
-      <div class="desc">Engaging Activities</div>
-      <ul><li>Fill Blanks</li><li>Drag & Drop</li><li>Label Diagram</li></ul>
-      <button class="select">SELECT →</button>
-    </div>
+  <div class="template quiz" onclick="goToCardEditor('quiz')">
+    <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(255,107,91,0.12);display:grid;place-items:center;color:#ff6b5b;font-weight:800">❓</span>Quiz Card</div>
+    <div class="desc">Multiple Choice Questions</div>
+    <ul><li>MCQ</li><li>True/False</li><li>Match Columns</li></ul>
+    <button class="select">SELECT →</button>
+  </div>
 
-    <div class="template video" onclick="navigateToCardEditor('video')">
-      <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(45,177,76,0.12);display:grid;place-items:center;color:#2db14c;font-weight:800">🎬</span>Video Card</div>
-      <div class="desc">Video Questions</div>
-      <ul><li>Play & Ask</li><li>Time Based MCQ</li></ul>
-      <button class="select">SELECT →</button>
-    </div>
-  </aside>
+  <div class="template interactive" onclick="goToCardEditor('interactive')">
+    <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(140,40,255,0.12);display:grid;place-items:center;color:#7b2cff;font-weight:800">🧩</span>Interactive Card</div>
+    <div class="desc">Engaging Activities</div>
+    <ul><li>Fill Blanks</li><li>Drag & Drop</li><li>Label Diagram</li></ul>
+    <button class="select">SELECT →</button>
+  </div>
 
-  <!-- MAIN AREA -->
-  <main class="main">
-    <div class="preview-wrap">
-      <section class="card-preview">
-        <div id="cardTitleBig" class="card-title-big" contenteditable="true" role="textbox" aria-multiline="true" tabindex="0">Enter title here</div>
-        <div class="card-body">
-          <div id="blocksContainer" class="blocks-area" aria-label="Content blocks">
-            <div id="emptyPlaceholder" class="small" style="text-align:center;padding:18px;color:var(--muted)">Click on block types on the right to add content blocks.</div>
-          </div>
-          <div style="text-align:center;margin-top:18px">
-            <button id="publishBtn" class="btn primary">Continue</button>
+  <div class="template video" onclick="goToCardEditor('video')">
+    <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(45,177,76,0.12);display:grid;place-items:center;color:#2db14c;font-weight:800">🎬</span>Video Card</div>
+    <div class="desc">Video Questions</div>
+    <ul><li>Play & Ask</li><li>Time Based MCQ</li></ul>
+    <button class="select">SELECT →</button>
+  </div>
+
+  <div class="template concept" onclick="goToCardEditor('concept')">
+    <div class="title"><span style="width:36px;height:36px;border-radius:10px;background:rgba(255,198,0,0.15);display:grid;place-items:center;color:#ffb400;font-weight:800">📘</span>Concept Card</div>
+    <div class="desc">Explain concepts clearly</div>
+    <ul><li>Theory</li><li>Notes</li><li>Summary</li></ul>
+    <button class="select">SELECT →</button>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="preview-wrap">
+    <section class="card-preview">
+      <div id="cardTitleBig" class="card-title-big" contenteditable="true">Enter title here</div>
+
+      <div class="card-body">
+        <div id="blocksContainer" class="blocks-area">
+          <div id="emptyPlaceholder" class="small" style="text-align:center;padding:18px">
+            Click on block types on the right to add content blocks.
           </div>
         </div>
-      </section>
-    </div>
-  </main>
 
-  <!-- RIGHT PANEL -->
-  <aside class="right">
-    <h3 style="margin-top:0">Blocks</h3>
-    <div id="blocksList">
-      <div class="block-item" data-type="image-main"><strong>Main Image</strong><div class="small">Large banner image</div></div>
-      <div class="block-item" data-type="text"><strong>Text Block</strong><div class="small">Add paragraphs / explanations</div></div>
-      <div class="block-item" data-type="image"><strong>Image Block</strong><div class="small">Supporting image + caption</div></div>
-      <div class="block-item" data-type="divider"><strong>Divider</strong><div class="small">Visual separator</div></div>
-      <div class="block-item" data-type="keypoints"><strong>Key Points</strong><div class="small">Bullet style highlights</div></div>
-    </div>
-  </aside>
+        <div style="text-align:center;margin-top:18px">
+          <button class="btn primary" id="publishBtn">Continue</button>
+        </div>
+      </div>
+    </section>
+
+    
+    <section id="savedConceptsContainer" style="margin-top:30px;">
+      <h3>Saved Concepts</h3>
+      <div id="conceptsList" style="border:1px solid #e6e6e6; border-radius:10px; padding:12px; background:#fff; min-height:80px; max-height:300px; overflow:auto;">
+        <p class="small" style="text-align:center; color:var(--muted);">No concepts saved yet.</p>
+      </div>
+      <button class="btn primary" id="pushAllBtn">Push Selected Concept</button>
+    </section>
+
+  </div>
+</main>
+
+
+<aside class="right">
+  <h3>Blocks</h3>
+
+  <div class="block-item" data-type="image-main"><strong>Main Image</strong><div class="small">Large banner image</div></div>
+  <div class="block-item" data-type="text"><strong>Text Block</strong><div class="small">Paragraphs / explanations</div></div>
+  <div class="block-item" data-type="image"><strong>Image Block</strong><div class="small">Supporting image</div></div>
+  <div class="block-item" data-type="divider"><strong>Divider</strong><div class="small">Visual separator</div></div>
+  <div class="block-item" data-type="keypoints"><strong>Key Points</strong><div class="small">Bullet highlights</div></div>
+</aside>
 
 </div>
 
 <script>
+
+// Helper to preserve lesson_id, topic_id, display_order in card editor links
+function goToCardEditor(type) {
+  const params = new URLSearchParams(window.location.search);
+  let base = '';
+  if (type === 'quiz') base = '/admin/quiz-editor';
+  else if (type === 'interactive') base = '/admin/interactive-editor';
+  else if (type === 'video') base = '/admin/video-editor';
+  else base = '/admin/concept-editor';
+  const url = params.toString() ? `${base}?${params.toString()}` : base;
+  window.location.href = url;
+}
+
 const blocksContainer = document.getElementById('blocksContainer');
 const emptyPlaceholder = document.getElementById('emptyPlaceholder');
-const blocksList = document.querySelectorAll('.block-item');
 const cardTitle = document.getElementById('cardTitleBig');
-let dragSrcEl = null;
+const conceptsList = document.getElementById('conceptsList');
+const pushAllBtn = document.getElementById('pushAllBtn');
+let draggingBlock = null;
+let draggingConcept = null;
+// Local store for concepts created via Continue (title + blocks)
+let savedConceptsLocal = [];
+let nextConceptLocalId = 1;
+// Track current context from URL (for edit vs create modes)
+let currentCardId = null;
+let currentLessonId = null;
+let currentTopicId = null;
 
-function switchCard(type){
-  cardTitle.innerText = type.charAt(0).toUpperCase() + type.slice(1) + ' Card Title';
-  blocksContainer.innerHTML = '<div id="emptyPlaceholder" class="small" style="text-align:center;padding:18px;color:var(--muted)">Click on block types on the right to add content blocks.</div>';
-}
-
-function navigateToCardEditor(cardType){
-  // Get URL parameters from current page
-  const currentParams = new URLSearchParams(window.location.search);
-  const topicId = currentParams.get('topic_id');
-  const lessonId = currentParams.get('lesson_id');
-  const displayOrder = currentParams.get('display_order');
-  
-  // Build new URL with card type - use /admin/ routes or direct template paths
-  let newUrl = `/admin/${cardType}-editor`;
-  const params = new URLSearchParams();
-  
-  if(topicId) params.append('topic_id', topicId);
-  if(lessonId) params.append('lesson_id', lessonId);
-  if(displayOrder) params.append('display_order', displayOrder);
-  
-  const queryString = params.toString();
-  if(queryString) newUrl += `?${queryString}`;
-  
-  window.location.href = newUrl;
-}
-
-// Add block
-blocksList.forEach(block => {
-  block.addEventListener('click', () => addBlock(block.dataset.type));
+document.querySelectorAll('.block-item').forEach(item=>{
+  item.onclick=()=>addBlock(item.dataset.type)
 });
 
+function resetConcept(){
+  // Reset title placeholder
+  cardTitle.innerText = 'Enter title here';
+
+  // Reset blocks area with the original placeholder
+  blocksContainer.innerHTML = '';
+  if (emptyPlaceholder) {
+    blocksContainer.appendChild(emptyPlaceholder);
+    emptyPlaceholder.style.display = 'block';
+  }
+}
+
 function addBlock(type){
-  const placeholder = document.getElementById('emptyPlaceholder');
-  if(placeholder) placeholder.style.display = 'none';
+  emptyPlaceholder.style.display='none';
 
-  const block = document.createElement('div');
-  block.className = 'block';
-  block.draggable = true;
-  block.dataset.type = type;
+  const block=document.createElement('div');
+  block.className='block';
+  block.draggable=true;
+  block.dataset.type=type;
 
-  switch(type){
-    case 'text':
-      block.innerHTML = `<div class="header"><span>Text Block</span><button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();event.stopPropagation()">×</button></div>
-      <div contenteditable="true" class="textarea" role="textbox"></div>`;
-      break;
-    case 'image-main':
-      block.innerHTML = `<div class="header"><span>Main Image</span><button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();event.stopPropagation()">×</button></div>
-      <div class="image-placeholder" onclick="uploadImage(this)">Click to upload image</div>`;
-      break;
-    case 'image':
-      block.innerHTML = `<div class="header"><span>Image Block</span><button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();event.stopPropagation()">×</button></div>
-      <div class="image-placeholder" onclick="uploadImage(this)">Click to upload image</div>`;
-      break;
-    case 'divider':
-      block.innerHTML = `<div class="header"><span>Divider</span><button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();event.stopPropagation()">×</button></div>
-      <hr style="border:1px dashed #ccc">`;
-      break;
-    case 'keypoints':
-      block.innerHTML = `<div class="header"><span>Key Points</span><button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();event.stopPropagation()">×</button></div>
-      <ul contenteditable="true" class="textarea"><li>Point 1</li><li>Point 2</li></ul>`;
-      break;
+  const closeBtn='<button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty()">×</button>';
+
+  if(type==='text'){
+    block.innerHTML=`<div class="header"><span>Text</span>${closeBtn}</div>
+    <div contenteditable="true" class="textarea"></div>`;
+  }
+  if(type==='image'||type==='image-main'){
+    block.innerHTML=`<div class="header"><span>Image</span>${closeBtn}</div>
+    <div class="image-placeholder" onclick="uploadImage(this)">Click to upload image</div>`;
+  }
+  if(type==='divider'){
+    block.innerHTML=`<div class="header"><span>Divider</span>${closeBtn}</div><hr>`;
+  }
+  if(type==='keypoints'){
+    block.innerHTML=`<div class="header"><span>Key Points</span>${closeBtn}</div>
+    <ul contenteditable="true" class="textarea"><li>Point 1</li></ul>`;
   }
 
-  addDragEvents(block);
+  enableDrag(block);
   blocksContainer.appendChild(block);
 }
 
-function addDragEvents(block){
-  block.addEventListener('dragstart', (e)=>{
-    dragSrcEl = block;
-    block.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
+// --- AJAX: Save concept to backend ---
+async function saveConceptToBackend(title, blocks) {
+  const resp = await fetch('/api/v1/concepts/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, blocks })
   });
-  block.addEventListener('dragend', ()=>{ block.classList.remove('dragging'); });
-  block.addEventListener('dragover', (e)=>{
-    e.preventDefault();
-    const dragging = document.querySelector('.dragging');
-    const afterElement = getDragAfterElement(blocksContainer, e.clientY);
-    if(afterElement == null) blocksContainer.appendChild(dragging);
-    else blocksContainer.insertBefore(dragging, afterElement);
+  if (!resp.ok) throw new Error('Failed to save concept');
+  return await resp.json();
+}
+
+// --- AJAX: Load concepts from backend ---
+async function loadConceptsFromBackend() {
+  const resp = await fetch('/api/v1/concepts/');
+  if (!resp.ok) return [];
+  return await resp.json();
+}
+
+// --- Serialize blocks ---
+function serializeBlocks() {
+  return Array.from(blocksContainer.querySelectorAll('.block')).map(block => {
+    const type = block.dataset.type;
+    if (type === 'text') {
+      return { type, text: block.querySelector('.textarea').innerText };
+    }
+    if (type === 'image' || type === 'image-main') {
+      const img = block.querySelector('img');
+      return { type, image: img ? img.src : null };
+    }
+    if (type === 'divider') {
+      return { type };
+    }
+    if (type === 'keypoints') {
+      const points = Array.from(block.querySelectorAll('li')).map(li => li.innerText);
+      return { type, points };
+    }
+    return { type };
   });
 }
 
-function getDragAfterElement(container, y){
-  const draggableElements = [...container.querySelectorAll('.block:not(.dragging)')];
-  return draggableElements.reduce((closest, child)=>{
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height/2;
-    if(offset < 0 && offset > closest.offset) return {offset: offset, element: child};
-    else return closest;
-  }, {offset: Number.NEGATIVE_INFINITY}).element;
+// --- Render loaded concepts ---
+function renderConceptsList(concepts) {
+  conceptsList.innerHTML = '';
+  if (!concepts.length) {
+    conceptsList.innerHTML = '<p class="small" style="text-align:center; color:var(--muted);">No concepts saved yet.</p>';
+    return;
+  }
+  concepts.forEach((concept, idx) => {
+    const conceptItem = document.createElement('div');
+    conceptItem.draggable = true;
+    conceptItem.className = 'concept-item';
+    conceptItem.innerText = (idx+1) + '. ' + concept.title;
+    conceptItem.dataset.id = concept.id;
+    conceptsList.appendChild(conceptItem);
+    attachConceptDragHandlers(conceptItem);
+  });
+}
+
+// Enable drag-and-drop reordering for a concept item
+function attachConceptDragHandlers(conceptItem) {
+  conceptItem.ondragstart = e => {
+    draggingConcept = conceptItem;
+    conceptItem.classList.add('dragging');
+  };
+  conceptItem.ondragend = e => {
+    draggingConcept = null;
+    conceptItem.classList.remove('dragging');
+    updateConceptNumbers();
+  };
+  conceptItem.ondragover = e => {
+    e.preventDefault();
+    const after = [...conceptsList.children]
+      .filter(c => c.classList.contains('concept-item'))
+      .find(c => {
+        const box = c.getBoundingClientRect();
+        return e.clientY < box.top + box.height / 2;
+      });
+    if (after && draggingConcept) conceptsList.insertBefore(draggingConcept, after);
+    else if (draggingConcept) conceptsList.appendChild(draggingConcept);
+  };
+}
+
+// --- Load blocks into editor from saved data ---
+function loadBlocksFromData(blocks) {
+  blocksContainer.innerHTML = '';
+  if (!blocks || !blocks.length) {
+    if (emptyPlaceholder) emptyPlaceholder.style.display = 'block';
+    return;
+  }
+  if (emptyPlaceholder) emptyPlaceholder.style.display = 'none';
+
+  blocks.forEach(b => {
+    const type = b.type || 'text';
+    addBlock(type);
+    const blockEl = blocksContainer.lastElementChild;
+    if (!blockEl) return;
+
+    if (type === 'text') {
+      const area = blockEl.querySelector('.textarea');
+      if (area) area.innerText = b.text || '';
+    } else if (type === 'image' || type === 'image-main') {
+      const ph = blockEl.querySelector('.image-placeholder');
+      if (ph && b.image) {
+        ph.innerHTML = `<img src="${b.image}" style="max-width:100%">`;
+      }
+    } else if (type === 'keypoints') {
+      const ul = blockEl.querySelector('ul');
+      if (ul && Array.isArray(b.points)) {
+        ul.innerHTML = '';
+        b.points.forEach(pt => {
+          const li = document.createElement('li');
+          li.innerText = pt;
+          ul.appendChild(li);
+        });
+      }
+    }
+  });
+}
+
+// Load an existing concept card for editing when opened from Card Flow
+async function loadConceptCardForEdit(cardId) {
+  try {
+    const res = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.success || !data.card) {
+      console.error('Failed to load concept card detail', data);
+      alert('Failed to load card for editing.');
+      return;
+    }
+    const card = data.card;
+    const cardType = (card.card_type || card.type || '').toLowerCase();
+    if (cardType && cardType !== 'concept') {
+      console.warn('Loaded non-concept card in concept editor:', cardType);
+    }
+
+    if (card.title) {
+      cardTitle.innerText = card.title;
+    }
+
+    const payload = card.data_json || {};
+    const blocks = payload.blocks || (payload.content && payload.content.blocks) || [];
+    loadBlocksFromData(blocks);
+  } catch (e) {
+    console.error('Error loading concept card for edit', e);
+    alert('Failed to load card for editing.');
+  }
+}
+// --- Shared helper: save current editor blocks back to existing card (edit mode) ---
+async function saveCurrentConceptEdits() {
+  if (!currentCardId) return;
+
+  const titleFromEditor = (cardTitle.innerText || '').trim();
+  const blocksFromEditor = serializeBlocks();
+
+  if (!titleFromEditor) {
+    alert('Please enter a title before saving.');
+    return;
+  }
+
+  try {
+    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!token) {
+      alert('Unable to get admin token. Please log in again as admin.');
+      return;
+    }
+
+    const payload = {
+      title: titleFromEditor,
+      data_json: { blocks: blocksFromEditor }
+    };
+
+    const res = await fetch(`/api/v1/cards/${encodeURIComponent(currentCardId)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.success) {
+      const msg = (data && (data.error || data.detail)) || '';
+      alert('Failed to update concept card: ' + msg);
+      return;
+    }
+
+    const goBack = confirm('Concept card updated. Return to Card Flow?');
+    if (!goBack) return;
+
+    const out = new URLSearchParams();
+    if (currentLessonId) out.set('lesson_id', currentLessonId);
+    if (currentTopicId) out.set('topic_id', currentTopicId);
+    if (data.card && data.card.display_order != null) {
+      out.set('display_order', String(data.card.display_order));
+    }
+    const qs = out.toString();
+    const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
+    window.location.href = target;
+  } catch (e) {
+    alert('Failed to update concept card: ' + (e.message || e));
+  }
+}
+
+// --- On page load, fetch concepts (create mode) or set up edit mode ---
+window.addEventListener('DOMContentLoaded', async () => {
+  const params = new URLSearchParams(window.location.search);
+  currentCardId = params.get('card_id');
+  currentLessonId = params.get('lesson_id');
+  currentTopicId = params.get('topic_id');
+
+  if (currentCardId) {
+    // Edit mode: hide Saved Concepts UI and turn buttons into "Save" actions
+    const savedContainer = document.getElementById('savedConceptsContainer');
+    if (savedContainer) {
+      savedContainer.style.display = 'none';
+    }
+    const publishBtn = document.getElementById('publishBtn');
+    if (publishBtn) {
+      publishBtn.textContent = 'Save Changes';
+    }
+    if (pushAllBtn) {
+      pushAllBtn.textContent = 'Save Changes To Card';
+    }
+
+    await loadConceptCardForEdit(currentCardId);
+  } else {
+    // Create mode: do NOT preload any concepts; keep the initial placeholder text
+    // intentionally left blank
+  }
+});
+
+// Continue button: in create mode, stage locally; in edit mode, save the card
+document.getElementById('publishBtn').onclick = () => {
+  // In edit mode, treat Continue as Save for the existing card
+  if (currentCardId) {
+    saveCurrentConceptEdits();
+    return;
+  }
+
+  const title = cardTitle.innerText.trim();
+  if (!title) {
+    alert('Please enter a title');
+    return;
+  }
+
+  // Remove placeholder text if present
+  const placeholder = conceptsList.querySelector('p');
+  if (placeholder) placeholder.remove();
+
+  // Capture blocks for this concept locally
+  const blocks = serializeBlocks();
+  const localId = nextConceptLocalId++;
+  savedConceptsLocal.push({ id: localId, title, blocks });
+
+  // Create a new local concept item (no DB save)
+  const conceptItem = document.createElement('div');
+  conceptItem.draggable = true;
+  conceptItem.className = 'concept-item';
+  conceptItem.innerText = title;
+  conceptItem.dataset.localId = String(localId);
+  conceptsList.appendChild(conceptItem);
+  attachConceptDragHandlers(conceptItem);
+  updateConceptNumbers();
+
+  // Clear editor fields after adding
+  resetConcept();
+};
+
+
+function enableDrag(block){
+  block.ondragend=()=>block.classList.remove('dragging')
+  block.ondragover=e=>{
+    e.preventDefault();
+    const after=[...blocksContainer.children].find(el=>{
+      const box=el.getBoundingClientRect();
+      return e.clientY<box.top+box.height/2
+    })
+    after?blocksContainer.insertBefore(draggingBlock,after):blocksContainer.appendChild(draggingBlock)
+  }
 }
 
 function checkEmpty(){
-  if(blocksContainer.children.length === 0) emptyPlaceholder.style.display = 'block';
+  if(!blocksContainer.querySelector('.block')) emptyPlaceholder.style.display='block'
 }
 
 function uploadImage(el){
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*';
-  input.onchange = e => {
-    const file = e.target.files[0];
-    if(file){
-      const reader = new FileReader();
-      reader.onload = function(ev){ el.innerHTML = `<img src="${ev.target.result}" alt="Uploaded Image">`; }
-      reader.readAsDataURL(file);
-    }
+  const input=document.createElement('input');
+  input.type='file';input.accept='image/*';
+  input.onchange=e=>{
+    const reader=new FileReader();
+    reader.onload=()=>el.innerHTML=`<img src="${reader.result}" style="max-width:100%">`;
+    reader.readAsDataURL(e.target.files[0]);
   }
   input.click();
 }
 
-document.getElementById('publishBtn').addEventListener('click', async ()=>{
-  const title = cardTitle.innerText.trim();
-  if(!title || title === 'Enter title here'){
-    alert('Please enter a card title');
+
+pushAllBtn.onclick = async () => {
+  const lessonId = currentLessonId;
+  const topicId = currentTopicId;
+  const cardId = currentCardId;
+
+  if (!topicId) {
+    alert('Missing topic_id in URL. Open this editor from a topic context.');
     return;
   }
 
-  const topicId = getTopicIdFromURL();
-  const lessonId = getLessonIdFromURL();
-  const displayOrder = getDisplayOrderFromURL();
+  // In edit mode (coming from cards_index), update the existing card
+  const titleFromEditor = (cardTitle.innerText || '').trim();
+  const blocksFromEditor = serializeBlocks();
 
-  if(!topicId && !lessonId){
-    alert('Error: This card must be associated with either a topic or a lesson.');
+  if (cardId) {
+    await saveCurrentConceptEdits();
     return;
   }
 
-  const blocks = [...blocksContainer.querySelectorAll('.block')].map(b=>{
-    const type = b.dataset.type;
-    let content = '';
-    if(type==='text'||type==='keypoints') content = b.querySelector('[contenteditable]').innerHTML;
-    else if(type==='image-main'||type==='image'){ const img = b.querySelector('img'); content = img?img.src:''; }
-    return {type, content};
+  // Create-mode: push ALL saved concepts to DB in their current order
+  const items = [...conceptsList.querySelectorAll('.concept-item')];
+  if (!items.length) {
+    alert('No saved concepts to push!');
+    return;
+  }
+
+  // Take a snapshot of concepts to push, then immediately clear the Saved Concepts UI
+  const conceptsToPush = items.map(el => {
+    const rawTitle = el.innerText.replace(/^\d+\.\s*/, '').trim();
+    const localIdAttr = el.dataset.localId;
+    const localConcept = savedConceptsLocal.find(c => String(c.id) === String(localIdAttr));
+    const conceptTitle = rawTitle || (localConcept && localConcept.title) || 'Concept Card';
+    const conceptBlocks = localConcept ? localConcept.blocks : blocksFromEditor;
+    return { title: conceptTitle, blocks: conceptBlocks };
   });
 
-  const cardData = {
-    card_type: 'concept',
-    title: title,
-    data_json: { blocks: blocks },
-    display_order: parseInt(displayOrder),
-    published: false
-  };
-
-  if(topicId) cardData.topic_id = parseInt(topicId);
-  if(lessonId) cardData.lesson_id = parseInt(lessonId);
+  // Immediately clear Saved Concepts area visually and local cache
+  resetConcept();
+  savedConceptsLocal = [];
+  if (conceptsList) {
+    conceptsList.innerHTML = '<p class="small" style="text-align:center; color:var(--muted);">No concepts saved yet.</p>';
+  }
 
   try {
-    const tokenResponse = await fetch('/admin/api/get-jwt-token', { 
-      credentials: 'include',
-      method: 'GET'
-    });
-
-    if(!tokenResponse.ok) {
-      alert('Failed to authenticate. Please login again.');
-      window.location.href = '/admin/login';
-      return;
-    }
-
-    const tokenData = await tokenResponse.json();
-    if(!tokenData.access_token) {
-      alert('Failed to get access token');
-      return;
-    }
-
-    const token = tokenData.access_token;
-    localStorage.setItem('admin_jwt_token', token);
-
-    const response = await fetch('/api/v1/cards', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      credentials: 'include',
-      body: JSON.stringify(cardData)
-    });
-
-    const result = await response.json();
-    if(result.success){
-      alert('Concept card saved successfully!');
-      const confirmContinue = confirm('Click OK to add another card, or Cancel to go back to dashboard');
-      if(confirmContinue){
-        cardTitle.innerText = 'Enter title here';
-        blocksContainer.innerHTML = '<div id="emptyPlaceholder" class="small" style="text-align:center;padding:18px;color:var(--muted)">Click on block types on the right to add content blocks.</div>';
-      } else {
-        window.location.href = '/admin/dashboard';
+    // Compute next display_order by checking existing cards for this topic
+    let nextOrder = 1;
+    try {
+      const resCards = await fetch(`/api/v1/topics/${encodeURIComponent(topicId)}/cards`);
+      if (resCards.ok) {
+        const data = await resCards.json().catch(() => null);
+        if (data && Array.isArray(data.cards) && data.cards.length) {
+          const maxOrder = Math.max(...data.cards.map(c => c.display_order || 0));
+          nextOrder = maxOrder + 1;
+        }
       }
-    } else {
-      const errorMsg = result.error || result.detail || JSON.stringify(result);
-      alert(`Failed to save card: ${errorMsg}`);
+    } catch (e) {
+      // Fallback to 1 if any error
+      nextOrder = 1;
     }
-  } catch(err){
-    console.error('Save error:', err);
-    alert('Failed to save card: ' + err.message);
+
+    // Ensure we have an admin token
+    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!token) {
+      alert('Unable to get admin token. Please log in again as admin.');
+      return;
+    }
+    let lastOrderUsed = nextOrder - 1;
+
+    // Create all cards sequentially based on the snapshot order
+    for (const concept of conceptsToPush) {
+      const payload = {
+        card_type: 'concept',
+        title: concept.title,
+        data_json: { blocks: concept.blocks },
+        topic_id: Number(topicId),
+        lesson_id: lessonId ? Number(lessonId) : null,
+        display_order: nextOrder
+      };
+
+      const res = await fetch('/api/v1/cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const msg = await res.text().catch(() => '');
+        alert('Failed to save concept card: ' + msg);
+        return;
+      }
+
+      lastOrderUsed = nextOrder;
+      nextOrder += 1;
+    }
+
+    const goNow = confirm('Concept cards saved to topic. Open Card Flow now?');
+    if (!goNow) return;
+
+    const out = new URLSearchParams();
+    if (lessonId) out.set('lesson_id', lessonId);
+    if (topicId) out.set('topic_id', topicId);
+    out.set('display_order', String(lastOrderUsed || nextOrder));
+
+    const qs = out.toString();
+    const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
+    window.location.href = target;
+  } catch (e) {
+    alert('Failed to push concept card: ' + (e.message || e));
   }
-});
-
-function getTopicIdFromURL(){
-  const params = new URLSearchParams(window.location.search);
-  return params.get('topic_id');
 }
 
-function getLessonIdFromURL(){
-  const params = new URLSearchParams(window.location.search);
-  return params.get('lesson_id');
-}
 
-function getDisplayOrderFromURL(){
-  const params = new URLSearchParams(window.location.search);
-  return params.get('display_order') || '0';
+function updateConceptNumbers(){
+  const items = [...conceptsList.children].filter(c => c.classList.contains('concept-item'));
+  items.forEach((item,index)=>{
+    item.innerText = (index+1) + '. ' + item.innerText.replace(/^\d+\.\s*/, '');
+  });
 }
 </script>
 </body>

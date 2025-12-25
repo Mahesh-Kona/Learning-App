@@ -273,8 +273,8 @@ def get_students():
             "name": student.name or "Unknown",
             "email": student.email or "",
             "enrollmentDate": enrollment_date,
-            # Map Courses column from subjects field in DB
-            "courses": student.subjects or "",
+            # Map Courses column using courses field, fallback to legacy subjects
+            "courses": (getattr(student, 'courses', None) or getattr(student, 'subjects', None) or ""),
             "class": getattr(student, 'class_', None),
             "progress": 0,
             "xp": 0,
@@ -327,7 +327,7 @@ def get_student(student_id):
         "name": student.name or "Unknown",
         "email": student.email or "",
         "enrollmentDate": enrollment_date,
-        "courses": student.subjects or "",
+        "courses": (getattr(student, 'courses', None) or getattr(student, 'subjects', None) or ""),
         "class": getattr(student, 'class_', None),
         "progress": 0,
         "xp": 0,
@@ -344,7 +344,7 @@ def get_student(student_id):
 def create_student():
     """Create a new student record in the database. Admin only.
     
-    Expected JSON: { name, email, subjects?, date? }
+    Expected JSON: { name, email, courses?, date? } (accepts legacy subjects)
     """
     # Check if user is admin
     claims = get_jwt()
@@ -365,7 +365,7 @@ def create_student():
         new_student = Student(
             name=name,
             email=email,
-            subjects=data.get('subjects', ''),
+            courses=data.get('courses', data.get('subjects', '')),
             password='',  # Empty password for now
             syllabus='',  # Default empty string instead of None
             class_='',
@@ -401,7 +401,7 @@ def create_student():
 def update_current_student():
     """Allow a logged-in student to update their own profile.
 
-    Expected JSON: { name?, email?, mobile?, class?, subjects? }
+    Expected JSON: { name?, email?, mobile?, class?, courses? } (accepts legacy subjects)
     """
     data = request.get_json(silent=True)
     if not data:
@@ -427,8 +427,11 @@ def update_current_student():
                 return {"success": False, "error": "Mobile must be 10 digits", "code": 400}, 400
         if 'class' in data:
             student.class_ = data['class']
-        if 'subjects' in data:
-            student.subjects = data['subjects']
+        # Prefer courses; fallback to legacy subjects
+        if 'courses' in data:
+            student.courses = data['courses']
+        elif 'subjects' in data:
+            student.courses = data['subjects']
 
         db.session.commit()
         try:
@@ -512,7 +515,7 @@ def upload_current_student_avatar():
 def update_student(student_id):
     """Update a student record in the database. Admin only.
     
-    Expected JSON: { name?, email?, subjects?, date?, status?, mobile?, class? }
+    Expected JSON: { name?, email?, courses?, date?, status?, mobile?, class? } (accepts legacy subjects)
     """
     # Check if user is admin
     claims = get_jwt()
@@ -533,8 +536,11 @@ def update_student(student_id):
             student.name = data['name']
         if 'email' in data:
             student.email = data['email']
-        if 'subjects' in data:
-            student.subjects = data['subjects']
+        # Prefer courses; fallback to legacy subjects
+        if 'courses' in data:
+            student.courses = data['courses']
+        elif 'subjects' in data:
+            student.courses = data['subjects']
         if 'date' in data:
             # Parse date string to datetime
             date_str = data['date']
@@ -572,6 +578,70 @@ def update_student(student_id):
         return {"success": False, "error": "Update failed", "detail": str(e), "code": 500}, 500
 
 
+@bp.route("/students/<int:student_id>/update", methods=["POST"])
+@jwt_required()
+@limiter.limit("30/minute")
+def update_student_fallback_post(student_id):
+    """Fallback update endpoint for environments where PUT is blocked upstream.
+
+    Mirrors the PUT /students/<id> logic with the same admin checks.
+    """
+    # Admin check
+    claims = get_jwt()
+    if not claims or claims.get('role') != 'admin':
+        return {"success": False, "error": "Admin access required", "code": 403}, 403
+
+    data = request.get_json(silent=True)
+    if not data:
+        return {"success": False, "error": "JSON payload required", "code": 400}, 400
+
+    student = Student.query.get(student_id)
+    if not student:
+        return {"success": False, "error": "Student not found", "code": 404}, 404
+
+    try:
+        if 'name' in data:
+            student.name = data['name']
+        if 'email' in data:
+            student.email = data['email']
+        if 'courses' in data:
+            student.courses = data['courses']
+        elif 'subjects' in data:
+            student.courses = data['subjects']
+        if 'date' in data:
+            date_str = data['date']
+            if date_str:
+                from datetime import datetime
+                try:
+                    student.date = datetime.strptime(date_str, '%Y-%m-%d')
+                except:
+                    pass
+            else:
+                student.date = None
+        if 'status' in data:
+            if data['status'] in ['active', 'inactive']:
+                student.status = data['status']
+        if 'mobile' in data:
+            mobile = data['mobile']
+            if mobile and len(str(mobile)) == 10 and str(mobile).isdigit():
+                student.mobile = str(mobile)
+            elif not mobile:
+                student.mobile = None
+        if 'class' in data:
+            student.class_ = data['class']
+
+        db.session.commit()
+        try:
+            generate_students_json()
+        except Exception:
+            current_app.logger.exception('Failed to regenerate students.json after update (POST fallback)')
+        return {"success": True, "id": student.id}, 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to update student (POST fallback)')
+        return {"success": False, "error": "Update failed", "detail": str(e), "code": 500}, 500
+
+
 @bp.route("/students/<int:student_id>", methods=["DELETE"])
 @jwt_required()
 @limiter.limit("30/minute")
@@ -598,6 +668,36 @@ def delete_student(student_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Failed to delete student')
+        return {"success": False, "error": "Delete failed", "detail": str(e), "code": 500}, 500
+
+
+@bp.route("/students/<int:student_id>/delete", methods=["POST"])
+@jwt_required()
+@limiter.limit("30/minute")
+def delete_student_fallback_post(student_id):
+    """Fallback delete endpoint for environments where DELETE is blocked upstream.
+
+    Performs the same admin check and deletion as the DELETE route.
+    """
+    claims = get_jwt()
+    if not claims or claims.get('role') != 'admin':
+        return {"success": False, "error": "Admin access required", "code": 403}, 403
+
+    student = Student.query.get(student_id)
+    if not student:
+        return {"success": False, "error": "Student not found", "code": 404}, 404
+
+    try:
+        db.session.delete(student)
+        db.session.commit()
+        try:
+            generate_students_json()
+        except Exception:
+            current_app.logger.exception('Failed to regenerate students.json after delete (POST fallback)')
+        return {"success": True, "id": student_id}, 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to delete student (POST fallback)')
         return {"success": False, "error": "Delete failed", "detail": str(e), "code": 500}, 500
 
 @bp.route('/whoami', methods=['GET'])

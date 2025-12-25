@@ -4,7 +4,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const notification = document.querySelector('.notification');
   if (notification) {
     notification.addEventListener('click', function () {
-      alert('You have 5 new notifications');
+      // Navigate to admin notifications page
+      window.location.href = '/admin/notifications';
     });
   }
 

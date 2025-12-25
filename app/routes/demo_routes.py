@@ -39,8 +39,7 @@ def demo():
     <input id="regEmail" placeholder="email"  />
     <input id="regPass" placeholder="password"  />
     <select id="regRole">
-      <option value="teacher" selected>Teacher</option>
-      <option value="admin">Admin</option>
+      <option value="admin" selected>Admin</option>
     </select>
     <button onclick="register()">Register</button>
 

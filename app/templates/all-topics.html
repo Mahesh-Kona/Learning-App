@@ -419,6 +419,16 @@
                 width: 100%;
             }
         }
+        .btn-add-cards {
+    background: #8b5cf6;
+    color: white;
+}
+
+.btn-add-cards:hover {
+    background: #7c3aed;
+    transform: translateY(-2px);
+}
+
     </style>
 </head>
 <body>
@@ -438,6 +448,46 @@
             <button id="addTopicBtn" class="btn-add" data-create-url="{{ url_for('admin_bp.create_topic_page') }}">Add Topic</button>
         </div>
 
+                <!-- Edit Topic Modal -->
+                <div id="editTopicModal" class="modal" style="display:none;position:fixed;z-index:1000;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.35);align-items:center;justify-content:center;">
+                    <div class="modal-content" style="background:white;padding:32px 28px 24px 28px;border-radius:14px;max-width:480px;width:95%;box-shadow:0 8px 32px rgba(16,185,129,0.12);max-height:92vh;overflow-y:auto;">
+                        <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                            <h2 style="color:#10b981;font-size:1.35rem;font-weight:700;letter-spacing:0.5px;">Edit Topic</h2>
+                            <button class="close-btn" onclick="closeEditTopicModal()" style="background:none;border:none;font-size:2.1rem;cursor:pointer;color:#64748b;line-height:1;">×</button>
+                        </div>
+                        <form id="editTopicForm">
+                            <div class="form-group" style="margin-bottom:18px;">
+                                <label style="font-weight:600;color:#475569;">Title <span class="required" style="color:#ef4444;">*</span></label>
+                                <input type="text" id="editTopicTitle" class="form-control" required style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:1rem;margin-top:6px;">
+                            </div>
+                            <div class="form-group" style="margin-bottom:18px;">
+                                <label style="font-weight:600;color:#475569;">Description</label>
+                                <textarea id="editTopicDescription" class="form-control" style="width:100%;min-height:90px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:1rem;margin-top:6px;"></textarea>
+                            </div>
+                            <div class="form-group" style="margin-bottom:18px;">
+                                <label style="font-weight:600;color:#475569;">Estimated Time (min)</label>
+                                <input type="number" id="editTopicEstimatedTime" class="form-control" min="1" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:1rem;margin-top:6px;">
+                            </div>
+                            <div class="form-group" style="margin-bottom:18px;">
+                                <label style="font-weight:600;color:#475569;">Difficulty</label>
+                                <select id="editTopicDifficulty" class="form-control" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:1rem;margin-top:6px;background:white;">
+                                    <option value="">Select Level</option>
+                                    <option value="easy">Easy</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="hard">Hard</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:18px;">
+                                <label style="font-weight:600;color:#475569;">Order</label>
+                                <input type="number" id="editTopicOrder" class="form-control" min="1" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:1rem;margin-top:6px;">
+                            </div>
+                            <div class="modal-footer" style="display:flex;gap:12px;justify-content:flex-end;margin-top:18px;">
+                                <button type="button" class="btn btn-secondary" onclick="closeEditTopicModal()" style="background:#64748b;color:white;border:none;padding:8px 18px;border-radius:7px;font-size:1rem;font-weight:600;cursor:pointer;">Cancel</button>
+                                <button type="submit" class="btn btn-primary" style="background:#10b981;color:white;border:none;padding:8px 18px;border-radius:7px;font-size:1rem;font-weight:600;cursor:pointer;">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
         <!-- Stats Bar -->
         <div class="stats-bar">
             <div class="stat-card">
@@ -473,55 +523,36 @@
                 </div>
             </div>
 
-            <!-- Topics List -->
-            <div id="topicsList">
-                {% if topics and topics|length > 0 %}
-                    {% for topic in topics %}
-                        <div class="topic-card">
-                            <div class="topic-content">
-                                <div class="topic-info">
-                                    <div class="topic-name">{{ topic.name|e }}</div>
-                                    <div class="topic-description">{{ (topic.description or '')|e }}</div>
-                                    <div class="topic-meta">
-                                            <span class="meta-item meta-estimated">Estimated: {{ (topic.estimated_time if topic.estimated_time is not none else (topic.duration if topic.duration is not none else 'N/A')) }} min</span>
-                                            <span class="meta-item meta-difficulty">Difficulty: {{ (topic.difficulty or 'N/A')|e }}</span>
-                                            <span class="meta-item meta-type"><span class="type-badge type-{{ (topic.type or 'theory')|e }}">{{ (topic.type or '')|capitalize }}</span></span>
-                                            <span class="meta-item meta-order">Order: {{ topic.order or '' }}</span>
-                                    </div>
-                                </div>
-                                <div class="lesson-badge">
-                                    <div class="lesson-label">📚 Lesson</div>
-                                    <div class="lesson-name">{{ (topic.lesson or '')|e }}</div>
-                                </div>
-                                <div class="topic-actions">
-                                    <button class="btn btn-view" onclick="viewTopic({{ topic.id }})">View Details</button>
-                                    <button class="btn btn-edit" onclick="editTopic({{ topic.id }})">Edit</button>
-                                    <button class="btn btn-delete" onclick="deleteTopic({{ topic.id }})">Delete</button>
-                                </div>
-                            </div>
-                            <div class="topic-details" id="topic-details-{{ topic.id }}" style="display:none;padding:12px 14px;border-top:1px solid #eef2f7;background:#fbfdff;border-radius:0 0 8px 8px;margin-top:8px;"></div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📝</div>
-                        <h3>No topics found</h3>
-                        <p>Start by adding your first topic!</p>
-                    </div>
-                {% endif %}
-            </div>
+            <!-- Topics List (rendered dynamically via JS renderTopics) -->
+            <div id="topicsList"></div>
         </div>
     </div>
+
+    <!-- Topics JSON for JS (avoids inline Jinja inside JS code) -->
+    <script id="topics-data" type="application/json">
+{{ topics | tojson | safe }}
+    </script>
 
     <script>
         // Base URLs provided by server
         const TOPIC_EDITOR_BASE = "{{ url_for('admin_bp.serve_topic_editor') }}";
         const CREATE_TOPIC_URL = "{{ url_for('admin_bp.create_topic_page') }}";
-        const GET_TOPIC_URL = "{{ url_for('admin_bp.get_topic') }}";
+        // Topic detail now uses public API: /api/v1/topics/<id>
+        const GET_TOPIC_URL = "/api/v1/topics";
         const UPDATE_TOPIC_URL = "{{ url_for('admin_bp.update_topic') }}";
+        const CARDS_INDEX_URL = "{{ url_for('admin_bp.cards_index') }}";
 
-    // Topics provided by server (fall back to empty array if null)
-    let topics = ({{ topics | tojson | safe }} ) || [];
+        // Topics provided by server (fall back to empty array if null)
+        const topicsDataEl = document.getElementById('topics-data');
+        let topics = [];
+        if (topicsDataEl) {
+            try {
+                topics = JSON.parse(topicsDataEl.textContent || '[]') || [];
+            } catch (e) {
+                console.error('Failed to parse topics-data JSON', e);
+                topics = [];
+            }
+        }
 
         // Populate lesson filter
         function populateLessonFilter() {
@@ -536,6 +567,19 @@
                 option.textContent = lesson;
                 lessonFilter.appendChild(option);
             });
+        }
+
+        // Navigate to cards_index for a given topic (and optional lesson/order)
+        function goToCards(topicId, lessonId, displayOrder) {
+            if (!topicId) return;
+            let url = CARDS_INDEX_URL + '?topic_id=' + encodeURIComponent(topicId);
+            if (lessonId) {
+                url += '&lesson_id=' + encodeURIComponent(lessonId);
+            }
+            if (displayOrder) {
+                url += '&display_order=' + encodeURIComponent(displayOrder);
+            }
+            window.location.href = url;
         }
 
         // Update stats
@@ -596,6 +640,7 @@
                         <div class="topic-actions">
                             <button class="btn btn-view" onclick="viewTopic(${topic.id})">View Details</button>
                             <button class="btn btn-edit" onclick="editTopic(${topic.id})">Edit</button>
+                            <button class="btn btn-add-cards" onclick="goToCards(${topic.id}, ${topic.lesson_id || 'null'}, ${topic.order || 'null'})">Edit / Add Cards</button>
                             <button class="btn btn-delete" onclick="deleteTopic(${topic.id})">Delete</button>
                         </div>
                     </div>
@@ -604,40 +649,67 @@
             `).join('');
         }
 
-        // Edit topic (quick inline edit prompts + persist)
+        // Edit topic (open modal)
+        let currentEditTopicId = null;
         async function editTopic(id) {
             try {
-                const resp = await fetch(GET_TOPIC_URL + '?id=' + encodeURIComponent(id), { method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const resp = await fetch(`${GET_TOPIC_URL}/${encodeURIComponent(id)}`, { method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
                 const data = await resp.json().catch(() => ({}));
                 if (!resp.ok) {
                     alert('Failed to load topic for editing: ' + (data.error || resp.status));
                     return;
                 }
                 const topic = data.topic;
-                // Prompt for basic fields (title, description)
-                const newTitle = prompt('Edit topic title:', topic.title || '');
-                if (newTitle === null) return; // cancelled
-                const newDesc = prompt('Edit description (short):', topic.description || '');
-
-                const payload = { id: id, title: newTitle };
-                if (newDesc !== null) payload.description = newDesc;
-
-                const upd = await fetch(UPDATE_TOPIC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(payload) });
-                const updData = await upd.json().catch(() => ({}));
-                if (!upd.ok) {
-                    alert('Failed to update topic: ' + (updData.error || upd.status));
-                    return;
-                }
-
-                // update local topics array and re-render
-                topics = (topics || []).map(t => t.id === id ? Object.assign({}, t, { name: updData.topic.title || t.name, description: (payload.description !== undefined ? payload.description : t.description) }) : t);
-                renderTopics();
-                updateStats();
-                alert('Topic updated');
+                // Prefill modal fields
+                document.getElementById('editTopicTitle').value = topic.title || '';
+                document.getElementById('editTopicDescription').value = topic.description || '';
+                document.getElementById('editTopicEstimatedTime').value = topic.estimated_time || topic.duration || '';
+                document.getElementById('editTopicDifficulty').value = topic.difficulty || '';
+                document.getElementById('editTopicOrder').value = topic.order || '';
+                currentEditTopicId = id;
+                // Show modal
+                document.getElementById('editTopicModal').style.display = 'flex';
             } catch (err) {
                 console.error('editTopic error', err);
                 alert('Failed to edit topic (network error)');
             }
+        }
+
+        // Handle modal form submit
+        document.getElementById('editTopicForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const payload = {
+                id: currentEditTopicId,
+                title: document.getElementById('editTopicTitle').value,
+                description: document.getElementById('editTopicDescription').value,
+                estimated_time: document.getElementById('editTopicEstimatedTime').value,
+                difficulty: document.getElementById('editTopicDifficulty').value,
+                order: document.getElementById('editTopicOrder').value
+            };
+            try {
+                const upd = await fetch(UPDATE_TOPIC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(payload) });
+                const updData = await upd.json().catch(() => ({}));
+                // Treat as success only when backend explicitly returns success: true
+                if (!upd.ok || !updData || updData.success !== true) {
+                    const msg = (updData && updData.error) ? updData.error : upd.status;
+                    alert('Failed to update topic: ' + msg);
+                    return;
+                }
+                // Close modal and reload the page so data comes fresh from DB
+                document.getElementById('editTopicModal').style.display = 'none';
+                alert('Topic updated');
+                window.location.reload();
+            } catch (err) {
+                console.error('updateTopic error', err);
+                alert('Failed to update topic (network error)');
+            }
+        };
+
+        // Close edit topic modal
+        function closeEditTopicModal() {
+            document.getElementById('editTopicModal').style.display = 'none';
+            document.getElementById('editTopicForm').reset();
+            currentEditTopicId = null;
         }
 
         // Delete topic (calls server to persist deletion)
@@ -675,7 +747,7 @@
                     return;
                 }
 
-                const resp = await fetch(GET_TOPIC_URL + '?id=' + encodeURIComponent(id), { method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const resp = await fetch(`${GET_TOPIC_URL}/${encodeURIComponent(id)}`, { method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
                 const data = await resp.json().catch(() => ({}));
                 if (!resp.ok) {
                     alert('Failed to load topic: ' + (data.error || resp.status));

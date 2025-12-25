@@ -30,21 +30,12 @@
     <ul class="menu">
       <li class="menu-item {% if active == 'dashboard' %}active{% endif %}"><a href="{{ url_for('admin_bp.admin_dashboard') }}"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
       <li class="menu-item {% if active == 'students' %}active{% endif %}"><a href="{{ url_for('admin_bp.students_page') }}"><i class="fas fa-users"></i><span>Students</span></a></li>
-      <li class="menu-item {% if active == 'teachers' %}active{% endif %}"><a href="#"><i class="fas fa-chalkboard-teacher"></i><span>Teachers</span></a></li>
       <li class="menu-item has-children {% if active in ['courses','create_course','all_courses'] %}active{% endif %}">
         <a href="#"><i class="fas fa-book-open"></i><span>Courses</span></a>
         <ul class="submenu">
           <li class="submenu-item {% if active == 'all_courses' %}active{% endif %}"><a href="{{ url_for('admin_bp.all_courses_page') }}">All Courses</a></li>
           <li class="submenu-item {% if active == 'create_course' %}active{% endif %}"><a href="{{ url_for('admin_bp.create_course_page') }}">New Course</a></li>
           <li class="submenu-item {% if active == 'categories' %}active{% endif %}"><a href="{{ url_for('admin_bp.category_management') }}">Categories</a></li>
-        </ul>
-      </li>
-      <li class="menu-item {% if active == 'lesson' %}active{% endif %}"><a href="{{ url_for('admin_bp.lesson_page') }}"><i class="fas fa-tasks"></i><span>Lessons</span></a></li>
-      <li class="menu-item has-children {% if active in ['topics','create_topic','all_topics'] %}active{% endif %}">
-        <a href="#"><i class="fas fa-tags"></i><span>Topics</span></a>
-        <ul class="submenu">
-          <li class="submenu-item {% if active == 'all_topics' %}active{% endif %}"><a href="{{ url_for('admin_bp.all_topics_page') }}">All Topics</a></li>
-          <li class="submenu-item {% if active == 'create_topic' %}active{% endif %}"><a href="{{ url_for('admin_bp.create_topic_page') }}">New Topic</a></li>
         </ul>
       </li>
       <li class="menu-item {% if active == 'analytics' %}active{% endif %}"><a href="#"><i class="fas fa-chart-bar"></i><span>Analytics</span></a></li>

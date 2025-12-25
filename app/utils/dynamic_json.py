@@ -264,15 +264,21 @@ def generate_user_notifications_json(user_id):
     try:
         from app.models import Notification
 
-        notif_q = Notification.query.filter_by(user_id=user_id).order_by(Notification.created_at.desc()).all()
+        target_value = f'user:{int(user_id)}'
+        try:
+            notif_q = Notification.query.filter_by(target=target_value).order_by(Notification.created_at.desc()).all()
+        except Exception:
+            notif_q = []
         out = []
         for n in notif_q:
             out.append({
                 'id': n.id,
                 'title': n.title,
-                'body': n.body,
-                'data': n.data,
-                'is_read': bool(n.is_read),
+                'message': getattr(n, 'message', None),
+                'category': getattr(n, 'category', None),
+                'target': getattr(n, 'target', None),
+                'status': getattr(n, 'status', None),
+                'scheduled_at': n.scheduled_at.isoformat() if getattr(n, 'scheduled_at', None) else None,
                 'created_at': n.created_at.isoformat() if getattr(n, 'created_at', None) else None
             })
 
@@ -312,7 +318,7 @@ def generate_students_json():
                 'name': s.name or 'Unknown',
                 'email': s.email or '',
                 'enrollmentDate': enrollment_date,
-                'courses': s.subjects or '',
+                'courses': (getattr(s, 'courses', None) or getattr(s, 'subjects', None) or ''),
                 'progress': 0,
                 'xp': 0,
                 'lastLogin': '',

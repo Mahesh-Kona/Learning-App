@@ -9,593 +9,462 @@
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/create_topic.css') }}">
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}">
+
     <style>
-		
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f7fa;
-            color: #2d3748;
-            line-height: 1.6;
-        }
-
-        /* Local page offset: in case global sidebar CSS isn't applied
-           add a page-local wrapper that shifts content to the right so
-           headers and top-actions are not hidden under the fixed sidebar */
-        .page-main { margin-left: 0; }
-        @media (min-width: 901px) {
-            .page-main { margin-left: 260px; }
-        }
-
-        /* Top Navigation Bar */
-        .top-nav {
-            background: white;
-            padding: 15px 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .nav-left h1 {
-            font-size: 1.5rem;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-
-        .nav-left p {
-            color: #64748b;
-            font-size: 0.9rem;
-        }
-
-        .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 25px;
-        }
-
-        .search-box {
-            position: relative;
-        }
-
-        .search-box input {
-            padding: 10px 16px 10px 40px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            width: 300px;
-            font-size: 0.95rem;
-        }
-
-        .search-box::before {
-            content: "🔍";
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .notification-icon {
-            position: relative;
-            cursor: pointer;
-        }
-
-        .notification-icon::before {
-            content: "🔔";
-            font-size: 1.3rem;
-        }
-
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -8px;
-            background: #ef4444;
-            color: white;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-weight: 600;
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .user-avatar {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: #10b981;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-
-        .user-info {
-            text-align: left;
-        }
-
-        .user-name {
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 0.95rem;
-        }
-
-        .user-role {
-            font-size: 0.85rem;
-            color: #64748b;
-        }
-
-        /* Container */
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 24px 30px 30px 30px;
-        }
-
-        /* Page Header (pale band) - heading and actions aligned */
-        .page-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #f3f7f9;
-            padding: 26px 28px;
-            border-radius: 8px;
-            margin-bottom: 18px;
-            box-shadow: 0 1px 0 rgba(15,23,42,0.03) inset;
-        }
-
-        .page-header h2 {
-            font-size: 2.4rem;
-            color: #0f172a;
-            margin: 0;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        /* Top actions toolbar that sits below the main header */
-        .top-actions {
-            display: block;
-            margin: 12px 0 6px 0;
-        }
-
-        .top-actions .actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .btn {
-            padding: 12px 22px;
-            border: none;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.18s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            line-height: 1;
-        }
-
-        .btn-cancel {
-            background: white;
-            color: #059669;
-            border: 2px solid rgba(5,150,105,0.12);
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-size: 0.95rem;
-        }
-
-        .btn-cancel:hover {
-            background: #f8fafc;
-            transform: translateY(-1px);
-        }
-
-        .btn-save {
-            background: #05b16a;
-            color: white;
-            padding: 10px 18px;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(5,177,106,0.14);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .btn-save i { font-size: 1rem; }
-
-        .btn-save:hover {
-            background: #04935a;
-            box-shadow: 0 6px 18px rgba(4,147,90,0.18);
-            transform: translateY(-1px);
-        }
-
-        /* Main Grid Layout */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
-        }
-
-        /* Card */
-        .card {
-            background: white;
-            border-radius: 14px;
-            padding: 32px;
-            box-shadow: 0 6px 20px rgba(9,30,66,0.04);
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f1f5f9;
-        }
-
-        .card-icon {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            background: #10b981;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-        }
-
-        .card-header h3 {
-            font-size: 1.18rem;
-            color: #0f172a;
-            margin: 0;
-            font-weight: 700;
-        }
-
-        /* Form Groups */
-        .form-group {
-            margin-bottom: 22px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #1e293b;
-            font-weight: 600;
-            font-size: 0.95rem;
-        }
-
-        .form-group label .required {
-            color: #ef4444;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px 14px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: #10b981;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        select.form-control {
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            background-size: 18px;
-            padding-right: 40px;
-        }
-
-        textarea.form-control {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        /* Card Types Grid */
-        .card-types-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .card-type {
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 30px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .card-type:hover {
-            border-color: #10b981;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
-            transform: translateY(-2px);
-        }
-
-        .card-type.selected {
-            border-color: #10b981;
-            background: #f0fdf4;
-        }
-
-        .card-type-icon {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-
-        .card-type-name {
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 1rem;
-        }
-
-        /* Learning Objectives */
-        .objectives-list {
-            margin-bottom: 20px;
-        }
-
-        .objective-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            background: #f8fafc;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .objective-number {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #10b981;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            flex-shrink: 0;
-        }
-
-        .objective-text {
-            flex: 1;
-            color: #475569;
-        }
-
-        .objective-remove {
-            background: none;
-            border: none;
-            color: #ef4444;
-            cursor: pointer;
-            font-size: 1.3rem;
-            padding: 0;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-
-        .objective-remove:hover {
-            background: #fee2e2;
-        }
-
-        .btn-add-objective {
-            background: white;
-            color: #10b981;
-            border: 2px dashed #10b981;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn-add-objective:hover {
-            background: #f0fdf4;
-        }
-
-        /* Learning Cards Section */
-        .cards-section {
-            grid-column: 1 / -1;
-        }
-
-        .cards-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .learning-card {
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 25px;
-            transition: all 0.3s ease;
-        }
-
-        .learning-card:hover {
-            border-color: #10b981;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        .learning-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .card-badge {
-            background: #10b981;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        .btn-add-new-card {
-            background: white;
-            color: #64748b;
-            border: 2px dashed #cbd5e1;
-            padding: 60px 20px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .btn-add-new-card:hover {
-            border-color: #10b981;
-            color: #10b981;
-            background: #f0fdf4;
-        }
-
-        .btn-add-new-card::before {
-            content: "+";
-            font-size: 3rem;
-            line-height: 1;
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .card-types-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .cards-section {
-                grid-column: 1;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .top-nav {
-                flex-direction: column;
-                gap: 15px;
-            }
-
-            .search-box input {
-                width: 100%;
-            }
-
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
-            /* Remove sidebar offset on smaller screens */
-            .top-nav,
-            .container {
-                margin-left: 0;
-            }
-            /* Stack header actions below title on small screens */
-            .header-actions { position: static; transform: none; margin-top: 12px; justify-content: flex-end; }
-        }
+        /* ===============================
+   GLOBAL RESET & VARIABLES
+=============================== */
+
+:root {
+    --primary: #10b981;
+    --primary-dark: #059669;
+    --bg: #f6f8fb;
+    --text-dark: #0f172a;
+    --text-muted: #64748b;
+    --border: #e5eaf0;
+    --card-bg: #ffffff;
+    --radius-lg: 18px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+    --shadow-soft: 0 10px 30px rgba(0,0,0,0.04);
+    --transition: all 0.25s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: var(--bg);
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+/* ===============================
+   PAGE OFFSET (SIDEBAR SAFE)
+=============================== */
+
+.page-main {
+    margin-left: 0;
+}
+
+@media (min-width: 901px) {
+    .page-main {
+        margin-left: 260px;
+    }
+}
+
+/* ===============================
+   TOP NAVBAR
+=============================== */
+
+.top-nav {
+    background: var(--card-bg);
+    padding: 18px 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-left h1 {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+}
+
+.nav-left p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.search-box {
+    position: relative;
+}
+
+.search-box input {
+    padding: 10px 16px 10px 40px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    width: 280px;
+}
+
+.search-box::before {
+    content: "🔍";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.notification-icon {
+    position: relative;
+    cursor: pointer;
+}
+
+.notification-icon::before {
+    content: "🔔";
+    font-size: 1.3rem;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 12px;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+/* ===============================
+   CONTAINER
+=============================== */
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 28px 32px;
+}
+
+/* ===============================
+   TOP ACTION BUTTONS
+=============================== */
+
+.top-actions {
+    margin-bottom: 18px;
+}
+
+.top-actions .actions {
+    display: flex;
+    gap: 16px;
+}
+
+.btn {
+    padding: 12px 22px;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: none;
+}
+
+.btn-cancel {
+    background: #fff;
+    border: 2px solid rgba(16,185,129,0.25);
+    color: var(--primary-dark);
+}
+
+.btn-save {
+    background: var(--primary);
+    color: #fff;
+}
+
+.btn-save:hover {
+    background: var(--primary-dark);
+}
+
+/* ===============================
+   MAIN GRID
+=============================== */
+
+.main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 36px;
+}
+
+/* ===============================
+   CARDS
+=============================== */
+
+.card {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: 36px;
+    box-shadow: var(--shadow-soft);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 26px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.card-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===============================
+   FORM ELEMENTS
+=============================== */
+
+.form-group {
+    margin-bottom: 26px;
+}
+
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.form-control {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: var(--radius-md);
+    border: 1.8px solid var(--border);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(16,185,129,0.12);
+}
+
+select.form-control {
+    padding-right: 48px;
+}
+
+textarea.form-control {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* ===============================
+   LEARNING OBJECTIVES
+=============================== */
+
+.objectives-list {
+    margin-bottom: 20px;
+}
+
+.objective-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: #f9fbfd;
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
+}
+
+.objective-number {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.objective-remove {
+    background: none;
+    border: none;
+    color: #ef4444;
+    font-size: 1.3rem;
+    cursor: pointer;
+}
+
+.btn-add-objective {
+    width: 100%;
+    padding: 14px;
+    border-radius: var(--radius-md);
+    border: 2px dashed var(--primary);
+    background: #fff;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* ===============================
+   EXISTING TOPICS LIST
+=============================== */
+
+.existing-topics-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.existing-topic-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 18px;
+    background: #f9fbfd;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    transition: var(--transition);
+}
+
+.existing-topic-item:hover {
+    border-color: var(--primary);
+    background: #ecfdf5;
+}
+
+.topic-info h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.topic-info p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.topic-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.topic-actions .btn {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    border-radius: var(--radius-sm);
+}
+
+/* ===============================
+   CARD TYPES (RIGHT PANEL)
+=============================== */
+
+.card-types-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.card-type {
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.card-type-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+
+.card-type:hover,
+.card-type.selected {
+    border-color: var(--primary);
+    background: #ecfdf5;
+}
+
+/* ===============================
+   RESPONSIVE
+=============================== */
+
+@media (max-width: 1024px) {
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .top-nav {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
     </style>
 </head>
+
 <body>
 {% set active = 'topics' %}
-        {% include 'admin_sidebar.html' %}
-    <div class="page-main">
+{% include 'admin_sidebar.html' %}
+
+<div class="page-main">
+
     <!-- Top Navigation -->
     <div class="top-nav">
         <div class="nav-left">
             <h1>Topic Management</h1>
             <p>Create byte-sized learning cards for each topic</p>
         </div>
-        <div class="nav-right">
-            <div class="search-box">
-                <input type="text" placeholder="Search students, teachers, courses...">
-            </div>
-            <div class="notification-icon">
-                <span class="notification-badge">0</span>
-            </div>
-            <div class="user-profile">
-                <div class="user-avatar">AD</div>
-                <div class="user-info">
-                    <div class="user-name">Admin User</div>
-                    <div class="user-role">Administrator</div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Main Container -->
     <div class="container">
-        <!-- Top actions (buttons) placed below the main header, aligned right -->
+
         <div class="top-actions">
             <div class="actions">
-                <button class="btn btn-cancel" onclick="cancelTopic()" aria-label="Cancel">
-                    <i class="fa-solid fa-xmark"></i>
-                    Cancel
+                <button class="btn btn-cancel" onclick="cancelTopic()">
+                    <i class="fa-solid fa-xmark"></i> Cancel
                 </button>
-                <button class="btn btn-save" onclick="saveTopic()" aria-label="Save Topic">
-                    <i class="fa-solid fa-floppy-disk"></i>
-                    Save Topic
+                <button class="btn btn-save" onclick="saveTopic()">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Topic
                 </button>
             </div>
         </div>
 
-        <!-- Create Topic header (pale band) - left intentionally blank for spacing/design -->
         <div class="page-header"></div>
 
-        <!-- Main Grid -->
         <div class="main-grid">
-            <!-- Left Column: Topic Details -->
+
+            <!-- LEFT COLUMN -->
             <div class="card">
+
+                <!-- Topic Details -->
                 <div class="card-header">
                     <div class="card-icon">ℹ️</div>
                     <h3>Topic Details</h3>
                 </div>
 
                 <form id="topicForm">
+                    
                     <!-- Course Category -->
                     <div class="form-group">
                         <label>Course Category (Optional)</label>
@@ -643,7 +512,9 @@
                     </div>
                 </form>
 
-                <!-- Learning Objectives Section -->
+                
+
+                <!-- Learning Objectives -->
                 <div style="margin-top: 35px;">
                     <div class="card-header" style="border-bottom: none; padding-bottom: 0;">
                         <div class="card-icon">🎯</div>
@@ -651,31 +522,47 @@
                     </div>
 
                     <div class="objectives-list" id="objectivesList">
-                        <div class="objective-item">
-                            <div class="objective-number">1</div>
-                            <div class="objective-text">Define reflection and the law of r</div>
-                            <button class="objective-remove" onclick="removeObjective(this)">×</button>
-                        </div>
-                        <div class="objective-item">
-                            <div class="objective-number">2</div>
-                            <div class="objective-text">Identify incident ray, reflected ray</div>
-                            <button class="objective-remove" onclick="removeObjective(this)">×</button>
-                        </div>
-                        <div class="objective-item">
-                            <div class="objective-number">3</div>
-                            <div class="objective-text">Differentiate between specular an</div>
-                            <button class="objective-remove" onclick="removeObjective(this)">×</button>
-                        </div>
+                        <!-- Objectives will be added by the user via the "+ Add Learning Objective" button -->
                     </div>
 
                     <button class="btn-add-objective" onclick="addObjective()">
                         + Add Learning Objective
                     </button>
                 </div>
+            
+
+                <!-- ✅ EXISTING TOPICS SECTION (SIMPLIFIED) -->
+                <div class ="card" style="margin-top:25px;">
+                    <div class="card-header">
+                        <div class="card-icon">📚</div>
+                        <h3>Existing Topics</h3>
+                    </div>
+
+                    {# Expect: view passes `topics` = list of Topic rows from DB #}
+                    <div class="existing-topics-list" id="existingTopicsList">
+                        {% if topics %}
+                            {% for t in topics[:4] %}
+                                <div class="existing-topic-item"
+                                     data-topic-id="{{ t.id }}"
+                                     data-lesson-id="{{ t.lesson_id if t.lesson_id is not none else '' }}"
+                                     data-display-order="{{ t.display_order if t.display_order is not none else '' }}"
+                                     onclick="openExistingTopicCards(this)">
+                                    {{ t.title }}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="existing-topic-item">
+                                No topics found yet.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
             </div>
 
-            <!-- Right Column: Card Types & Settings -->
+            <!-- RIGHT COLUMN -->
             <div>
+
                 <!-- Card Types -->
                 <div class="card">
                     <div class="card-header">
@@ -684,22 +571,19 @@
                     </div>
 
                     <div class="card-types-grid">
-                        <div class="card-type" onclick="selectCardType(this, 'quiz')">
+                        <div class="card-type" onclick="selectCardType(this,'quiz')">
                             <div class="card-type-icon">📋</div>
                             <div class="card-type-name">Quiz</div>
                         </div>
-
-                        <div class="card-type" onclick="selectCardType(this, 'concept')">
+                        <div class="card-type" onclick="selectCardType(this,'concept')">
                             <div class="card-type-icon">🖼️</div>
                             <div class="card-type-name">Concept</div>
                         </div>
-
-                        <div class="card-type" onclick="selectCardType(this, 'video')">
+                        <div class="card-type" onclick="selectCardType(this,'video')">
                             <div class="card-type-icon">▶️</div>
                             <div class="card-type-name">Video</div>
                         </div>
-
-                        <div class="card-type" onclick="selectCardType(this, 'interactive')">
+                        <div class="card-type" onclick="selectCardType(this,'interactive')">
                             <div class="card-type-icon">👆</div>
                             <div class="card-type-name">Interactive</div>
                         </div>
@@ -732,18 +616,15 @@
                         <label>Topic Order</label>
                         <input type="number" id="topicOrder" class="form-control" placeholder="e.g., 1" min="1" value="1">
                     </div>
-                </div>
-            </div>
+                </div> <!-- end Topic Settings card -->
+            </div> <!-- end right column -->
+        </div> <!-- end main-grid -->
+    </div> <!-- end container -->
+</div> <!-- end page-main -->
 
-
-        </div>
-    </div>
-
-    </div>
-
-    <script>
-        let selectedCards = [];
-        let objectiveCount = 3;
+<script>
+   let selectedCards = [];
+    let objectiveCount = 0;
 
         // Populate courses dropdown from server
         async function loadCoursesForTopic() {
@@ -829,12 +710,17 @@
             'interactive': '/admin/interactive-editor'
         };
 
-        // Select card type and open its editor in the same window
+        // Select card type, visually mark it, remember selection, then open editor
         function selectCardType(element, type) {
+            // Toggle selected class so the UI reflects the current choice
+            document.querySelectorAll('.card-type').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedCards = [type];
+
             // Check if we have a topic ID to pass along
             const urlParams = new URLSearchParams(window.location.search);
             const topicId = urlParams.get('topic_id');
-            
+
             let filePath = cardTypeFiles[type];
             if (filePath) {
                 // If we have a topic ID, append it to the URL
@@ -952,13 +838,12 @@
 
                 const resp = await res.json().catch(() => null);
                 console.log('Topic creation response:', resp);
-                
-                // If the topic was created successfully, redirect directly to concept editor
-                // with both topic_id and lesson_id in the URL, plus display_order
+
+                // If the topic was created successfully, redirect to cards_index.html
+                // with lesson_id, topic_id, and display_order
                 if (resp && resp.success && resp.id) {
                     console.log('Topic created with ID:', resp.id);
-                    // Automatically open concept editor with topic_id, lesson_id, and display_order
-                    const url = `/admin/concept-editor?topic_id=${resp.id}&lesson_id=${lessonId}&display_order=${displayOrder}`;
+                    const url = `/admin/cards_index?lesson_id=${lessonId}&topic_id=${resp.id}&display_order=${displayOrder}`;
                     window.location.href = url;
                     return;
                 }
@@ -986,9 +871,53 @@
 
         // Initialize page and set up card type files
         document.addEventListener('DOMContentLoaded', function() {
-            loadCoursesForTopic();
+            // Autofill course and lesson if present in query params
+            const params = new URLSearchParams(window.location.search);
+            const courseId = params.get('course_id');
+            const lessonId = params.get('lesson_id');
+            loadCoursesForTopic().then(() => {
+                if (courseId) {
+                    const courseSelect = document.getElementById('selectCourse');
+                    if (courseSelect) {
+                        courseSelect.value = courseId;
+                        loadLessons().then(() => {
+                            if (lessonId) {
+                                const lessonSelect = document.getElementById('attachLesson');
+                                if (lessonSelect) {
+                                    lessonSelect.value = lessonId;
+                                    lessonSelect.disabled = false;
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+            // Load latest topics into "Existing Topics" panel from DB
             console.log('Card type files available:', Object.keys(cardTypeFiles));
         });
-    </script>
+
+    // Open cards_index for a given topic (and optional lesson/order)
+    function openTopicCards(topicId, lessonId, displayOrder) {
+        if (!topicId) return;
+        let url = `/admin/cards_index?topic_id=${encodeURIComponent(topicId)}`;
+        if (lessonId) {
+            url += `&lesson_id=${encodeURIComponent(lessonId)}`;
+        }
+        if (displayOrder) {
+            url += `&display_order=${encodeURIComponent(displayOrder)}`;
+        }
+        window.location.href = url;
+    }
+
+    // Helper for existing-topics list: reads data-* attributes instead of inline Jinja JS
+    function openExistingTopicCards(element) {
+        if (!element) return;
+        const topicId = element.getAttribute('data-topic-id');
+        const lessonId = element.getAttribute('data-lesson-id') || null;
+        const displayOrder = element.getAttribute('data-display-order') || null;
+        openTopicCards(topicId, lessonId, displayOrder);
+    }
+</script>
+
 </body>
 </html>

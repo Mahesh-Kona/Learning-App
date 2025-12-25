@@ -1,0 +1,136 @@
+/* Ensure Edit and Delete buttons are horizontally aligned */
+.actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+.actions .action {
+  margin-right: 0;
+}
+/* Ensure sidebar menu item spacing matches admin_sidebar.css */
+.sidebar .menu .menu-item {
+  margin: 13px 0 !important;
+}
+:root {
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+/* Do not override global body styles here to keep layout consistent with other pages */
+
+.topbar {
+  background: linear-gradient(90deg, #0f172a, #312e81);
+  color: #fff;
+  padding: 18px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 16px; /* slightly tighter to reduce overall height */
+}
+
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 18px; /* slightly reduce internal padding */
+  box-shadow: 0 12px 25px rgba(0,0,0,0.08);
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 18px;
+}
+
+label {
+  display: block;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+input, textarea, select {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+}
+
+button {
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
+  background: #1e1b4b; /* fallback green, matches admin sidebar */
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+
+#status {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 14px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th, td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  text-align: left;
+  color: var(--muted);
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.sent {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.scheduled {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.action {
+  cursor: pointer;
+  margin-right: 10px;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.edit { color: #2563eb; }
+.delete { color: #dc2626; }
+

@@ -31,6 +31,7 @@ const modalSaveBtn = document.getElementById('modalSaveBtn');
 const modalForm = document.getElementById('studentForm');
 const modalName = document.getElementById('modalName');
 const modalEmail = document.getElementById('modalEmail');
+const modalMobile = document.getElementById('modalMobile');
 const modalEnrollment = document.getElementById('modalEnrollment');
 const modalCourses = document.getElementById('modalCourses');
 const modalStatus = document.getElementById('modalStatus');
@@ -92,6 +93,34 @@ async function ensureJWT() {
 }
 
 /**
+ * Safely parse a fetch Response as JSON when possible; otherwise return text.
+ * Returns { json, text, contentType }
+ */
+async function parseJSONOrText(res) {
+  const contentType = (res.headers && res.headers.get && res.headers.get('content-type')) || '';
+  if (contentType.includes('application/json')) {
+    try {
+      const j = await res.json();
+      return { json: j, text: null, contentType };
+    } catch (e) {
+      // Fallback to text if JSON parse fails
+      try {
+        const t = await res.text();
+        return { json: null, text: t, contentType };
+      } catch (_) {
+        return { json: null, text: null, contentType };
+      }
+    }
+  }
+  try {
+    const t = await res.text();
+    return { json: null, text: t, contentType };
+  } catch (_) {
+    return { json: null, text: null, contentType };
+  }
+}
+
+/**
  * Fetch students from /api/v1/students endpoint and render table
  */
 function fetchAndRenderStudents() {
@@ -106,6 +135,7 @@ function fetchAndRenderStudents() {
         name: s.name || 'Unknown',
         email: s.email || '',
         enrollmentDate: s.enrollmentDate || '',
+        mobile: s.mobile || '',
         courses: s.courses || '',
         progress: s.progress || 0,
         xp: s.xp || 0,
@@ -338,65 +368,95 @@ function messageStudent(id) {
   if (msg) alert('Message queued: ' + msg);
 }
 
-function removeStudent(id) {
+async function removeStudent(id) {
   const s = findStudent(id);
   if (!s) return alert('Student not found');
   if (!confirm(`Remove ${s.name || 'student'}?`)) return;
-  
-  // Delete from database
-  // Use the JWT token fetched at page load
-  ensureJWT().then((token) => {
+
+  try {
+    const token = await ensureJWT();
     if (!token) {
       alert('Authentication required. Please login as admin and retry.');
       return;
     }
-    
-    fetch(`${API_BASE}/api/v1/students/${id}`, { 
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    credentials: 'include'  // Include cookies for session-based auth fallback
-    })
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({ success:false, error:'Invalid response' }));
-        if (res.status === 401) {
-          // Try refreshing token once
-          localStorage.removeItem('admin_jwt_token');
-          jwtToken = null;
-          const newToken = await ensureJWT();
-          if (!newToken) {
-            alert('Unauthorized. Please re-login as admin.');
-            return;
-          }
-          return fetch(`${API_BASE}/api/v1/students/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${newToken}`, 'Content-Type':'application/json' },
-            credentials: 'include'
-          }).then(r => r.json().then(j => ({ ok: r.ok, data: j })));
-        }
-        return { ok: res.ok, data };
-      })
-      .then(result => {
-        if (!result) return;
-        const { ok, data } = result;
-        if (ok && data && data.success) {
-        // Remove from local array
-        const index = studentsData.findIndex(st => String(st.id) === String(id));
-        if (index > -1) studentsData.splice(index, 1);
-        applyFilters();
-        updateStats(studentsData);
-        alert('Student deleted successfully');
-        } else {
-          alert('Failed to delete: ' + ((data && data.error) || 'Unknown error'));
-        }
-      })
-      .catch(err => {
-        console.error('Delete failed:', err);
-        alert('Failed to delete student');
+
+    const doDelete = async (bearer) => {
+      const res = await fetch(`${API_BASE}/api/v1/students/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${bearer}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
-  });
+      const parsed = await parseJSONOrText(res);
+      return { res, parsed };
+    };
+
+    const doFallbackDeletePost = async (bearer) => {
+      const res = await fetch(`${API_BASE}/api/v1/students/${id}/delete`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${bearer}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      const parsed = await parseJSONOrText(res);
+      return { res, parsed };
+    };
+
+    // First attempt
+    let { res, parsed } = await doDelete(token);
+
+    // If unauthorized/forbidden, refresh token once via admin endpoint and retry
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem('admin_jwt_token');
+      jwtToken = null;
+      await fetchJWTToken();
+      const refreshed = jwtToken;
+      if (!refreshed) {
+        alert('Unauthorized. Please re-login as admin.');
+        return;
+      }
+      ({ res, parsed } = await doDelete(refreshed));
+    }
+
+    // If still 403 and response is non-JSON (likely upstream 403 page), try POST fallback
+    if (res.status === 403 && (!parsed.json) && parsed.text && parsed.text.trim().startsWith('<')) {
+      console.warn('DELETE blocked upstream (HTML 403). Retrying via POST fallback...');
+      const bearer = jwtToken || localStorage.getItem('admin_jwt_token');
+      if (!bearer) {
+        alert('Unauthorized. Please re-login as admin.');
+        return;
+      }
+      ({ res, parsed } = await doFallbackDeletePost(bearer));
+    }
+
+    if (res.ok && parsed.json && parsed.json.success) {
+      const index = studentsData.findIndex(st => String(st.id) === String(id));
+      if (index > -1) studentsData.splice(index, 1);
+      applyFilters();
+      updateStats(studentsData);
+      alert('Student deleted successfully');
+      return;
+    }
+
+    // Build a clearer error message
+    const statusPart = `HTTP ${res.status}`;
+    const apiError = (parsed.json && (parsed.json.error || parsed.json.message)) || null;
+    const textSnippet = parsed.text ? parsed.text.substring(0, 200) : null;
+    const details = apiError || textSnippet || 'Unknown error';
+
+    if (parsed.text && parsed.text.trim().startsWith('<')) {
+      console.warn('Non-JSON error response body (truncated):', parsed.text.substring(0, 1000));
+    }
+
+    alert(`Failed to delete: ${statusPart} - ${details}`);
+  } catch (err) {
+    console.error('Delete failed:', err);
+    alert('Failed to delete student');
+  }
 }
 
 function findStudent(id) {
@@ -408,6 +468,7 @@ function openEditModal(student) {
   modalTitle.textContent = 'Edit Student';
   modalName.value = student.name || '';
   modalEmail.value = student.email || '';
+  modalMobile.value = student.mobile || '';
   modalEnrollment.value = student.enrollmentDate || '';
   modalCourses.value = student.courses || '';
   modalStatus.value = (student.status || 'active');
@@ -419,6 +480,7 @@ function openAddModal() {
   modalTitle.textContent = 'Add New Student';
   modalName.value = '';
   modalEmail.value = '';
+  modalMobile.value = '';
   modalEnrollment.value = '';
   modalCourses.value = '';
   modalStatus.value = 'active';
@@ -475,8 +537,9 @@ function handleModalSave(e) {
   const payload = {
     name: modalName.value || '',
     email: modalEmail.value || '',
+    mobile: modalMobile.value || '',
     date: modalEnrollment.value || '',
-    subjects: modalCourses.value || '',
+    courses: modalCourses.value || '',
     status: modalStatus.value || 'active'
   };
   
@@ -510,42 +573,87 @@ function handleModalSave(e) {
     });
   } else {
     // Update existing student
-    ensureJWT().then((token) => {
+    (async () => {
+      const token = await ensureJWT();
       if (!token) { alert('Authentication required. Please login as admin and retry.'); return; }
-    const s = findStudent(editingStudentId);
-    if (!s) return closeModal();
-    
-    fetch(`${API_BASE}/api/v1/students/${editingStudentId}`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      credentials: 'include',
-      body: JSON.stringify(payload)
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          // Update local data
+      const s = findStudent(editingStudentId);
+      if (!s) return closeModal();
+
+      const doPut = async (bearer) => {
+        const res = await fetch(`${API_BASE}/api/v1/students/${editingStudentId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${bearer}`
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+        const parsed = await parseJSONOrText(res);
+        return { res, parsed };
+      };
+
+      const doFallbackPost = async (bearer) => {
+        const res = await fetch(`${API_BASE}/api/v1/students/${editingStudentId}/update`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${bearer}`
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+        const parsed = await parseJSONOrText(res);
+        return { res, parsed };
+      };
+
+      try {
+        let { res, parsed } = await doPut(token);
+
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('admin_jwt_token');
+          jwtToken = null;
+          await fetchJWTToken();
+          const refreshed = jwtToken;
+          if (!refreshed) { alert('Unauthorized. Please re-login as admin.'); return; }
+          ({ res, parsed } = await doPut(refreshed));
+        }
+
+        // If still 403 with HTML body (proxy page), try POST fallback
+        if (res.status === 403 && (!parsed.json) && parsed.text && parsed.text.trim().startsWith('<')) {
+          console.warn('PUT blocked upstream (HTML 403). Retrying via POST /update fallback...');
+          const bearer = jwtToken || localStorage.getItem('admin_jwt_token');
+          if (!bearer) { alert('Unauthorized. Please re-login as admin.'); return; }
+          ({ res, parsed } = await doFallbackPost(bearer));
+        }
+
+        if (res.ok && parsed.json && parsed.json.success) {
           s.name = payload.name;
           s.email = payload.email;
+          s.mobile = payload.mobile;
           s.enrollmentDate = payload.date;
-          s.courses = payload.subjects;
+          s.courses = payload.courses;
           s.status = payload.status;
           closeModal();
           applyFilters();
           updateStats(studentsData);
           alert('Student updated successfully');
-        } else {
-          alert('Failed to update: ' + (data.error || 'Unknown error'));
+          return;
         }
-      })
-      .catch(err => {
+
+        const statusPart = `HTTP ${res.status}`;
+        const apiError = (parsed.json && (parsed.json.error || parsed.json.message)) || null;
+        const textSnippet = parsed.text ? parsed.text.substring(0, 200) : null;
+        const details = apiError || textSnippet || 'Unknown error';
+        if (parsed.text && parsed.text.trim().startsWith('<')) {
+          console.warn('Non-JSON error response body (truncated):', parsed.text.substring(0, 1000));
+        }
+        alert(`Failed to update: ${statusPart} - ${details}`);
+      } catch (err) {
         console.error('Update failed:', err);
         alert('Failed to update student');
-      });
-    });
+      }
+    })();
   }
 }
 window.viewStudent = viewStudent;

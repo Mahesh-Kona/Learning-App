@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Quiz Builder — Full</title>
+<title>Quiz Builder  Full</title>
+<script src="/static/admin_jwt_check.js"></script>
 <style>
 /* ---------------------------
    Reset & base
@@ -133,17 +134,11 @@ textarea{min-height:110px;resize:vertical}
 
     <div style="margin-top:18px;display:flex;gap:8px;justify-content:center">
       <button id="exportBtn" class="btn-ghost">Export JSON</button>
-      <button id="viewCardsBtn" class="btn-ghost">View Existing Cards</button>
     </div>
   </div>
 
   <!-- CENTER -->
   <div class="center">
-    <div class="field">
-      <div class="label">Quiz Title</div>
-      <input id="quizTitle" class="input" placeholder="Enter quiz title" />
-    </div>
-
     <div class="header-row">
       <h1>Create / Edit Question</h1>
       <div style="width:46%">
@@ -201,7 +196,7 @@ textarea{min-height:110px;resize:vertical}
       <textarea id="generalIncorrectFb" placeholder="Fallback incorrect feedback"></textarea>
     </div>
 
-    <div class="row-actions">
+    <div class="row-actions" style="align-items:center">
       <button id="addQuestionBtn" class="btn-primary">+ Add Question</button>
       <button id="updateQuestionBtn" class="btn-ghost" style="display:none">Update Question</button>
       <button id="clearBtn" class="btn-ghost">Clear</button>
@@ -242,7 +237,6 @@ let selectedQuestionIndex = -1;
 
 /* ========= DOM refs ========= */
 const questionsContainer = document.getElementById('questionsContainer');
-const quizTitle = document.getElementById('quizTitle');
 const questionType = document.getElementById('questionType');
 const questionText = document.getElementById('questionText');
 const optionsContainer = document.getElementById('optionsContainer');
@@ -270,7 +264,19 @@ const previewMedia = document.getElementById('previewMedia');
 const previewGeneralFb = document.getElementById('previewGeneralFb');
 
 const exportBtn = document.getElementById('exportBtn');
-const viewCardsBtn = document.getElementById('viewCardsBtn');
+
+// URL / context helpers
+function getQueryParam(name){
+  const url = new URL(window.location.href);
+  return url.searchParams.get(name);
+}
+
+const lessonId = getQueryParam('lesson_id');
+const topicId = getQueryParam('topic_id');
+const cardId = getQueryParam('card_id');
+const displayOrderParam = getQueryParam('display_order');
+let currentCardTitle = 'Quiz';
+let currentCardDisplayOrder = null;
 
 /* ========= Utilities ========= */
 function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
@@ -620,7 +626,6 @@ function loadQuestionToEditor(index){
 
 /* ========= Clear editor ========= */
 clearBtn.addEventListener('click', resetEditor);
-saveQuizBtn.addEventListener('click', saveQuiz);
 
 /* ========= Export quiz JSON ========= */
 exportBtn.addEventListener('click', ()=>{
@@ -639,208 +644,179 @@ exportBtn.addEventListener('click', ()=>{
   const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'quiz.json'; a.click(); URL.revokeObjectURL(a.href);
 });
-
-/* ========= View existing cards (topic/lesson) ========= */
-viewCardsBtn.addEventListener('click', fetchAndShowCards);
-
-async function fetchAndShowCards(){
-  try{
-    const params = new URLSearchParams(window.location.search);
-    const topicId = params.get('topic_id');
-    const lessonId = params.get('lesson_id');
-    if(!topicId && !lessonId){
-      alert('No topic_id or lesson_id in URL');
+/* ========= Load existing quiz card for edit (when opened from Card Flow) ========= */
+async function loadQuizCardForEdit(cardId) {
+  try {
+    const res = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.success || !data.card) {
+      console.error('Failed to load quiz card detail', data);
+      alert('Failed to load quiz card for editing.');
       return;
     }
-
-    const tokenResp = await fetch('/admin/api/get-jwt-token', { credentials: 'include' });
-    const tokenData = await tokenResp.json();
-    if(!tokenResp.ok || !tokenData.access_token){
-      alert('Failed to get admin token. Please login again.');
-      return;
-    }
-    const token = tokenData.access_token;
-
-    let url = '';
-    if(topicId) url = `/api/v1/cards?topic_id=${encodeURIComponent(topicId)}`;
-    else url = `/api/v1/cards?lesson_id=${encodeURIComponent(lessonId)}`;
-
-    const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-    const data = await resp.json();
-    if(!resp.ok || !data.success){
-      const msg = data.error || data.detail || resp.statusText;
-      alert('Failed to load cards: ' + msg);
-      return;
+    const card = data.card;
+    const cardType = (card.card_type || card.type || '').toLowerCase();
+    if (cardType && cardType !== 'quiz') {
+      console.warn('Loaded non-quiz card in quiz editor:', cardType);
     }
 
-    // Render a simple modal-like list in the right preview box for quick viewing
-    const items = (data.data || data.cards || []).slice();
-    if(items.length === 0){
-      alert('No cards found for this context');
-      return;
+    if (card.title) {
+      currentCardTitle = card.title;
+    }
+    if (card.display_order != null) {
+      currentCardDisplayOrder = card.display_order;
     }
 
-    const container = document.createElement('div');
-    container.style.marginTop = '12px';
-    container.style.background = '#fff';
-    container.style.border = '1px solid #efe6ff';
-    container.style.borderRadius = '12px';
-    container.style.padding = '12px';
-
-    const title = document.createElement('div');
-    title.style.fontWeight = '700';
-    title.style.marginBottom = '8px';
-    title.innerText = 'Existing Cards';
-    container.appendChild(title);
-
-    items.forEach((c, idx)=>{
-      const row = document.createElement('div');
-      row.style.display = 'flex';
-      row.style.justifyContent = 'space-between';
-      row.style.alignItems = 'center';
-      row.style.padding = '8px';
-      row.style.border = '1px solid #eee';
-      row.style.borderRadius = '8px';
-      row.style.background = '#fbf9ff';
-      row.style.marginBottom = '6px';
-      const left = document.createElement('div');
-      left.innerHTML = `<strong>${idx+1}.</strong> <span style="margin-left:8px">[${c.card_type}] ${c.title || '(no title)'} </span>`;
-      const right = document.createElement('div');
-      right.style.fontSize = '12px';
-      right.style.color = '#9b93a8';
-      right.innerText = `id: ${c.id}`;
-      row.appendChild(left);
-      row.appendChild(right);
-      container.appendChild(row);
-    });
-
-    // Inject into right preview panel below existing preview
-    const previewBox = document.getElementById('previewBox');
-    // Remove any previous listing
-    const old = previewBox.querySelector('.existing-cards-box');
-    if(old) old.remove();
-    container.classList.add('existing-cards-box');
-    previewBox.appendChild(container);
-
-  }catch(err){
-    console.error('View cards error:', err);
-    alert('Error loading cards: ' + err.message);
+    const payload = card.data_json || {};
+    const loadedQuestions = Array.isArray(payload.questions) ? payload.questions : [];
+    questions = loadedQuestions;
+    renderQuestionsList();
+    if (questions.length) {
+      loadQuestionToEditor(0);
+    } else {
+      resetEditor();
+    }
+  } catch (e) {
+    console.error('Error loading quiz card for edit', e);
+    alert('Failed to load quiz card for editing.');
   }
 }
 
-/* ========= Save quiz to DB ========= */
+/* ========= Save Quiz to backend as a card ========= */
 async function saveQuiz(){
-  const title = quizTitle.value.trim();
-  if(!title){ alert('Please enter a quiz title'); return; }
-  if(questions.length === 0){ alert('Add at least one question before saving'); return; }
-
-  const topicId = getTopicIdFromURL();
-  const lessonId = getLessonIdFromURL();
-  const displayOrder = getDisplayOrderFromURL();
-
-  if(!topicId && !lessonId){
-    alert('Error: This quiz must be associated with either a topic or a lesson.');
+  if (!topicId) {
+    alert('Missing topic_id in URL. Open this editor from a topic context.');
     return;
   }
 
-  const payloadQuestions = questions.map(q => ({
-    id: q.id,
-    type: q.type,
-    text: q.text,
-    options: q.options,
-    correctIndex: q.correctIndex,
-    fibAnswer: q.fibAnswer,
-    generalCorrectFb: q.generalCorrectFb,
-    generalIncorrectFb: q.generalIncorrectFb,
-    // Avoid sending large base64 blobs that can exceed DB/mySQL packet size
-    media: q.media ? { type: q.media.type, name: q.media.name || '' } : null
-  }));
-
-  const cardData = {
-    card_type: 'quiz',
-    title: title,
-    data_json: { questions: payloadQuestions },
-    display_order: Number.isNaN(parseInt(displayOrder)) ? 0 : parseInt(displayOrder),
-    published: false
-  };
-
-  if(topicId) cardData.topic_id = parseInt(topicId);
-  if(lessonId) cardData.lesson_id = parseInt(lessonId);
+  if (!questions.length) {
+    alert('Add at least one question before saving the quiz.');
+    return;
+  }
 
   try {
-    const tokenResponse = await fetch('/admin/api/get-jwt-token', { 
-      credentials: 'include',
-      method: 'GET'
-    });
-
-    if(!tokenResponse.ok) {
-      alert('Failed to authenticate. Please login again.');
-      window.location.href = '/admin/login';
+    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!token) {
+      alert('Unable to get admin token. Please log in again as admin.');
       return;
     }
 
-    const tokenData = await tokenResponse.json();
-    if(!tokenData.access_token) {
-      alert('Failed to get access token');
+    const dataJson = { questions };
+
+    // Edit mode: update existing card
+    if (cardId) {
+      const payload = {
+        title: currentCardTitle || 'Quiz',
+        data_json: dataJson
+      };
+
+      const res = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || !data.success) {
+        const msg = (data && (data.error || data.detail || data.msg)) || '';
+        alert('Failed to update quiz card: ' + msg);
+        return;
+      }
+
+      const goBack = confirm('Quiz card updated. Return to Card Flow?');
+      if (!goBack) return;
+
+      const out = new URLSearchParams();
+      if (lessonId) out.set('lesson_id', lessonId);
+      if (topicId) out.set('topic_id', topicId);
+      const order = (data.card && data.card.display_order != null)
+        ? data.card.display_order
+        : (currentCardDisplayOrder != null ? currentCardDisplayOrder : displayOrderParam);
+      if (order != null) out.set('display_order', String(order));
+
+      const qs = out.toString();
+      const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
+      window.location.href = target;
       return;
     }
 
-    const token = tokenData.access_token;
-    localStorage.setItem('admin_jwt_token', token);
+    // Create mode: compute next display_order and create new card
+    let nextOrder = 1;
+    try {
+      const resCards = await fetch(`/api/v1/topics/${encodeURIComponent(topicId)}/cards`);
+      if (resCards.ok) {
+        const data = await resCards.json().catch(() => null);
+        if (data && Array.isArray(data.cards) && data.cards.length) {
+          const maxOrder = Math.max(...data.cards.map(c => c.display_order || 0));
+          nextOrder = maxOrder + 1;
+        }
+      }
+    } catch (e) {
+      nextOrder = 1;
+    }
 
-    const response = await fetch('/api/v1/cards', {
+    const firstQText = questions[0]?.text || '';
+    const derivedTitle = firstQText ? firstQText.substring(0, 80) : 'Quiz';
+
+    const payload = {
+      card_type: 'quiz',
+      title: derivedTitle,
+      data_json: dataJson,
+      topic_id: Number(topicId),
+      lesson_id: lessonId ? Number(lessonId) : null,
+      display_order: nextOrder
+    };
+
+    const res = await fetch('/api/v1/cards', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': 'Bearer ' + token
       },
       credentials: 'include',
-      body: JSON.stringify(cardData)
+      body: JSON.stringify(payload)
     });
 
-    const result = await response.json();
-    console.log('Save quiz result:', result);
-    if(result.success){
-      alert('Quiz card saved successfully!');
-      const confirmContinue = confirm('Click OK to add another quiz, or Cancel to go back to dashboard');
-      if(confirmContinue){
-        quizTitle.value = '';
-        questions = [];
-        resetEditor();
-        renderQuestionsList();
-      } else {
-        window.location.href = '/admin/dashboard';
-      }
-    } else {
-      const errorMsg = result.error || result.detail || JSON.stringify(result);
-      alert(`Failed to save quiz card: ${errorMsg}`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.success) {
+      const msg = (data && (data.error || data.detail || data.msg)) || '';
+      alert('Failed to save quiz card: ' + msg);
+      return;
     }
-  } catch(err){
-    console.error('Save error:', err);
-    alert('Failed to save quiz card: ' + err.message);
+
+    const goNow = confirm('Quiz card saved to topic. Open Card Flow now?');
+    if (!goNow) return;
+
+    const out = new URLSearchParams();
+    if (lessonId) out.set('lesson_id', lessonId);
+    if (topicId) out.set('topic_id', topicId);
+    if (data.card && data.card.display_order != null) {
+      out.set('display_order', String(data.card.display_order));
+    }
+    const qs = out.toString();
+    const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
+    window.location.href = target;
+  } catch (e) {
+    alert('Failed to save quiz card: ' + (e.message || e));
   }
 }
 
-function getTopicIdFromURL(){
-  const params = new URLSearchParams(window.location.search);
-  return params.get('topic_id');
-}
-
-function getLessonIdFromURL(){
-  const params = new URLSearchParams(window.location.search);
-  return params.get('lesson_id');
-}
-
-function getDisplayOrderFromURL(){
-  const params = new URLSearchParams(window.location.search);
-  return params.get('display_order') || '0';
-}
-
 /* ========= Init ========= */
-showTypeUI('mcq');
-resetEditor();
-renderQuestionsList();
-updatePreview();
+window.addEventListener('DOMContentLoaded', async () => {
+  showTypeUI('mcq');
+  resetEditor();
+  renderQuestionsList();
+  updatePreview();
+
+  saveQuizBtn.addEventListener('click', saveQuiz);
+
+  if (cardId) {
+    await loadQuizCardForEdit(cardId);
+  }
+});
 
 </script>
 </body>
