@@ -44,8 +44,8 @@ window.deleteCard = async function(id) {
 
   let res;
   try {
-    const doDelete = async (tkn) => fetch(`/api/v1/cards/${id}`, {
-      method: 'DELETE',
+    const doDelete = async (tkn) => fetch(`/api/v1/cards/${id}/delete`, {
+      method: 'POST',
       credentials: 'include',
       headers: { 'Authorization': 'Bearer ' + tkn }
     });

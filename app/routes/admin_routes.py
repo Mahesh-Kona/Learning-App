@@ -334,37 +334,6 @@ def view_student(student_id: int):
     return render_template('student_detail.html', user=user, active='students', student=student, avatar_url=avatar_url)
 
 
-@admin_bp.route('/create_topic', methods=['GET'])
-def create_topic_page():
-    uid = session.get('admin_user_id')
-    if not uid:
-        return redirect(url_for('admin_bp.admin_login_get'))
-    if uid == 'dev_admin':
-        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
-    else:
-        user = User.query.get(uid)
-        if not user or user.role != 'admin':
-            session.pop('admin_user_id', None)
-            return redirect(url_for('admin_bp.admin_login_get'))
-    # Provide an optional lesson selector so the admin can attach the topic to a lesson.
-    selected_lesson = request.args.get('lesson_id')
-    try:
-        lessons = Lesson.query.order_by(Lesson.created_at.desc()).all()
-        # Fetch recent topics for the "Existing Topics" panel, ordered by creation time
-        topics = Topic.query.order_by(Topic.created_at.desc()).all()
-    except Exception:
-        lessons = []
-        topics = []
-    return render_template(
-        'create_topic.html',
-        user=user,
-        active='create_topic',
-        lessons=lessons,
-        selected_lesson=selected_lesson,
-        topics=topics,
-    )
-
-
 # Card Type Editors
 @admin_bp.route('/quiz-editor', methods=['GET'])
 def quiz_editor():
@@ -641,7 +610,8 @@ def all_courses_page():
                 'name': c.title,
                 'code': f'COURSE{c.id}',
                 'description': c.description or '',
-                'duration': None,
+                # expose duration_weeks to the template as duration
+                'duration': c.duration_weeks,
                 'level': c.difficulty or '',
                 'lessons': lessons_count
             })
@@ -942,58 +912,9 @@ def get_lessons():
 
 @admin_bp.route('/all_topics', methods=['GET'])
 def all_topics_page():
-    uid = session.get('admin_user_id')
-    if not uid:
-        return redirect(url_for('admin_bp.admin_login_get'))
-    if uid == 'dev_admin':
-        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
-    else:
-        user = User.query.get(uid)
-        if not user or user.role != 'admin':
-            session.pop('admin_user_id', None)
-            return redirect(url_for('admin_bp.admin_login_get'))
-
-    try:
-        topics_q = Topic.query.order_by(Topic.created_at.desc()).all()
-        topics = []
-        lesson_cache = {}
-        for t in topics_q:
-            data = t.data_json or {}
-            # resolve lesson title
-            lid = t.lesson_id
-            lesson_title = ''
-            try:
-                if lid in lesson_cache:
-                    lesson_title = lesson_cache[lid]
-                else:
-                    l = Lesson.query.get(lid)
-                    lesson_title = l.title if l else ''
-                    lesson_cache[lid] = lesson_title
-            except Exception:
-                lesson_title = ''
-
-            topics.append({
-                'id': t.id,
-                'name': t.title or '',
-                'lesson': lesson_title,
-                'lesson_id': lid,
-                'description': data.get('description') if isinstance(data, dict) else '',
-                'duration': data.get('duration') if isinstance(data, dict) else None,
-                'estimated_time': data.get('estimated_time') if isinstance(data, dict) else data.get('estimatedTime') if isinstance(data, dict) else None,
-                'difficulty': data.get('difficulty') if isinstance(data, dict) else None,
-                'type': data.get('type') if isinstance(data, dict) else None,
-                'order': data.get('order') if isinstance(data, dict) else None
-            })
-    except Exception:
-        topics = []
-    # Also provide a lessons list for the lesson filter (id + name)
-    try:
-        lessons_q = Lesson.query.order_by(Lesson.title).all()
-        lessons = [{'id': l.id, 'name': l.title or ''} for l in lessons_q]
-    except Exception:
-        lessons = []
-
-    return render_template('all-topics.html', user=user, active='all_topics', topics=topics, lessons=lessons)
+    # Legacy route no longer used now that Course Content Management handles topics.
+    # Keep a lightweight redirect for any old links.
+    return redirect(url_for('admin_bp.admin_dashboard'))
 
 
 @admin_bp.route('/delete_course', methods=['POST', 'DELETE'])
@@ -1116,10 +1037,15 @@ def create_topic_post():
                     pass
 
                 if est is not None and est != '':
+                    # store estimated time and mirror it into duration for topics
                     try:
-                        data_json['estimated_time'] = int(est)
+                        parsed_est = int(est)
                     except Exception:
-                        data_json['estimated_time'] = est
+                        parsed_est = est
+                    data_json['estimated_time'] = parsed_est
+                    # only set duration if not already explicitly provided
+                    if 'duration' not in data_json:
+                        data_json['duration'] = parsed_est
                 if diff:
                     data_json['difficulty'] = diff
         except Exception:
@@ -1136,6 +1062,9 @@ def create_topic_post():
         # JSON request body case: data is already a dict
         if isinstance(data, dict):
             description = data.get('description') or data.get('topicDescription')
+            # also grab estimated_time and difficulty when sent via JSON (Course Content page)
+            estimated_time = data.get('estimated_time') or data.get('estimatedTime')
+            difficulty = data.get('difficulty') or data.get('topicDifficulty') or data.get('topic_difficulty')
 
         # Form-encoded case: use getlist for repeated fields or named inputs
         try:
@@ -1167,11 +1096,14 @@ def create_topic_post():
         if cards:
             payload['cards'] = cards
         if estimated_time is not None and estimated_time != '':
-            # try to coerce to int when possible
+            # try to coerce to int when possible, and mirror into duration
             try:
-                payload['estimated_time'] = int(estimated_time)
+                parsed_est = int(estimated_time)
             except Exception:
-                payload['estimated_time'] = estimated_time
+                parsed_est = estimated_time
+            payload['estimated_time'] = parsed_est
+            if 'duration' not in payload:
+                payload['duration'] = parsed_est
         if difficulty:
             payload['difficulty'] = difficulty
 
@@ -1187,6 +1119,31 @@ def create_topic_post():
 
         if payload:
             data_json = payload
+
+    # If no explicit topic order was provided, compute next order within this lesson
+    try:
+        if lesson_id and (not isinstance(data_json, dict) or data_json.get('order') is None):
+            if not isinstance(data_json, dict):
+                data_json = data_json or {}
+                if not isinstance(data_json, dict):
+                    data_json = {}
+            existing_topics = Topic.query.filter_by(lesson_id=int(lesson_id)).all()
+            max_order = 0
+            for t in existing_topics:
+                d = t.data_json if isinstance(t.data_json, dict) else {}
+                if isinstance(d, dict) and d.get('order') is not None:
+                    try:
+                        val = int(d.get('order'))
+                    except Exception:
+                        continue
+                    if val > max_order:
+                        max_order = val
+            if max_order == 0 and existing_topics:
+                max_order = len(existing_topics)
+            data_json['order'] = max_order + 1
+    except Exception:
+        # best-effort; if it fails, topic will still be created
+        pass
 
     try:
         # ensure lesson exists
@@ -1294,16 +1251,54 @@ def update_topic():
         if title is not None:
             topic.title = title.strip()
 
-        # update data_json fields (description, estimated_time, duration, difficulty, type, order)
-        existing = topic.data_json if isinstance(topic.data_json, dict) else (topic.data_json or {})
-        if not isinstance(existing, dict):
-            existing = {}
+        # Rebuild data_json so that editable attributes from the admin UI
+        # (description, estimated_time/duration, difficulty, order, icon)
+        # are kept in sync, while preserving any unknown keys (e.g. cards).
+        meta = {}
 
-        for key in ('description', 'estimated_time', 'duration', 'difficulty', 'type', 'order'):
-            if key in data:
-                existing[key] = data.get(key)
+        desc = data.get('description')
+        if desc is not None:
+            meta['description'] = desc
 
-        topic.data_json = existing
+        est = data.get('estimated_time')
+        if est is not None and est != '':
+            # keep both estimated_time and duration coherent
+            try:
+                parsed_est = int(est)
+            except Exception:
+                parsed_est = est
+            meta['estimated_time'] = parsed_est
+            meta['duration'] = parsed_est
+
+        diff = data.get('difficulty')
+        if diff is not None:
+            meta['difficulty'] = diff
+
+        ttype = data.get('type')
+        if ttype is not None:
+            meta['type'] = ttype
+
+        order_val = data.get('order')
+        if order_val is not None and order_val != '':
+            try:
+                parsed_order = int(order_val)
+            except Exception:
+                parsed_order = order_val
+            meta['order'] = parsed_order
+
+        icon_val = data.get('icon')
+        if icon_val is not None:
+            meta['icon'] = icon_val
+
+        # Preserve any other existing keys not controlled by this UI so
+        # external systems don't lose data.
+        existing = topic.data_json if isinstance(topic.data_json, dict) else {}
+        if isinstance(existing, dict):
+            for k, v in existing.items():
+                if k not in meta:
+                    meta[k] = v
+
+        topic.data_json = meta or None
 
         db.session.add(topic)
         db.session.commit()
@@ -1660,6 +1655,7 @@ def update_course():
         duration = data.get('duration')
         level = data.get('level') or data.get('difficulty')
         lessons = data.get('lessons')
+        published_flag = data.get('published')
 
         if title is not None:
             course.title = str(title).strip()
@@ -1675,6 +1671,9 @@ def update_course():
                 course.duration_weeks = int(duration)
             except Exception:
                 pass
+        # Allow callers to toggle published via update_course when provided
+        if published_flag is not None:
+            course.published = bool(published_flag) if not isinstance(published_flag, str) else published_flag.lower() in ('1','true','yes','on')
 
         db.session.add(course)
         db.session.commit()
@@ -1712,9 +1711,21 @@ def update_course():
 
 @admin_bp.route('/lesson', methods=['GET'])
 def lesson_page():
+    # Legacy lessons UI has been replaced by the richer Course Content Management page.
+    # Keep this route as a simple redirect for any existing links or bookmarks.
+    return redirect(url_for('admin_bp.all_courses_page'))
+
+
+@admin_bp.route('/course-content', methods=['GET'])
+def course_content_page():
+    """Render the richer Course Content Management UI for a specific course.
+
+    Optional query param: course_id (used by template/JS if needed).
+    """
     uid = session.get('admin_user_id')
     if not uid:
         return redirect(url_for('admin_bp.admin_login_get'))
+
     if uid == 'dev_admin':
         user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
     else:
@@ -1722,69 +1733,91 @@ def lesson_page():
         if not user or user.role != 'admin':
             session.pop('admin_user_id', None)
             return redirect(url_for('admin_bp.admin_login_get'))
-    # Provide courses and categories to the lesson template so the client
-    # can populate the course selector without hard-coded sample data.
+
+    course_id = request.args.get('course_id')
+
+    course = None
+    lessons_count = 0
+    lessons_for_ui = []
     try:
-        # Courses
-        courses_q = Course.query.order_by(Course.title).all()
-        courses = [
-            {
-                'id': c.id,
-                'name': c.title,
-                'category': c.category or '',
-                'class_name': c.class_name or ''
-            }
-            for c in courses_q
-        ]
+        if course_id:
+            cid = int(course_id)
+            course = Course.query.get(cid)
+            if course:
+                try:
+                    # Load lessons and topics for this course so the Course Content
+                    # Management page can render real data instead of hard-coded
+                    # sample lessons. Order lessons FIFO (oldest first).
+                    lessons_q = (
+                        Lesson.query
+                        .filter_by(course_id=course.id)
+                        .order_by(Lesson.created_at.asc())
+                        .all()
+                    )
+                    from app.models import Topic, Card  # local import to avoid cycles
 
-        # extract distinct categories (preserve ordering)
-        seen = set()
-        categories = []
-        for c in courses:
-            cat = c.get('category') or ''
-            if cat and cat not in seen:
-                seen.add(cat)
-                categories.append({'name': cat})
+                    for l in lessons_q:
+                        topics_q = Topic.query.filter_by(lesson_id=l.id).order_by(Topic.created_at.asc()).all()
+                        topics_for_lesson = []
+                        for t in topics_q:
+                            data = t.data_json if isinstance(t.data_json, dict) else {}
 
-        # Lessons
-        lessons_q = Lesson.query.order_by(Lesson.created_at.desc()).all()
-        lessons = [
-            {
-                'id': l.id,
-                'courseId': l.course_id,
-                'title': l.title,
-                'description': l.description,
-                'duration': l.duration,
-                'level': l.level,
-                'objectives': l.objectives
-            }
-            for l in lessons_q
-        ]
+                            # Count cards for this topic directly from the Card table
+                            try:
+                                topic_cards_count = Card.query.filter_by(topic_id=t.id).count()
+                            except Exception:
+                                topic_cards_count = 0
 
-        # Topics
-        topics_q = Topic.query.order_by(Topic.created_at.asc()).all()
-        topics = []
-        for t in topics_q:
-            data = t.data_json or {}
-            topic_obj = {
-                'id': t.id,
-                'lessonId': t.lesson_id,
-                'title': t.title,
-                'type': None,
-                'content': None
-            }
-            if isinstance(data, dict):
-                topic_obj['type'] = data.get('type')
-                topic_obj['content'] = data.get('content')
-            topics.append(topic_obj)
+                            topics_for_lesson.append({
+                                'id': t.id,
+                                'title': t.title,
+                                'description': (data.get('description') if isinstance(data, dict) else '') or '',
+                                'estimated_time': (data.get('estimated_time') if isinstance(data, dict) else None),
+                                'difficulty': (data.get('difficulty') if isinstance(data, dict) else None) or 'medium',
+                                'order': (data.get('order') if isinstance(data, dict) else None),
+                                'icon': (data.get('icon') if isinstance(data, dict) else None) or '💡',
+                                'cards_count': topic_cards_count,
+                            })
 
+                        meta = l.content_json if isinstance(l.content_json, dict) else {}
+                        order_val = None
+                        if isinstance(meta, dict) and meta.get('order') is not None:
+                            try:
+                                order_val = int(meta.get('order'))
+                            except Exception:
+                                order_val = meta.get('order')
+
+                        prerequisite_val = None
+                        if isinstance(meta, dict) and meta.get('prerequisite') is not None:
+                            prerequisite_val = meta.get('prerequisite')
+
+                        lessons_for_ui.append({
+                            'id': l.id,
+                            'title': l.title,
+                            'description': l.description or '',
+                            'duration': l.duration,
+                            'level': l.level or '',
+                            'order': order_val,
+                            'prerequisite': prerequisite_val,
+                            'topics': topics_for_lesson,
+                        })
+
+                    lessons_count = len(lessons_for_ui)
+                except Exception:
+                    lessons_count = 0
     except Exception:
-        courses = []
-        categories = []
-        lessons = []
-        topics = []
+        course = None
+        lessons_count = 0
+        lessons_for_ui = []
 
-    return render_template('lesson.html', user=user, active='lesson', courses=courses, categories=categories, lessons=lessons, topics=topics)
+    return render_template(
+        'Course-Content-Management.html',
+        user=user,
+        active='course-content',
+        course=course,
+        lessons_count=lessons_count,
+        lessons_for_ui=lessons_for_ui,
+    )
 
 
 @admin_bp.route('/course_lessons', methods=['GET'])
@@ -1853,9 +1886,12 @@ def create_lesson_post():
 
     # optional lesson metadata
     description = data.get('description') or data.get('lessonDescription')
-    duration = data.get('duration') or data.get('lessonDuration')
+    # treat duration/estimated_time as the same logical field
+    duration = data.get('duration') or data.get('lessonDuration') or data.get('estimated_time') or data.get('estimatedTime')
     level = data.get('level') or data.get('lessonLevel')
     objectives = data.get('objectives') or data.get('lessonObjectives')
+    lesson_order = data.get('order') or data.get('lesson_order') or data.get('lessonOrder')
+    prerequisite = data.get('prerequisite') or data.get('lessonPrerequisite') or data.get('prerequisiteInput')
 
     if not title or not course_id:
         flash('Missing title or course_id for lesson creation', 'error')
@@ -1864,29 +1900,65 @@ def create_lesson_post():
         return redirect(url_for('admin_bp.lesson_page'))
 
     try:
-        # Package optional metadata into content_json so existing schema is unchanged
+        # If no explicit order provided, compute next order based on existing lessons in the course
+        if (lesson_order is None or str(lesson_order).strip() == '') and course_id:
+            try:
+                existing_lessons = Lesson.query.filter_by(course_id=int(course_id)).all()
+                max_order = 0
+                for l in existing_lessons:
+                    meta = l.content_json if isinstance(l.content_json, dict) else {}
+                    if isinstance(meta, dict) and meta.get('order') is not None:
+                        try:
+                            val = int(meta.get('order'))
+                        except Exception:
+                            continue
+                        if val > max_order:
+                            max_order = val
+                # fallback: if no orders present, use count
+                if max_order == 0 and existing_lessons:
+                    max_order = len(existing_lessons)
+                lesson_order = max_order + 1
+            except Exception:
+                lesson_order = None
+
+        # Package lesson metadata into content_json so that all attributes visible
+        # in the admin UI are also represented in JSON. We still avoid legacy
+        # duplicates like lesson_order/prerequisites keys.
         content = {}
         if description:
             content['description'] = description
         if duration:
             try:
-                content['duration'] = int(duration)
+                parsed_dur = int(duration)
             except Exception:
-                content['duration'] = duration
+                parsed_dur = duration
+            # store both duration and estimated_time for consumers that use either
+            content['duration'] = parsed_dur
+            content['estimated_time'] = parsed_dur
         if level:
             content['level'] = level
         if objectives:
             content['objectives'] = objectives
+        if lesson_order is not None and lesson_order != '':
+            try:
+                parsed_order = int(lesson_order)
+            except Exception:
+                parsed_order = lesson_order
+            # single canonical order key
+            content['order'] = parsed_order
+        if prerequisite:
+            # single canonical prerequisite key
+            content['prerequisite'] = prerequisite
 
         # populate convenience columns for easier querying from admin UI
         lesson = Lesson(
             title=title.strip(),
             course_id=int(course_id),
             content_json=content if content else None,
-            description=content.get('description') if isinstance(content, dict) and content.get('description') else (description if description else None),
-            duration=(int(content.get('duration')) if isinstance(content, dict) and content.get('duration') and str(content.get('duration')).isdigit() else (int(duration) if duration and str(duration).isdigit() else None)),
-            level=(content.get('level') if isinstance(content, dict) and content.get('level') else (level if level else None)),
-            objectives=(content.get('objectives') if isinstance(content, dict) and content.get('objectives') else (objectives if objectives else None))
+            description=description if description else None,
+            duration=(int(duration) if duration and str(duration).isdigit() else None),
+            level=(level if level else None),
+            objectives=(objectives if objectives else None)
         )
         db.session.add(lesson)
         db.session.commit()
@@ -1945,9 +2017,12 @@ def update_lesson_post():
     title = data.get('title') or data.get('lessonTitle')
     course_id = data.get('course_id') or data.get('courseId')
     description = data.get('description') or data.get('lessonDescription')
-    duration = data.get('duration') or data.get('lessonDuration')
+    # duration may come from 'duration' or from an 'estimated_time' style field
+    duration = data.get('duration') or data.get('lessonDuration') or data.get('estimated_time') or data.get('estimatedTime')
     level = data.get('level') or data.get('lessonLevel')
     objectives = data.get('objectives') or data.get('lessonObjectives')
+    lesson_order = data.get('order') or data.get('lesson_order') or data.get('lessonOrder')
+    prerequisite = data.get('prerequisite') or data.get('lessonPrerequisite') or data.get('prerequisiteInput')
 
     try:
         if title:
@@ -1962,6 +2037,41 @@ def update_lesson_post():
             lesson.level = level
         if objectives is not None:
             lesson.objectives = objectives
+
+        # Rebuild content_json so that attributes visible in the admin UI are
+        # mirrored into JSON as well. This keeps JSON-based consumers in sync.
+        meta = {}
+        if description is not None:
+            meta['description'] = description
+        if duration is not None and str(duration).isdigit():
+            try:
+                parsed_dur = int(duration)
+            except Exception:
+                parsed_dur = duration
+            meta['duration'] = parsed_dur
+            meta['estimated_time'] = parsed_dur
+        if level is not None:
+            meta['level'] = level
+        if objectives is not None:
+            meta['objectives'] = objectives
+        if prerequisite is not None:
+            meta['prerequisite'] = prerequisite
+        if lesson_order is not None and lesson_order != '':
+            try:
+                parsed_order = int(lesson_order)
+            except Exception:
+                parsed_order = lesson_order
+            meta['order'] = parsed_order
+
+        # if there was previous JSON, preserve any unknown keys that admin UI
+        # does not control, so other systems don't lose data
+        existing = lesson.content_json if isinstance(lesson.content_json, dict) else {}
+        if isinstance(existing, dict):
+            for k, v in existing.items():
+                if k not in meta:
+                    meta[k] = v
+
+        lesson.content_json = meta or None
 
         db.session.commit()
         try:

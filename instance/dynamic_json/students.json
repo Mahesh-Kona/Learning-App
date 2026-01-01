@@ -34,17 +34,6 @@
       "status": "active"
     },
     {
-      "id": 4,
-      "name": "Mahesh",
-      "email": "mahesh@gmail.com",
-      "enrollmentDate": "2025-12-06",
-      "courses": "Social Science,Science",
-      "progress": 0,
-      "xp": 0,
-      "lastLogin": "",
-      "status": "active"
-    },
-    {
       "id": 5,
       "name": "Subhash Roy",
       "email": "subhash@gmail.com",
@@ -83,17 +72,6 @@
       "email": "gakkharaayushmann@gmail.com",
       "enrollmentDate": "2025-12-11",
       "courses": "Maths , Social Studies",
-      "progress": 0,
-      "xp": 0,
-      "lastLogin": "",
-      "status": "active"
-    },
-    {
-      "id": 16,
-      "name": "ayush",
-      "email": "ayush@gmail.com",
-      "enrollmentDate": "2025-12-11",
-      "courses": "Mathematics",
       "progress": 0,
       "xp": 0,
       "lastLogin": "",
@@ -144,5 +122,5 @@
       "status": "active"
     }
   ],
-  "total": 13
+  "total": 11
 }

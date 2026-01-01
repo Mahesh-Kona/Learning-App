@@ -3,120 +3,498 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Quiz Builder  Full</title>
+<title>Quiz Builder | Byte-Sized Learning</title>
 <script src="/static/admin_jwt_check.js"></script>
 <style>
-/* ---------------------------
-   Reset & base
---------------------------- */
 *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial}
 body{background:#f7f3fb;color:#111;height:100vh;display:flex;overflow:hidden}
 
-/* ---------------------------
-   Layout columns
---------------------------- */
 .app{display:flex;flex:1;height:100vh;width:100%}
 
-/* LEFT: questions */
 .left{
   width:20%;
   background:#fbf7ff;
   border-right:1px solid #efe6ff;
-  padding:22px;
+  padding:15px;
   overflow:auto;
 }
-.left h2{font-size:20px;margin-bottom:18px}
-.q-list{color:#9b93a8;font-size:14px}
+.left h2{font-size:16px;margin-bottom:15px;color:#3a3440;font-weight:600}
+.q-list{color:#9b93a8;font-size:13px}
 .q-item{
-  background:#fff;border:1px solid #efe6ff;border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:grab;
+  background:#fff;border:1px solid #efe6ff;border-radius:8px;padding:10px;margin-bottom:8px;cursor:grab;
   display:flex;align-items:center;justify-content:space-between;
 }
 .q-item.dragging{opacity:0.5}
-.q-item.selected{box-shadow:0 6px 18px rgba(125,77,255,0.08);border-color:#d6cfff}
+.q-item.selected{box-shadow:0 4px 12px rgba(125,77,255,0.08);border-color:#d6cfff}
 
-/* CENTER: editor */
 .center{
-  width:48%;
-  padding:24px 36px;
+  width:55%;
   overflow:auto;
+  display:flex;
+  flex-direction:column;
 }
-.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.header-row h1{font-size:22px}
-.field{margin-top:16px}
-.label{font-weight:600;margin-bottom:8px;color:#3a3440}
+.center-content {
+  flex:1;
+  overflow:auto;
+  padding:20px 30px;
+}
+
+.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.header-row h1{font-size:18px;color:#3a3440;font-weight:600}
+
+.field{margin-top:15px}
+.label{font-weight:600;margin-bottom:8px;color:#3a3440;font-size:14px}
 .input,textarea,select{
   width:100%;
-  padding:12px 14px;border-radius:10px;border:1px solid #e9e3f8;background:#fff;font-size:14px
+  padding:10px 12px;border-radius:8px;border:1px solid #e9e3f8;background:#fff;font-size:14px
 }
-textarea{min-height:110px;resize:vertical}
-.options{margin-top:10px}
+textarea{min-height:90px;resize:vertical}
+.options{margin-top:8px}
 
-/* Option block with inline feedback */
 .option-block{
-  margin-top:12px;
+  margin-top:10px;
   background:#fff;
-  border-radius:10px;
+  border-radius:8px;
   border:1px solid #efe6ff;
-  padding:10px;
+  padding:12px;
+  position:relative;
 }
 .option-row{
   display:flex;gap:10px;align-items:center;
 }
-.option-row input[type="text"]{flex:1;padding:10px;border-radius:8px;border:1px solid #e6def8;background:#fff}
-.option-row .opt-radio{width:18px;height:18px}
-.option-row .remove{background:none;border:none;color:#d9534f;font-size:18px;cursor:pointer}
+.option-row input[type="text"]{flex:1;padding:8px 10px;border-radius:6px;border:1px solid #e6def8;background:#fff}
+.option-row .opt-radio{width:16px;height:16px}
+.option-row .remove{background:none;border:none;color:#d9534f;font-size:16px;cursor:pointer}
+
+.question-image-section {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f9f9ff;
+  border-radius: 6px;
+  border: 1px dashed #e6e0ff;
+}
+.question-image-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #5d4f8c;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.question-image-upload {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+.question-image-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #cfc6ff;
+  background: white;
+  color: #6b4fbd;
+  cursor: pointer;
+  font-size: 13px;
+}
+.question-image-btn:hover {
+  background: #f7f5ff;
+}
+.question-image-preview {
+  margin-top: 8px;
+  max-width: 100%;
+}
+.question-image-preview img {
+  max-width: 100%;
+  max-height: 160px;
+  border-radius: 6px;
+  border: 1px solid #e9e3f8;
+  object-fit: contain;
+}
+.question-image-remove {
+  background: none;
+  border: none;
+  color: #d9534f;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.option-image-section{
+  margin-top:10px;
+  padding:10px;
+  background:#f9f9ff;
+  border-radius:6px;
+  border:1px dashed #e6e0ff;
+}
+.option-image-label{
+  font-size:13px;
+  font-weight:600;
+  color:#5d4f8c;
+  margin-bottom:6px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.option-image-upload{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin-top:6px;
+}
+.option-image-btn{
+  padding:6px 10px;
+  border-radius:6px;
+  border:1px solid #cfc6ff;
+  background:white;
+  color:#6b4fbd;
+  cursor:pointer;
+  font-size:13px;
+}
+.option-image-btn:hover{
+  background:#f7f5ff;
+}
+.option-image-preview{
+  margin-top:8px;
+  max-width:140px;
+}
+.option-image-preview img{
+  max-width:100%;
+  max-height:80px;
+  border-radius:6px;
+  border:1px solid #e9e3f8;
+  object-fit:contain;
+}
+.option-image-remove{
+  background:none;
+  border:none;
+  color:#d9534f;
+  cursor:pointer;
+  font-size:12px;
+  margin-top:5px;
+}
 
 .fb-labels{display:flex;gap:8px;margin-top:8px}
 .feedback-row{display:flex;gap:8px;margin-top:6px}
-.feedback-input{flex:1;padding:8px;border-radius:8px;border:1px solid #eee;background:#fafafa;font-size:13px}
+.feedback-input{flex:1;padding:6px 8px;border-radius:6px;border:1px solid #eee;background:#fafafa;font-size:13px}
 
-/* small action buttons */
-.small-btn{padding:8px 12px;border-radius:999px;border:none;background:#efeaff;color:#6b4fbd;cursor:pointer;font-weight:700}
-.small-ghost{padding:8px 12px;border-radius:8px;border:1px solid #efe6ff;background:#fff;cursor:pointer}
+.fib-answer-set {
+  background: #f9f7ff;
+  border: 1px solid #e6e0ff;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.fib-answer-set .label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #5d4f8c;
+}
+.fib-answer-set input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d6cfff;
+  background: white;
+}
+.fib-blank-preview {
+  background: #fff9e6;
+  border-left: 3px solid #ffd166;
+  padding: 8px 10px;
+  margin: 8px 0;
+  border-radius: 0 6px 6px 0;
+}
+.fib-blank-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.fib-blank-number {
+  background: #6f63ff;
+  color: white;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+}
+.blanks-counter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: #666;
+  font-size: 13px;
+}
 
-/* action buttons */
-.row-actions{display:flex;gap:12px;margin-top:18px}
-.btn-primary{background:linear-gradient(90deg,#6f63ff,#7d4dff);color:white;padding:12px 20px;border-radius:28px;border:none;cursor:pointer;font-weight:700}
-.btn-ghost{background:#fff;border:1px solid #efe6ff;padding:10px 16px;border-radius:12px;cursor:pointer}
+.match-container {
+  background: #fff;
+  border: 1px solid #efe6ff;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 10px;
+}
+.match-pair {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.match-left, .match-right {
+  flex: 1;
+}
+.match-connector {
+  color: #9b93a8;
+  font-size: 16px;
+}
 
-/* MEDIA CONTAINER (fixed: full width, no overlap) */
+.sequence-container {
+  background: #fff;
+  border: 1px solid #efe6ff;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 10px;
+}
+.sequence-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: #f9f9ff;
+  border: 1px solid #e9e3f8;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: move;
+}
+.sequence-number {
+  background: #6f63ff;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.sequence-text {
+  flex: 1;
+  padding: 6px 8px;
+  background: white;
+  border: 1px solid #e6e0ff;
+  border-radius: 6px;
+}
+.sequence-handle {
+  color: #9b93a8;
+  cursor: grab;
+  padding: 4px;
+}
+
+.blank-highlight {
+  background: #fff3cd;
+  color: #856404;
+  padding: 1px 4px;
+  border-radius: 4px;
+  border: 1px dashed #ffd166;
+  font-weight: bold;
+  margin: 0 2px;
+}
+
+.small-btn{padding:6px 10px;border-radius:6px;border:none;background:#efeaff;color:#6b4fbd;cursor:pointer;font-weight:600;font-size:13px}
+.small-ghost{padding:6px 10px;border-radius:6px;border:1px solid #efe6ff;background:#fff;cursor:pointer;font-size:13px}
+.row-actions{display:flex;gap:10px;margin-top:15px}
+.btn-primary{background:linear-gradient(90deg,#6f63ff,#7d4dff);color:white;padding:10px 16px;border-radius:6px;border:none;cursor:pointer;font-weight:600;transition:opacity 0.2s}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.btn-ghost{background:#fff;border:1px solid #efe6ff;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:14px}
+
 .media-wrapper{
-  margin-top:18px;
-  border-radius:12px;
+  margin-top:12px;
+  border-radius:8px;
   background:#faf9ff;
   border:1px solid #ece6ff;
-  padding:12px;
+  padding:10px;
 }
-.media-heading{font-weight:700;margin-bottom:8px}
+.media-heading{font-weight:600;margin-bottom:6px;font-size:14px}
 .upload-box{
   width:100%;
   border:1px dashed #cfc6ff;
   background:white;
-  border-radius:12px;
-  padding:18px;
+  border-radius:8px;
+  padding:12px;
   text-align:center;
   cursor:pointer;
   display:block;
+  font-size:13px;
 }
 .upload-box:hover{background:#f7f5ff}
-.media-preview{margin-top:12px}
-.media-preview img, .media-preview video{max-width:100%;border-radius:10px;border:1px solid #e9e6ff}
+.media-preview{margin-top:8px}
+.media-preview img, .media-preview video{max-width:100%;border-radius:6px;border:1px solid #e9e6ff}
 
-/* RIGHT: preview */
 .right{
-  width:32%;
-  background:#fff;padding:24px;border-left:1px solid #efe6ff;overflow:auto;
+  width:25%;
+  background:#fff;border-left:1px solid #efe6ff;overflow:auto;
+  display:flex;
+  flex-direction:column;
 }
-.right h3{font-size:18px;margin-bottom:14px}
-.preview-box{background:#fbf9ff;border:1px solid #efe6ff;padding:16px;border-radius:12px}
-.preview-question{font-weight:700;margin-bottom:12px}
-.preview-option{padding:10px;border-radius:8px;background:#fff;border:1px solid #eee;margin-bottom:8px;display:flex;align-items:center;gap:10px}
-.preview-feedback{font-size:13px;color:#6f6b78;margin-top:6px;padding-left:28px}
+.right h3{
+  font-size:16px;
+  margin:0;
+  padding:15px;
+  border-bottom:1px solid #efe6ff;
+  color:#3a3440;
+}
+.preview-content {
+  flex:1;
+  overflow:auto;
+  padding:15px;
+}
+.preview-box{
+  background:#fbf9ff;
+  border:1px solid #efe6ff;
+  padding:12px;
+  border-radius:8px
+}
+.preview-question{font-weight:600;margin-bottom:10px;font-size:15px}
+.preview-option{
+  padding:8px;
+  border-radius:6px;
+  background:#fff;
+  border:1px solid #eee;
+  margin-bottom:6px;
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+}
+.preview-option.correct{background:#e7f7ed;border-color:#c3e6cb}
+.preview-option-image{
+  max-width:60px;
+  max-height:50px;
+  border-radius:4px;
+  border:1px solid #e9e3f8;
+  object-fit:contain;
+}
+.preview-option-content{
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.preview-option-text{
+  flex:1;
+  font-size:14px;
+}
+.preview-feedback{font-size:12px;color:#6f6b78;margin-top:4px;padding-left:20px}
+.preview-match-pair{display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid #eee}
+.preview-match-left{font-weight:600;font-size:14px}
+.preview-match-right{color:#2b8a3e;font-size:14px}
+.preview-sequence-item{display:flex;gap:8px;align-items:center;padding:6px;border-bottom:1px solid #eee}
 
-/* helpers */
-.hint{color:#9b93a8;text-align:center;margin-top:18px}
+.preview-question-image {
+  margin: 8px 0;
+  max-width: 100%;
+}
+.preview-question-image img {
+  max-width: 100%;
+  max-height: 160px;
+  border-radius: 6px;
+  border: 1px solid #e9e3f8;
+  object-fit: contain;
+}
 
-/* responsive */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255,255,255,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  flex-direction: column;
+  gap: 12px;
+}
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #6f63ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.alert {
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.alert-error {
+  background: #fee;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+.alert-success {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+.alert-info {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  color: #0c5460;
+}
+.alert-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.active-fib-mode {
+  background: #6f63ff !important;
+  color: white !important;
+}
+
+.q-type-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 6px;
+  background: #f0f0f0;
+  color: #666;
+}
+
+.option-image-upload input[type="file"],
+.question-image-upload input[type="file"] {
+  display: none;
+}
+
+.hint {
+  color: #9b93a8;
+  font-size: 13px;
+  font-style: italic;
+}
+
 @media(max-width:1000px){
   .left,.right{display:none}
   .center{width:100%}
@@ -125,125 +503,288 @@ textarea{min-height:110px;resize:vertical}
 </head>
 <body>
 <div class="app">
-  <!-- LEFT -->
   <div class="left">
-    <h2>Questions</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+      <h2 style="margin:0">Questions (<span id="questionCount">0</span>)</h2>
+      <div style="display:flex;gap:4px">
+        <button id="exportBtn" class="small-ghost" style="padding:4px 8px;font-size:12px" title="Export JSON">📥</button>
+        <button id="backToCardsBtn" class="small-ghost" style="padding:4px 8px;font-size:12px" title="Back to Cards">←</button>
+      </div>
+    </div>
     <div id="questionsContainer" class="q-list">
       <div class="hint">No questions added yet</div>
     </div>
-
-    <div style="margin-top:18px;display:flex;gap:8px;justify-content:center">
-      <button id="exportBtn" class="btn-ghost">Export JSON</button>
-    </div>
   </div>
 
-  <!-- CENTER -->
   <div class="center">
-    <div class="header-row">
-      <h1>Create / Edit Question</h1>
-      <div style="width:46%">
-        <label class="label">Question Type</label>
-        <select id="questionType" class="input">
-          <option value="mcq">MCQ</option>
-          <option value="tf">True / False</option>
-          <option value="fib">Fill in the Blank</option>
-        </select>
+    <div class="center-content">
+      <div id="alertContainer"></div>
+      
+      <div class="header-row">
+        <h1>Create / Edit Question</h1>
+        <div style="width:46%">
+          <label class="label">Question Type</label>
+          <select id="questionType" class="input">
+            <option value="mcq">MCQ / Single Choice</option>
+            <option value="tf">True / False</option>
+            <option value="match">Match the Following</option>
+            <option value="fib">Fill in the Blanks</option>
+            <option value="sequence">Sequencing / Ordering</option>
+          </select>
+        </div>
       </div>
-    </div>
 
-    <div class="field">
-      <div class="label">Question</div>
-      <textarea id="questionText" placeholder="Enter question text"></textarea>
-    </div>
-
-    <!-- OPTIONS AREA -->
-    <div id="optionsArea" class="field">
-      <div class="label">Options</div>
-      <div id="optionsContainer" class="options"></div>
-
-      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-        <button id="addOptionBtn" class="small-btn">+ Add Option</button>
-        <button id="aiBtn" class="small-btn">AI Generate Options</button>
-        <div style="margin-left:auto;color:#9b93a8">Select radio for correct answer</div>
+      <div class="field">
+        <div class="label">Question Text</div>
+        <textarea id="questionText" placeholder="Enter question text"></textarea>
+        
+        <div class="question-image-section">
+          <div class="question-image-label">
+            <span>Question Image (optional)</span>
+            <span style="font-size:11px;color:#9b93a8">Max 5MB</span>
+          </div>
+          <div class="question-image-upload">
+            <input type="file" id="questionImageInput" accept="image/*">
+            <button id="questionImageBtn" class="question-image-btn">📁 Add Image to Question</button>
+          </div>
+          <div class="question-image-preview" id="questionImagePreview"></div>
+          <button id="removeQuestionImageBtn" class="question-image-remove" style="display:none">Remove Image</button>
+        </div>
       </div>
-    </div>
 
-    <!-- FILL BLANK AREA -->
-    <div id="fibArea" class="field" style="display:none">
-      <div class="label">Correct Answer</div>
-      <input id="fibAnswer" class="input" placeholder="Enter correct answer text">
-    </div>
+      <div id="optionsArea" class="field">
+        <div class="label">Options</div>
+        <div id="optionsContainer" class="options"></div>
 
-    <!-- MEDIA SECTION — full width container, WILL NOT OVERLAP -->
-    <div class="media-wrapper">
-      <div class="media-heading">Attach Media (optional)</div>
-      <label class="upload-box" id="uploadBox">📁 Click to upload image or video (JPG / PNG / MP4)</label>
-      <input type="file" id="fileInput" accept="image/*,video/*" style="display:none">
-      <div class="media-preview" id="mediaPreview"></div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button id="removeMediaBtn" class="small-ghost" style="display:none">Remove Media</button>
-        <div style="margin-left:auto;color:#9b93a8;font-size:13px" id="mediaInfo"></div>
+        <div style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button id="addOptionBtn" class="small-btn">+ Add Option</button>
+          <button id="aiBtn" class="small-btn" style="background:linear-gradient(135deg,#6f63ff,#9333ea);color:white">
+            ✨ AI Generate
+          </button>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;margin-left:8px">
+            <input type="checkbox" id="mcqRandomize" checked>
+            🔀 Randomize for students
+          </label>
+          <div style="margin-left:auto;color:#9b93a8;font-size:12px">Select radio for correct answer</div>
+        </div>
       </div>
-    </div>
 
-    <div class="field">
-      <div class="label">General Correct Feedback (fallback)</div>
-      <textarea id="generalCorrectFb" placeholder="Fallback correct feedback"></textarea>
-    </div>
+      <div id="fibEnhancedArea" class="field" style="display:none">
+        <div class="label">Fill in Blank Mode</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button id="fibSimpleModeBtn" class="small-btn active-fib-mode">Simple (Single Blank)</button>
+          <button id="fibAdvancedModeBtn" class="small-btn">Advanced (Multiple Blanks)</button>
+        </div>
 
-    <div class="field">
-      <div class="label">General Incorrect Feedback (fallback)</div>
-      <textarea id="generalIncorrectFb" placeholder="Fallback incorrect feedback"></textarea>
-    </div>
+        <div id="fibSimpleSection">
+          <div class="label">Question with Blank</div>
+          <textarea id="fibSimpleText" class="input" placeholder="Enter question with ______ for blank"></textarea>
+          <div class="hint" style="margin-top:4px;font-size:12px">Use ______ (underscores) to indicate blank space</div>
+          
+          <div class="label" style="margin-top:12px">Correct Answer</div>
+          <input id="fibSimpleAnswer" class="input" placeholder="Enter correct answer">
+          
+          <div style="margin-top:8px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+              <input type="checkbox" id="fibMultipleAnswers">
+              Allow multiple correct answers
+            </label>
+            <div class="hint" style="font-size:12px">Student can enter any of the accepted answers</div>
+          </div>
+          
+          <div id="fibMultipleAnswersContainer" style="display:none;margin-top:12px">
+            <div class="label">Multiple Correct Answers (comma separated)</div>
+            <input id="fibMultipleAnswersInput" class="input" placeholder="healthy, nutritious, good">
+            <div class="hint" style="font-size:12px">Enter multiple acceptable answers separated by commas</div>
+          </div>
+        </div>
 
-    <div class="row-actions" style="align-items:center">
-      <button id="addQuestionBtn" class="btn-primary">+ Add Question</button>
-      <button id="updateQuestionBtn" class="btn-ghost" style="display:none">Update Question</button>
-      <button id="clearBtn" class="btn-ghost">Clear</button>
-      <button id="saveQuizBtn" class="btn-primary" style="margin-left:auto">Save Quiz</button>
+        <div id="fibAdvancedSection" style="display:none">
+          <div class="label">Paragraph with Blanks</div>
+          <textarea id="fibParagraph" class="input" placeholder="Enter paragraph with [BLANK] markers"></textarea>
+          <div class="hint" style="margin-top:4px;font-size:12px">
+            Use [BLANK] where answers should go. Example: "Ram eats [BLANK] food. He is a [BLANK] boy."
+          </div>
+          
+          <div class="blanks-counter" style="margin-top:8px">
+            <span id="blanksCount">0 blanks detected</span>
+            <button id="refreshBlanksBtn" class="small-ghost">Refresh</button>
+          </div>
+          
+          <div id="fibBlanksContainer" class="fib-answer-set" style="margin-top:12px">
+            <div class="hint">Add [BLANK] markers in the paragraph above to create answer fields</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="matchArea" class="field" style="display:none">
+        <div class="label">Match Pairs</div>
+        <div class="hint" style="font-size:13px">Create matching pairs (Left item matches with Right item)</div>
+        
+        <div style="margin-top:8px;margin-bottom:10px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+            <input type="checkbox" id="matchRandomize" checked>
+            🔀 Randomize right items for students
+          </label>
+          <div class="hint" style="font-size:12px;margin-top:2px">Each student will see right items in different order</div>
+        </div>
+        
+        <div id="matchContainer" class="match-container">
+          <div class="hint">No pairs added yet. Click "Add Pair" to start.</div>
+        </div>
+        
+        <div style="margin-top:10px;display:flex;gap:6px">
+          <button id="addMatchPairBtn" class="small-btn">+ Add Pair</button>
+          <div style="margin-left:auto;color:#9b93a8;font-size:12px">Each left item matches with one right item</div>
+        </div>
+      </div>
+
+      <div id="sequenceArea" class="field" style="display:none">
+        <div class="label">Sequence Items</div>
+        <div class="hint" style="font-size:13px">Add items in the correct order (students will reorder them)</div>
+        
+        <div style="margin-top:8px;margin-bottom:10px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+            <input type="checkbox" id="sequenceRandomize" checked>
+            🔀 Randomize items for students
+          </label>
+          <div class="hint" style="font-size:12px;margin-top:2px">Students will see items in shuffled order to arrange</div>
+        </div>
+        
+        <div id="sequenceContainer" class="sequence-container">
+          <div class="hint">No sequence items added yet. Click "Add Item" to start.</div>
+        </div>
+        
+        <div style="margin-top:10px;display:flex;gap:6px">
+          <button id="addSequenceItemBtn" class="small-btn">+ Add Item</button>
+          <div style="margin-left:auto;color:#9b93a8;font-size:12px">Drag items to reorder</div>
+        </div>
+      </div>
+
+      <div class="media-wrapper">
+        <div class="media-heading">Attach Supporting Media (optional)</div>
+        <label class="upload-box" id="uploadBox">📁 Click to upload supporting image or video (JPG / PNG / MP4)</label>
+        <input type="file" id="fileInput" accept="image/*,video/*" style="display:none">
+        <div class="media-preview" id="mediaPreview"></div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button id="removeMediaBtn" class="small-ghost" style="display:none">Remove Media</button>
+          <div style="margin-left:auto;color:#9b93a8;font-size:12px" id="mediaInfo"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label">General Correct Feedback (fallback)</div>
+        <textarea id="generalCorrectFb" placeholder="Fallback correct feedback"></textarea>
+      </div>
+
+      <div class="field">
+        <div class="label">General Incorrect Feedback (fallback)</div>
+        <textarea id="generalIncorrectFb" placeholder="Fallback incorrect feedback"></textarea>
+      </div>
+
+      <div class="row-actions">
+        <button id="addQuestionBtn" class="btn-primary">+ Add Question</button>
+        <button id="updateQuestionBtn" class="btn-ghost" style="display:none">Update Question</button>
+        <button id="duplicateQuestionBtn" class="btn-ghost" style="display:none">
+          📋 Duplicate
+        </button>
+        <button id="clearBtn" class="btn-ghost">Clear</button>
+        <button id="saveQuizBtn" class="btn-primary" style="margin-left:auto">
+          💾 Save Quiz <span style="font-size:10px;opacity:0.7">(auto-saves)</span>
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- RIGHT -->
   <div class="right">
     <h3>Preview</h3>
-    <div class="preview-box" id="previewBox">
-      <div class="preview-question" id="previewQ">No question</div>
-      <div id="previewOptionsArea"></div>
-      <div id="previewMedia" style="margin-top:12px"></div>
-      <div id="previewGeneralFb" style="margin-top:12px;color:#6f6b78;font-size:13px"></div>
+    <div class="preview-content">
+      <div class="preview-box">
+        <div class="preview-question" id="previewQ">No question</div>
+        <div class="preview-question-image" id="previewQuestionImage"></div>
+        <div id="previewOptionsArea"></div>
+        <div id="previewMedia" style="margin-top:10px"></div>
+        <div id="previewGeneralFb" style="margin-top:10px;color:#6f6b78;font-size:12px"></div>
+      </div>
     </div>
   </div>
 </div>
 
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+  <div class="loading-spinner"></div>
+  <div id="loadingText">Loading...</div>
+</div>
+
 <script>
-/* ========= State ========= */
-let questions = [];
-let selectedQuestionIndex = -1;
+/* ================================
+   GLOBAL APPLICATION STATE
+================================ */
+const state = {
+  questions: [],
+  selectedQuestionIndex: -1,
 
-/* Each question structure:
-{
-  id: 'q_xxx',
-  type: 'mcq'|'tf'|'fib',
-  text: '...',
-  options: [ { id:'o1', text:'A', correctFeedback:'', incorrectFeedback:'' }, ... ],
-  correctIndex: 0,
-  fibAnswer: '',
-  generalCorrectFb: '',
-  generalIncorrectFb: '',
-  media: { type: 'image'|'video', dataUrl: 'data:...' , name: 'file.jpg' } | null
-}
-*/
+  // MCQ/TrueFalse options state
+  options: [],
 
-/* ========= DOM refs ========= */
+  editor: {
+    questionImageUrl: null,
+    uploadedMedia: {
+      url: null,
+      name: null,
+      type: null
+    }
+  },
+
+  fib: {
+    mode: 'simple',
+    blanks: []
+  },
+
+  match: {
+    pairs: [],
+    randomize: true
+  },
+
+  sequence: {
+    items: [],
+    randomize: true
+  },
+
+  autosave: {
+    enabled: true,
+    timer: null,
+    hasUnsavedChanges: false
+  },
+
+  upload: {
+    inProgress: false
+  }
+};
+
+const getQuestions = () => state.questions;
+const getSelectedIndex = () => state.selectedQuestionIndex;
+const isEditing = () => state.selectedQuestionIndex !== -1;
+
+const MAX_FILE_SIZE = 5*1024*1024;
+
+const backToCardsBtn = document.getElementById('backToCardsBtn');
 const questionsContainer = document.getElementById('questionsContainer');
+const questionCount = document.getElementById('questionCount');
+const alertContainer = document.getElementById('alertContainer');
+const loadingOverlay = document.getElementById('loadingOverlay');
+const loadingText = document.getElementById('loadingText');
+
 const questionType = document.getElementById('questionType');
 const questionText = document.getElementById('questionText');
+const questionImageInput = document.getElementById('questionImageInput');
+const questionImageBtn = document.getElementById('questionImageBtn');
+const questionImagePreview = document.getElementById('questionImagePreview');
+const removeQuestionImageBtn = document.getElementById('removeQuestionImageBtn');
+
 const optionsContainer = document.getElementById('optionsContainer');
 const addOptionBtn = document.getElementById('addOptionBtn');
 const aiBtn = document.getElementById('aiBtn');
-const fibArea = document.getElementById('fibArea');
-const fibAnswer = document.getElementById('fibAnswer');
+const mcqRandomize = document.getElementById('mcqRandomize');
 const fileInput = document.getElementById('fileInput');
 const uploadBox = document.getElementById('uploadBox');
 const mediaPreview = document.getElementById('mediaPreview');
@@ -255,569 +796,1565 @@ const generalIncorrectFb = document.getElementById('generalIncorrectFb');
 
 const addQuestionBtn = document.getElementById('addQuestionBtn');
 const updateQuestionBtn = document.getElementById('updateQuestionBtn');
+const duplicateQuestionBtn = document.getElementById('duplicateQuestionBtn');
 const clearBtn = document.getElementById('clearBtn');
 const saveQuizBtn = document.getElementById('saveQuizBtn');
 
 const previewQ = document.getElementById('previewQ');
+const previewQuestionImage = document.getElementById('previewQuestionImage');
 const previewOptionsArea = document.getElementById('previewOptionsArea');
 const previewMedia = document.getElementById('previewMedia');
 const previewGeneralFb = document.getElementById('previewGeneralFb');
 
 const exportBtn = document.getElementById('exportBtn');
 
-// URL / context helpers
-function getQueryParam(name){
-  const url = new URL(window.location.href);
-  return url.searchParams.get(name);
+const fibEnhancedArea = document.getElementById('fibEnhancedArea');
+const fibSimpleModeBtn = document.getElementById('fibSimpleModeBtn');
+const fibAdvancedModeBtn = document.getElementById('fibAdvancedModeBtn');
+const fibSimpleSection = document.getElementById('fibSimpleSection');
+const fibAdvancedSection = document.getElementById('fibAdvancedSection');
+const fibSimpleText = document.getElementById('fibSimpleText');
+const fibSimpleAnswer = document.getElementById('fibSimpleAnswer');
+const fibMultipleAnswers = document.getElementById('fibMultipleAnswers');
+const fibMultipleAnswersContainer = document.getElementById('fibMultipleAnswersContainer');
+const fibMultipleAnswersInput = document.getElementById('fibMultipleAnswersInput');
+const fibParagraph = document.getElementById('fibParagraph');
+const fibBlanksContainer = document.getElementById('fibBlanksContainer');
+const blanksCount = document.getElementById('blanksCount');
+const refreshBlanksBtn = document.getElementById('refreshBlanksBtn');
+
+const matchArea = document.getElementById('matchArea');
+const matchContainer = document.getElementById('matchContainer');
+const addMatchPairBtn = document.getElementById('addMatchPairBtn');
+const matchRandomize = document.getElementById('matchRandomize');
+
+const sequenceArea = document.getElementById('sequenceArea');
+const sequenceContainer = document.getElementById('sequenceContainer');
+const addSequenceItemBtn = document.getElementById('addSequenceItemBtn');
+const sequenceRandomize = document.getElementById('sequenceRandomize');
+
+function getQueryParam(n) {
+  return new URL(window.location.href).searchParams.get(n);
 }
 
 const lessonId = getQueryParam('lesson_id');
 const topicId = getQueryParam('topic_id');
-const cardId = getQueryParam('card_id');
+let cardId = getQueryParam('card_id');
 const displayOrderParam = getQueryParam('display_order');
+const courseId = getQueryParam('course_id');
 let currentCardTitle = 'Quiz';
-let currentCardDisplayOrder = null;
 
-/* ========= Utilities ========= */
-function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+function showAlert(m, t = 'error', d = 5000) {
+  const a = document.createElement('div');
+  a.className = `alert alert-${t}`;
+  a.innerHTML = `<span>${m}</span><button class="alert-close" onclick="this.parentElement.remove()">×</button>`;
+  alertContainer.appendChild(a);
+  if (d > 0) setTimeout(() => {
+    if (a.parentElement) a.remove();
+  }, d);
+  return a;
+}
 
-function resetEditor(){
-  selectedQuestionIndex = -1;
+function showLoading(m = 'Loading...') {
+  loadingText.textContent = m;
+  loadingOverlay.style.display = 'flex';
+}
+
+function hideLoading() {
+  loadingOverlay.style.display = 'none';
+}
+
+function scheduleAutoSave() {
+  if (!state.autosave.enabled) return;
+  if (state.upload.inProgress) return;
+  if (!state.questions.length) return;
+  state.autosave.hasUnsavedChanges = true;
+  clearTimeout(state.autosave.timer);
+  state.autosave.timer = setTimeout(() => saveQuiz(true), 30000);
+}
+
+function updateQuestionCount() {
+  questionCount.textContent = state.questions.length;
+}
+
+function uid(p = 'id') {
+  return p + '_' + Math.random().toString(36).slice(2, 9);
+}
+
+function validateFileSize(f, m = MAX_FILE_SIZE) {
+  if (f.size > m) {
+    const s = (m / (1024 * 1024)).toFixed(1);
+    throw new Error(`File too large. Maximum size is ${s}MB.`);
+  }
+}
+
+async function uploadImage(file, type = 'option') {
+  if (state.upload.inProgress) {
+    throw new Error('Another upload is in progress. Please wait.');
+  }
+  state.upload.inProgress = true;
+  showLoading(`Uploading ${type} image...`);
+  try {
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Please select a valid image file');
+    }
+    validateFileSize(file);
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!token) throw new Error('Authentication required');
+    const response = await fetch('/api/v1/uploads', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      credentials: 'include',
+      body: formData
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || 'Upload failed');
+    }
+    const data = await response.json();
+    if (!data.success || !data.url) {
+      throw new Error('Upload failed');
+    }
+    return data.url;
+  } finally {
+    state.upload.inProgress = false;
+    hideLoading();
+  }
+}
+
+async function getDeepSeekAPIKey() {
+  try {
+    const t = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!t) throw new Error('Authentication required');
+    const r = await fetch('/api/v1/settings/deepseek-key', {
+      headers: { 'Authorization': 'Bearer ' + t },
+      credentials: 'include'
+    });
+    if (!r.ok) throw new Error('DeepSeek API key not configured');
+    const d = await r.json();
+    return d.api_key;
+  } catch (e) {
+    console.error('Failed to get DeepSeek API key:', e);
+    throw new Error('AI service not configured. Please contact administrator.');
+  }
+}
+
+async function generateOptionsWithAI(q) {
+  showLoading('Generating options with AI...');
+  try {
+    const k = await getDeepSeekAPIKey();
+    const p = `Generate 4 multiple choice options for this question. Return ONLY a JSON array with this exact format:\n[\n  {"text": "option text", "isCorrect": true, "correctFeedback": "feedback", "incorrectFeedback": "feedback"},\n  {"text": "option text", "isCorrect": false, "correctFeedback": "", "incorrectFeedback": "feedback"},\n  ...\n]\n\nQuestion: ${q}\n\nRequirements:\n- Exactly 4 options\n- Only ONE correct answer (isCorrect: true)\n- Make wrong answers plausible but clearly incorrect\n- Keep options concise (under 100 characters)\n- Provide helpful feedback\n- Return ONLY the JSON array, no other text`;
+    const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${k}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: p }],
+        temperature: 0.7,
+        max_tokens: 1000
+      })
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.error?.message || 'AI generation failed');
+    }
+    const d = await r.json();
+    const c = d.choices[0]?.message?.content?.trim();
+    if (!c) throw new Error('No response from AI');
+    let opts;
+    try {
+      const clean = c.replace(/```json\n?|\n?```/g, '').trim();
+      opts = JSON.parse(clean);
+    } catch (e) {
+      throw new Error('Invalid AI response format');
+    }
+    if (!Array.isArray(opts)) {
+      throw new Error('AI returned invalid format');
+    }
+    if (opts.length !== 4) {
+      throw new Error('Invalid options format from AI');
+    }
+    return opts;
+  } catch (e) {
+    showAlert(`AI generation failed: ${e.message}`);
+    throw e;
+  } finally {
+    hideLoading();
+  }
+}
+
+function showQuestionImagePreview(u, n = '') {
+  questionImagePreview.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = u;
+  img.alt = 'Question image';
+  img.style.maxWidth = '100%';
+  img.style.maxHeight = '160px';
+  img.style.objectFit = 'contain';
+  questionImagePreview.appendChild(img);
+  removeQuestionImageBtn.style.display = 'block';
+  updatePreview();
+}
+
+function hideQuestionImagePreview() {
+  questionImagePreview.innerHTML = '';
+  removeQuestionImageBtn.style.display = 'none';
+  questionImageInput.value = '';
+  state.editor.questionImageUrl = null;
+  updatePreview();
+}
+
+async function handleQuestionImageUpload(f) {
+  if (!f) return;
+  try {
+    const u = await uploadImage(f, 'question');
+    state.editor.questionImageUrl = u;
+    showQuestionImagePreview(u, f.name);
+    showAlert('Question image uploaded!', 'success', 3000);
+    scheduleAutoSave();
+  } catch (e) {
+    showAlert(`Upload failed: ${e.message}`);
+    console.error('Question image upload failed:', e);
+  }
+}
+
+// ========== SECTION 2: MCQ + TRUE/FALSE FIX ==========
+
+function createOption(option) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'option-block';
+  wrapper.dataset.id = option.id;
+
+  const row = document.createElement('div');
+  row.className = 'option-row';
+
+  const radio = document.createElement('input');
+  radio.type = 'radio';
+  radio.name = 'correctOption';
+  radio.checked = option.isCorrect;
+
+  radio.addEventListener('change', () => {
+    state.options.forEach(o => o.isCorrect = false);
+    option.isCorrect = true;
+    renderOptions();
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = option.text;
+  input.placeholder = 'Option text';
+
+  input.addEventListener('input', () => {
+    option.text = input.value;
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  const removeBtn = document.createElement('button');
+  removeBtn.textContent = '🗑';
+  removeBtn.onclick = () => {
+    state.options = state.options.filter(o => o.id !== option.id);
+    
+    // Fix 6: If correct option was deleted, make first option correct
+    if (!state.options.some(o => o.isCorrect) && state.options.length) {
+      state.options[0].isCorrect = true;
+    }
+    
+    renderOptions();
+    updatePreview();
+    scheduleAutoSave();
+  };
+
+  // Fix 7: Hide delete button for True/False questions
+  if (questionType.value === 'tf') {
+    removeBtn.style.display = 'none';
+  }
+
+  row.appendChild(radio);
+  row.appendChild(input);
+  row.appendChild(removeBtn);
+  wrapper.appendChild(row);
+
+  return wrapper;
+}
+
+function renderOptions() {
+  optionsContainer.innerHTML = '';
+
+  state.options.forEach(opt => {
+    optionsContainer.appendChild(createOption(opt));
+  });
+
+  if (state.options.length === 0) {
+    optionsContainer.innerHTML =
+      '<div class="hint">No options added yet</div>';
+  }
+}
+
+function addOption(text = '') {
+  state.options.push({
+    id: uid('opt'),
+    text,
+    isCorrect: false
+  });
+
+  renderOptions();
+  updatePreview();
+  scheduleAutoSave();
+}
+
+// Fix 1: Safe optionsAreaShow function
+function optionsAreaShow(show) {
+  const el = document.getElementById('optionsArea');
+  if (!el) return;
+  el.style.display = show ? '' : 'none';
+}
+
+// Fix 1: Updated showTypeUI to preserve options when editing
+function showTypeUI(t) {
+  const isEdit = state.selectedQuestionIndex !== -1;
+
+  if (!isEdit) {
+    // Only reset state when NOT editing
+    state.options = [];
+    state.match.pairs = [];
+    state.sequence.items = [];
+  }
+
+  optionsAreaShow(false);
+  fibEnhancedArea.style.display = 'none';
+  matchArea.style.display = 'none';
+  sequenceArea.style.display = 'none';
+  addOptionBtn.style.display = '';
+  aiBtn.style.display = '';
+  
+  if (t === 'mcq') {
+    optionsAreaShow(true);
+    if (!isEdit) {
+      // Only render empty options for new questions
+      renderOptions();
+    }
+  } else if (t === 'tf') {
+    optionsAreaShow(true);
+    
+    // For TF, always create True/False options
+    state.options = [
+      { id: uid('opt'), text: 'True', isCorrect: true },
+      { id: uid('opt'), text: 'False', isCorrect: false }
+    ];
+    
+    addOptionBtn.style.display = 'none';
+    aiBtn.style.display = 'none';
+    
+    renderOptions();
+  } else if (t === 'match') {
+    matchArea.style.display = '';
+    addOptionBtn.style.display = 'none';
+    aiBtn.style.display = 'none';
+    if (!isEdit) {
+      state.match.pairs = [];
+      renderMatchPairs();
+    }
+  } else if (t === 'fib') {
+    fibEnhancedArea.style.display = '';
+    addOptionBtn.style.display = 'none';
+    aiBtn.style.display = 'none';
+    if (!isEdit) {
+      setFibMode('simple');
+    }
+  } else if (t === 'sequence') {
+    sequenceArea.style.display = '';
+    addOptionBtn.style.display = 'none';
+    aiBtn.style.display = 'none';
+    if (!isEdit) {
+      state.sequence.items = [];
+      renderSequenceItems();
+    }
+  }
+}
+
+// ========== SECTION 3: FIB COMPLETE FIX ==========
+
+function setFibMode(mode) {
+  state.fib.mode = mode;
+
+  fibSimpleSection.style.display =
+    mode === 'simple' ? 'block' : 'none';
+
+  fibAdvancedSection.style.display =
+    mode === 'advanced' ? 'block' : 'none';
+
+  fibSimpleModeBtn.classList.toggle('active-fib-mode', mode === 'simple');
+  fibAdvancedModeBtn.classList.toggle('active-fib-mode', mode === 'advanced');
+
+  updatePreview();
+  scheduleAutoSave();
+}
+
+function detectAdvancedBlanks(force = false) {
+  const text = fibParagraph.value;
+  const matches = text.match(/\[BLANK\]/gi) || [];
+
+  blanksCount.textContent =
+    `${matches.length} blank${matches.length !== 1 ? 's' : ''} detected`;
+
+  if (!force && state.fib.blanks.length === matches.length) return;
+
+  state.fib.blanks = matches.map((_, i) => ({
+    index: i,
+    correctAnswers: ['']
+  }));
+
+  // Fix 8: Re-index blanks
+  state.fib.blanks.forEach((b, i) => b.index = i);
+  
+  renderAdvancedBlanks();
+  updatePreview();
+}
+
+function renderAdvancedBlanks() {
+  fibBlanksContainer.innerHTML = '';
+
+  if (state.fib.blanks.length === 0) {
+    fibBlanksContainer.innerHTML =
+      '<div class="hint">Add [BLANK] markers to create blanks</div>';
+    return;
+  }
+
+  state.fib.blanks.forEach((b, i) => {
+    const div = document.createElement('div');
+    div.className = 'fib-blank-item';
+
+    div.innerHTML = `
+      <div class="fib-blank-number">${i + 1}</div>
+      <div style="flex:1">
+        <input
+          type="text"
+          placeholder="Correct answers (comma separated)"
+          value="${b.correctAnswers.join(', ')}"
+          data-index="${i}"
+        />
+      </div>
+    `;
+
+    div.querySelector('input').oninput = e => {
+      state.fib.blanks[i].correctAnswers =
+        e.target.value.split(',').map(x => x.trim()).filter(Boolean);
+      scheduleAutoSave();
+      updatePreview();
+    };
+
+    fibBlanksContainer.appendChild(div);
+  });
+}
+
+// ========== SECTION 4: MATCH + SEQUENCE COMPLETE FIX ==========
+
+function renderMatchPairs() {
+  matchContainer.innerHTML = '';
+
+  if (state.match.pairs.length === 0) {
+    matchContainer.innerHTML =
+      '<div class="hint">No pairs added yet</div>';
+    return;
+  }
+
+  state.match.pairs.forEach(pair => {
+    const row = document.createElement('div');
+    row.className = 'match-pair';
+
+    row.innerHTML = `
+      <input class="input" placeholder="Left item" value="${pair.left}">
+      <span>↔</span>
+      <input class="input" placeholder="Right item" value="${pair.right}">
+      <button>🗑</button>
+    `;
+
+    const [leftInp, , rightInp, delBtn] = row.children;
+
+    leftInp.oninput = e => {
+      pair.left = e.target.value;
+      updatePreview();
+      scheduleAutoSave();
+    };
+
+    rightInp.oninput = e => {
+      pair.right = e.target.value;
+      updatePreview();
+      scheduleAutoSave();
+    };
+
+    delBtn.onclick = () => {
+      state.match.pairs =
+        state.match.pairs.filter(p => p.id !== pair.id);
+      renderMatchPairs();
+      updatePreview();
+      scheduleAutoSave();
+    };
+
+    matchContainer.appendChild(row);
+  });
+}
+
+function addMatchPair() {
+  state.match.pairs.push({
+    id: uid('match'),
+    left: '',
+    right: ''
+  });
+
+  renderMatchPairs();
+  scheduleAutoSave();
+}
+
+// SEQUENCE functions
+let draggedSeqId = null;
+
+function renderSequenceItems() {
+  sequenceContainer.innerHTML = '';
+
+  if (state.sequence.items.length === 0) {
+    sequenceContainer.innerHTML =
+      '<div class="hint">No sequence items added yet</div>';
+    return;
+  }
+
+  state.sequence.items.forEach((item, index) => {
+    const row = document.createElement('div');
+    row.className = 'sequence-item';
+    row.draggable = true;
+    row.dataset.id = item.id;
+
+    row.innerHTML = `
+      <span>${index + 1}</span>
+      <input class="input" value="${item.text}">
+      <span style="cursor:grab">⋮⋮</span>
+      <button>🗑</button>
+    `;
+
+    row.ondragstart = () => draggedSeqId = item.id;
+    row.ondragover = e => e.preventDefault();
+
+    row.ondrop = () => {
+      const from = state.sequence.items.findIndex(i => i.id === draggedSeqId);
+      const to = state.sequence.items.findIndex(i => i.id === item.id);
+      if (from === -1 || to === -1) return;
+
+      const moved = state.sequence.items.splice(from, 1)[0];
+      state.sequence.items.splice(to, 0, moved);
+
+      renderSequenceItems();
+      updatePreview();
+      scheduleAutoSave();
+    };
+
+    row.querySelector('input').oninput = e => {
+      item.text = e.target.value;
+      updatePreview();
+      scheduleAutoSave();
+    };
+
+    row.querySelector('button').onclick = () => {
+      state.sequence.items =
+        state.sequence.items.filter(i => i.id !== item.id);
+      renderSequenceItems();
+      updatePreview();
+      scheduleAutoSave();
+    };
+
+    sequenceContainer.appendChild(row);
+  });
+}
+
+function addSequenceItem() {
+  state.sequence.items.push({
+    id: uid('seq'),
+    text: ''
+  });
+
+  renderSequenceItems();
+  scheduleAutoSave();
+}
+
+// ========== MAIN FUNCTIONS ==========
+
+async function handleFileSelect(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  const al = ['image/', 'video/'];
+  if (!al.some(p => f.type.startsWith(p))) {
+    showAlert('Unsupported file type. Please upload JPG, PNG, or MP4 files.');
+    return;
+  }
+  try {
+    validateFileSize(f);
+  } catch (er) {
+    showAlert(er.message);
+    return;
+  }
+  showLoading('Uploading media...');
+  try {
+    const fd = new FormData();
+    fd.append('file', f);
+    const t = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!t) throw new Error('Authentication required');
+    const r = await fetch('/api/v1/uploads', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + t },
+      credentials: 'include',
+      body: fd
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(e.error || 'Upload failed');
+    }
+    const d = await r.json();
+    if (!d.success) throw new Error(d.error || 'Upload failed');
+    state.editor.uploadedMedia.url = d.url;
+    state.editor.uploadedMedia.name = f.name;
+    state.editor.uploadedMedia.type = f.type.startsWith('video') ? 'video' : 'image';
+    showMediaPreview(d.url, f.type, f.name);
+    updatePreview();
+    scheduleAutoSave();
+    showAlert('Media uploaded successfully!', 'success', 3000);
+  } catch (er) {
+    showAlert(`Upload failed: ${er.message}`);
+    fileInput.value = '';
+  } finally {
+    hideLoading();
+  }
+}
+
+function showMediaPreview(u, t, n) {
+  mediaPreview.innerHTML = '';
+  if (t.startsWith('video')) {
+    const v = document.createElement('video');
+    v.controls = true;
+    v.src = u;
+    v.style.maxWidth = '100%';
+    mediaPreview.appendChild(v);
+  } else {
+    const img = document.createElement('img');
+    img.src = u;
+    img.alt = n;
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '200px';
+    img.style.objectFit = 'contain';
+    mediaPreview.appendChild(img);
+  }
+  removeMediaBtn.style.display = '';
+  mediaInfo.innerText = n || '';
+}
+
+function hideMediaPreview() {
+  mediaPreview.innerHTML = '';
+  removeMediaBtn.style.display = 'none';
+  mediaInfo.innerText = '';
+  fileInput.value = '';
+}
+
+function updatePreview() {
+  const qt = questionText.value.trim();
+  const t = questionType.value;
+  const tn = { 'mcq': 'MCQ', 'tf': 'True/False', 'match': 'Match', 'fib': 'Fill Blank', 'sequence': 'Sequence' };
+  const tb = `<span class="q-type-badge">${tn[t] || t}</span>`;
+  previewQ.innerHTML = (qt || 'No question') + tb;
+  previewQuestionImage.innerHTML = '';
+  if (state.editor.questionImageUrl) {
+    const img = document.createElement('img');
+    img.src = state.editor.questionImageUrl;
+    img.alt = 'Question image';
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '160px';
+    img.style.objectFit = 'contain';
+    previewQuestionImage.appendChild(img);
+  }
+  previewOptionsArea.innerHTML = '';
+  if (t === 'mcq' || t === 'tf') {
+    if (mcqRandomize.checked) {
+      const rh = document.createElement('div');
+      rh.style.padding = '6px 8px';
+      rh.style.background = '#fff3cd';
+      rh.style.borderRadius = '6px';
+      rh.style.fontSize = '12px';
+      rh.style.marginBottom = '8px';
+      rh.style.color = '#856404';
+      rh.innerHTML = '🔀 <strong>Randomized:</strong> Options will shuffle for each student';
+      previewOptionsArea.appendChild(rh);
+    }
+    state.options.forEach((opt) => {
+      const d = document.createElement('div');
+      d.className = `preview-option ${opt.isCorrect ? 'correct' : ''}`;
+      const rr = document.createElement('input');
+      rr.type = 'radio';
+      rr.disabled = true;
+      rr.checked = opt.isCorrect;
+      const sp = document.createElement('div');
+      sp.className = 'preview-option-text';
+      sp.innerText = opt.text || '(empty)';
+      const cd = document.createElement('div');
+      cd.className = 'preview-option-content';
+      cd.appendChild(rr);
+      cd.appendChild(sp);
+      d.appendChild(cd);
+      previewOptionsArea.appendChild(d);
+    });
+  } else if (t === 'fib') {
+    if (state.fib.mode === 'simple') {
+      const html = fibSimpleText.value.replace(/______/g, '<span class="blank-highlight">______</span>');
+      previewOptionsArea.innerHTML = `
+        <div class="fib-blank-preview">
+          ${html}
+          <div style="margin-top:8px;color:#2b8a3e">
+            Answers: ${(fibMultipleAnswers.checked ? fibMultipleAnswersInput.value : fibSimpleAnswer.value)}
+          </div>
+        </div>
+      `;
+    }
+    if (state.fib.mode === 'advanced') {
+      const para = fibParagraph.value.replace(/\[BLANK\]/g, '<span class="blank-highlight">[BLANK]</span>');
+      let answers = '';
+      state.fib.blanks.forEach((b, i) => {
+        answers += `<div>Blank ${i + 1}: ${b.correctAnswers.join(', ')}</div>`;
+      });
+      previewOptionsArea.innerHTML = `
+        <div class="fib-blank-preview">
+          ${para}
+          <div style="margin-top:8px;color:#2b8a3e">${answers}</div>
+        </div>
+      `;
+    }
+  } else if (t === 'match') {
+    if (state.match.pairs.length > 0) {
+      const md = document.createElement('div');
+      md.style.marginTop = '8px';
+      if (matchRandomize.checked) {
+        const rh = document.createElement('div');
+        rh.style.padding = '6px 8px';
+        rh.style.background = '#fff3cd';
+        rh.style.borderRadius = '6px';
+        rh.style.fontSize = '12px';
+        rh.style.marginBottom = '8px';
+        rh.style.color = '#856404';
+        rh.innerHTML = '🔀 <strong>Randomized:</strong> Right items will shuffle for each student';
+        md.appendChild(rh);
+      }
+      state.match.pairs.forEach(p => {
+        const pd = document.createElement('div');
+        pd.className = 'preview-match-pair';
+        pd.innerHTML = `<span class="preview-match-left">${p.left || '(empty)'}</span><span class="preview-match-right">${p.right || '(empty)'}</span>`;
+        md.appendChild(pd);
+      });
+      previewOptionsArea.appendChild(md);
+    }
+  } else if (t === 'sequence') {
+    if (state.sequence.items.length > 0) {
+      const sd = document.createElement('div');
+      sd.style.marginTop = '8px';
+      if (sequenceRandomize.checked) {
+        const rh = document.createElement('div');
+        rh.style.padding = '6px 8px';
+        rh.style.background = '#fff3cd';
+        rh.style.borderRadius = '6px';
+        rh.style.fontSize = '12px';
+        rh.style.marginBottom = '8px';
+        rh.style.color = '#856404';
+        rh.innerHTML = '🔀 <strong>Randomized:</strong> Items will shuffle for each student';
+        sd.appendChild(rh);
+      }
+      state.sequence.items.forEach((it, i) => {
+        const id = document.createElement('div');
+        id.className = 'preview-sequence-item';
+        id.innerHTML = `<div style="background:#6f63ff;color:white;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold">${i + 1}</div><div style="flex:1">${it.text || '(empty)'}</div>`;
+        sd.appendChild(id);
+      });
+      previewOptionsArea.appendChild(sd);
+    }
+  }
+  previewMedia.innerHTML = '';
+  if (state.editor.uploadedMedia.url) {
+    if (state.editor.uploadedMedia.type === 'video') {
+      const v = document.createElement('video');
+      v.controls = true;
+      v.src = state.editor.uploadedMedia.url;
+      v.style.maxWidth = '100%';
+      previewMedia.appendChild(v);
+    } else {
+      const img = document.createElement('img');
+      img.src = state.editor.uploadedMedia.url;
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '160px';
+      img.style.objectFit = 'contain';
+      previewMedia.appendChild(img);
+    }
+  }
+  previewGeneralFb.innerHTML = '';
+  if (generalCorrectFb.value.trim()) previewGeneralFb.innerHTML += `<div style="color:#2b8a3e">General correct feedback set</div>`;
+  if (generalIncorrectFb.value.trim()) previewGeneralFb.innerHTML += `<div style="color:#d33;margin-top:4px">General incorrect feedback set</div>`;
+}
+
+function gatherQuestionFromEditor() {
+  const t = questionType.value;
+  const txt = questionText.value.trim();
+
+  if (!txt) {
+    showAlert('Enter the question text');
+    return null;
+  }
+
+  const o = {
+    id: uid('q'),
+    type: t,
+    text: txt,
+    questionImageUrl: state.editor.questionImageUrl,
+    options: [],
+    correctIndex: null,
+    fibData: null,
+    matchData: null,
+    sequenceData: null,
+    generalCorrectFb: generalCorrectFb.value.trim(),
+    generalIncorrectFb: generalIncorrectFb.value.trim(),
+    mediaUrl: state.editor.uploadedMedia.url,
+    mediaName: state.editor.uploadedMedia.name,
+    mediaType: state.editor.uploadedMedia.type
+  };
+
+  if (t === 'mcq' || t === 'tf') {
+    if (state.options.length < 2) {
+      showAlert('Add at least 2 options');
+      return null;
+    }
+
+    if (state.options.some(o => !o.text.trim())) {
+      showAlert('Option text cannot be empty');
+      return null;
+    }
+
+    const correctCount = state.options.filter(o => o.isCorrect).length;
+
+    if (correctCount !== 1) {
+      showAlert('Select exactly ONE correct option');
+      return null;
+    }
+
+    o.options = state.options.map(o => ({ ...o }));
+    o.correctIndex = state.options.findIndex(o => o.isCorrect);
+    o.randomizeOptions = mcqRandomize.checked;
+  } else if (t === 'fib' && state.fib.mode === 'simple') {
+    const qText = fibSimpleText.value.trim();
+    if (!qText.includes('______')) {
+      showAlert('Use ______ to indicate the blank');
+      return null;
+    }
+
+    let answers = [];
+
+    if (fibMultipleAnswers.checked) {
+      answers = fibMultipleAnswersInput.value.split(',').map(a => a.trim()).filter(Boolean);
+      if (answers.length === 0) {
+        showAlert('Enter at least one correct answer');
+        return null;
+      }
+    } else {
+      const ans = fibSimpleAnswer.value.trim();
+      if (!ans) {
+        showAlert('Enter the correct answer');
+        return null;
+      }
+      answers = [ans];
+    }
+
+    o.fibData = {
+      mode: 'simple',
+      question: qText,
+      correctAnswers: answers
+    };
+  } else if (t === 'fib' && state.fib.mode === 'advanced') {
+    const para = fibParagraph.value.trim();
+    if (!para) {
+      showAlert('Enter paragraph text');
+      return null;
+    }
+
+    const blankCount = (para.match(/\[BLANK\]/gi) || []).length;
+    if (blankCount === 0) {
+      showAlert('Add [BLANK] markers in the paragraph');
+      return null;
+    }
+
+    if (state.fib.blanks.length !== blankCount) {
+      showAlert('Refresh blanks and fill all answers');
+      return null;
+    }
+
+    for (let b of state.fib.blanks) {
+      if (!b.correctAnswers.length) {
+        showAlert('Fill answers for all blanks');
+        return null;
+      }
+    }
+
+    o.fibData = {
+      mode: 'advanced',
+      paragraph: para,
+      blanks: state.fib.blanks.map(b => ({
+        index: b.index,
+        correctAnswers: b.correctAnswers
+      }))
+    };
+  } else if (t === 'match') {
+    if (state.match.pairs.length === 0) {
+      showAlert('Add at least one matching pair');
+      return null;
+    }
+
+    for (const p of state.match.pairs) {
+      if (!p.left.trim() || !p.right.trim()) {
+        showAlert('Fill both left and right for all pairs');
+        return null;
+      }
+    }
+
+    const lefts = state.match.pairs.map(p => p.left.toLowerCase());
+    if (new Set(lefts).size !== lefts.length) {
+      showAlert('Left side items must be unique');
+      return null;
+    }
+
+    o.matchData = {
+      pairs: state.match.pairs.map(p => ({ ...p })),
+      randomize: matchRandomize.checked
+    };
+  } else if (t === 'sequence') {
+    if (state.sequence.items.length < 2) {
+      showAlert('Add at least 2 sequence items');
+      return null;
+    }
+
+    if (state.sequence.items.some(i => !i.text.trim())) {
+      showAlert('Fill all sequence items');
+      return null;
+    }
+
+    o.sequenceData = {
+      items: state.sequence.items.map((i, idx) => ({
+        id: i.id,
+        text: i.text,
+        order: idx
+      })),
+      randomize: sequenceRandomize.checked
+    };
+  }
+
+  return o;
+}
+
+function addQuestion() {
+  const q = gatherQuestionFromEditor();
+  if (!q) return;
+  state.questions.push(q);
+  renderQuestionsList();
+  resetEditor();
+  updateQuestionCount();
+  scheduleAutoSave();
+  showAlert('Question added!', 'success', 3000);
+}
+
+function updateQuestion() {
+  if (state.selectedQuestionIndex < 0) return;
+  const q = gatherQuestionFromEditor();
+  if (!q) return;
+  q.id = state.questions[state.selectedQuestionIndex].id;
+  state.questions[state.selectedQuestionIndex] = q;
+  renderQuestionsList();
+  resetEditor();
+  updateQuestionCount();
+  scheduleAutoSave();
+  showAlert('Question updated!', 'success', 3000);
+}
+
+function duplicateQuestion() {
+  if (state.selectedQuestionIndex < 0) return;
+  const o = state.questions[state.selectedQuestionIndex];
+  const d = JSON.parse(JSON.stringify(o));
+  d.id = uid('q');
+  d.text = `${d.text} (Copy)`;
+  state.questions.splice(state.selectedQuestionIndex + 1, 0, d);
+  renderQuestionsList();
+  updateQuestionCount();
+  scheduleAutoSave();
+  showAlert('Question duplicated!', 'success', 3000);
+  loadQuestionToEditor(state.selectedQuestionIndex + 1);
+}
+
+function renderQuestionsList() {
+  questionsContainer.innerHTML = '';
+  if (state.questions.length === 0) {
+    const h = document.createElement('div');
+    h.className = 'hint';
+    h.innerText = 'No questions added yet';
+    questionsContainer.appendChild(h);
+    return;
+  }
+  const ti = { 'mcq': '📝', 'tf': '✅', 'match': '↔', 'fib': '▢', 'sequence': '🔢' };
+  state.questions.forEach((q, i) => {
+    const it = document.createElement('div');
+    it.className = 'q-item';
+    it.draggable = true;
+    if (i === state.selectedQuestionIndex) it.classList.add('selected');
+    const l = document.createElement('div');
+    l.style.flex = '1';
+    let ic = ti[q.type] || '❓';
+    let ii = '';
+    if (q.questionImageUrl) ii += '🖼 ';
+    if (q.options?.some(o => o.imageUrl)) ii += '📷';
+    l.innerHTML = `<strong>${i + 1}.</strong> <span style="margin-left:6px">${ic} ${q.text.substring(0, 65) || '(no text)'}</span><span style="margin-left:6px;color:#6f6b78">${ii}</span>`;
+    const rr = document.createElement('div');
+    rr.style.display = 'flex';
+    rr.style.gap = '6px';
+    const eb = document.createElement('button');
+    eb.className = 'btn-ghost';
+    eb.style.padding = '4px 6px';
+    eb.innerText = 'Edit';
+    eb.style.fontSize = '12px';
+    const db = document.createElement('button');
+    db.className = 'btn-ghost';
+    db.style.padding = '4px 6px';
+    db.innerText = 'Delete';
+    db.style.fontSize = '12px';
+    rr.appendChild(eb);
+    rr.appendChild(db);
+    it.appendChild(l);
+    it.appendChild(rr);
+    questionsContainer.appendChild(it);
+    eb.addEventListener('click', () => loadQuestionToEditor(i));
+    db.addEventListener('click', () => {
+      if (confirm('Delete this question?')) {
+        state.questions.splice(i, 1);
+        renderQuestionsList();
+        resetEditor();
+        updateQuestionCount();
+        scheduleAutoSave();
+        showAlert('Question deleted', 'success', 3000);
+      }
+    });
+    it.addEventListener('dragstart', (e) => {
+      it.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', i.toString());
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    it.addEventListener('dragend', () => it.classList.remove('dragging'));
+    it.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+    it.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const f = Number(e.dataTransfer.getData('text/plain'));
+      const t = i;
+      if (!isNaN(f)) moveQuestion(f, t);
+    });
+  });
+}
+
+// Fix 5: Proper moveQuestion with selected index update
+function moveQuestion(from, to) {
+  if (from === to) return;
+
+  const item = state.questions.splice(from, 1)[0];
+  state.questions.splice(to, 0, item);
+
+  // Update selected index
+  if (state.selectedQuestionIndex === from) {
+    state.selectedQuestionIndex = to;
+  } else if (
+    state.selectedQuestionIndex > from &&
+    state.selectedQuestionIndex <= to
+  ) {
+    state.selectedQuestionIndex--;
+  } else if (
+    state.selectedQuestionIndex < from &&
+    state.selectedQuestionIndex >= to
+  ) {
+    state.selectedQuestionIndex++;
+  }
+
+  renderQuestionsList();
+  scheduleAutoSave();
+}
+
+function loadQuestionToEditor(i) {
+  const q = state.questions[i];
+  if (!q) return;
+  state.selectedQuestionIndex = i;
+  questionType.value = q.type;
+  showTypeUI(q.type);
+  questionText.value = q.text;
+  state.editor.questionImageUrl = q.questionImageUrl || null;
+  if (state.editor.questionImageUrl) {
+    showQuestionImagePreview(state.editor.questionImageUrl);
+  } else {
+    hideQuestionImagePreview();
+  }
+  generalCorrectFb.value = q.generalCorrectFb || '';
+  generalIncorrectFb.value = q.generalIncorrectFb || '';
+
+  if (q.type === 'mcq' || q.type === 'tf') {
+    state.options = q.options.map(o => ({ ...o }));
+    mcqRandomize.checked = q.randomizeOptions !== false;
+    renderOptions();
+  }
+
+  if (q.type === 'fib' && q.fibData) {
+    setFibMode(q.fibData.mode);
+    if (q.fibData.mode === 'simple') {
+      fibSimpleText.value = q.fibData.question;
+      fibSimpleAnswer.value = q.fibData.correctAnswers[0] || '';
+      fibMultipleAnswers.checked = q.fibData.correctAnswers.length > 1;
+      fibMultipleAnswersInput.value = q.fibData.correctAnswers.join(', ');
+    }
+    if (q.fibData.mode === 'advanced') {
+      fibParagraph.value = q.fibData.paragraph;
+      state.fib.blanks = q.fibData.blanks.map(b => ({ ...b }));
+      renderAdvancedBlanks();
+    }
+  }
+
+  if (q.type === 'match' && q.matchData) {
+    state.match.pairs = q.matchData.pairs.map(p => ({ ...p }));
+    matchRandomize.checked = q.matchData.randomize !== false;
+    renderMatchPairs();
+  }
+
+  if (q.type === 'sequence' && q.sequenceData) {
+    state.sequence.items = q.sequenceData.items.sort((a, b) => a.order - b.order).map(i => ({ id: i.id, text: i.text }));
+    sequenceRandomize.checked = q.sequenceData.randomize !== false;
+    renderSequenceItems();
+  }
+
+  state.editor.uploadedMedia.url = q.mediaUrl || null;
+  state.editor.uploadedMedia.name = q.mediaName || null;
+  state.editor.uploadedMedia.type = q.mediaType || null;
+  if (state.editor.uploadedMedia.url) {
+    const mt = state.editor.uploadedMedia.type || 'image';
+    showMediaPreview(state.editor.uploadedMedia.url, mt, state.editor.uploadedMedia.name || '');
+  } else {
+    hideMediaPreview();
+  }
+  addQuestionBtn.style.display = 'none';
+  updateQuestionBtn.style.display = '';
+  duplicateQuestionBtn.style.display = '';
+  updatePreview();
+  renderQuestionsList();
+}
+
+// Fix 2: Prevent autosave during resetEditor
+function resetEditor() {
+  // Disable autosave during reset to prevent empty saves
+  state.autosave.enabled = false;
+  
+  state.selectedQuestionIndex = -1;
+  state.options = [];
+  state.fib.blanks = [];
+  state.match.pairs = [];
+  state.sequence.items = [];
   questionText.value = '';
   optionsContainer.innerHTML = '';
-  fibAnswer.value = '';
+  mcqRandomize.checked = true;
+  state.editor.questionImageUrl = null;
+  hideQuestionImagePreview();
+  fibSimpleText.value = '';
+  fibSimpleAnswer.value = '';
+  fibMultipleAnswers.checked = false;
+  
+  // Fix 4: Ensure fibMultipleAnswersContainer is hidden
+  fibMultipleAnswersContainer.style.display = 'none';
+  
+  fibMultipleAnswersInput.value = '';
+  fibParagraph.value = '';
+  state.fib.blanks = [];
+  fibBlanksContainer.innerHTML = '<div class="hint">Add [BLANK] markers in the paragraph above to create answer fields</div>';
+  blanksCount.textContent = '0 blanks detected';
+  state.match.pairs = [];
+  state.match.randomize = true;
+  matchRandomize.checked = true;
+  renderMatchPairs();
+  state.sequence.items = [];
+  state.sequence.randomize = true;
+  sequenceRandomize.checked = true;
+  renderSequenceItems();
   generalCorrectFb.value = '';
   generalIncorrectFb.value = '';
   questionType.value = 'mcq';
+  state.editor.uploadedMedia.url = null;
+  state.editor.uploadedMedia.name = null;
+  state.editor.uploadedMedia.type = null;
   hideMediaPreview();
   showTypeUI('mcq');
   addQuestionBtn.style.display = '';
   updateQuestionBtn.style.display = 'none';
+  duplicateQuestionBtn.style.display = 'none';
   updatePreview();
+  
+  // Re-enable autosave after reset
+  state.autosave.enabled = true;
 }
 
-/* ========= Type UI handler ========= */
-function showTypeUI(type){
-  if(type === 'mcq'){
-    optionsAreaShow(true);
-    fibArea.style.display = 'none';
-    addOptionBtn.style.display = '';
-    aiBtn.style.display = '';
-    // ensure at least 2 options? not forced
-  } else if(type === 'tf'){
-    optionsAreaShow(true);
-    fibArea.style.display = 'none';
-    optionsContainer.innerHTML = '';
-    // create True/False with feedback fields
-    createOptionBlock('True', false, true, {correctFeedback:'', incorrectFeedback:''});
-    createOptionBlock('False', false, true, {correctFeedback:'', incorrectFeedback:''});
-    addOptionBtn.style.display = 'none';
-    aiBtn.style.display = 'none';
-  } else if(type === 'fib'){
-    optionsAreaShow(false);
-    fibArea.style.display = '';
-    addOptionBtn.style.display = 'none';
-    aiBtn.style.display = 'none';
-  }
-}
-function optionsAreaShow(show){
-  document.getElementById('optionsArea').style.display = show ? '' : 'none';
-}
-
-/* ========= Options / Option block ========= */
-function createOptionBlock(text='', checked=false, readOnly=false, optObj=null){
-  // wrapper
-  const wrapper = document.createElement('div');
-  wrapper.className = 'option-block';
-
-  // row: radio + text + remove
-  const row = document.createElement('div'); row.className = 'option-row';
-
-  const radio = document.createElement('input'); radio.type='radio'; radio.name='correctOpt'; radio.className='opt-radio'; radio.checked = checked;
-  radio.addEventListener('change', updatePreview);
-
-  const input = document.createElement('input'); input.type='text'; input.placeholder='Option text';
-  input.value = optObj ? (optObj.text||text) : text;
-  input.oninput = updatePreview;
-  if(readOnly){ input.readOnly = true; input.style.background = '#fafafa'; }
-
-  const removeBtn = document.createElement('button'); removeBtn.className='remove'; removeBtn.innerText='🗑';
-  removeBtn.title = 'Remove option';
-  removeBtn.onclick = ()=> wrapper.remove();
-
-  row.appendChild(radio);
-  row.appendChild(input);
-  if(!readOnly) row.appendChild(removeBtn);
-
-  // feedback labels
-  const fbLabels = document.createElement('div'); fbLabels.className='fb-labels';
-  const cLabel = document.createElement('div'); cLabel.className='label'; cLabel.style.fontSize='12px'; cLabel.style.fontWeight='600'; cLabel.style.flex='1'; cLabel.innerText='Correct Feedback';
-  const iLabel = document.createElement('div'); iLabel.className='label'; iLabel.style.fontSize='12px'; iLabel.style.fontWeight='600'; iLabel.style.flex='1'; iLabel.innerText='Incorrect Feedback';
-  fbLabels.appendChild(cLabel); fbLabels.appendChild(iLabel);
-
-  // feedback inputs
-  const fbRow = document.createElement('div'); fbRow.className='feedback-row';
-  const cInput = document.createElement('input'); cInput.type='text'; cInput.placeholder='Correct feedback for this option'; cInput.className='feedback-input';
-  const iInput = document.createElement('input'); iInput.type='text'; iInput.placeholder='Incorrect feedback for this option'; iInput.className='feedback-input';
-
-  if(optObj){
-    cInput.value = optObj.correctFeedback || '';
-    iInput.value = optObj.incorrectFeedback || '';
-    if(optObj.checked) radio.checked = true;
-  }
-
-  cInput.addEventListener('input', updatePreview);
-  iInput.addEventListener('input', updatePreview);
-
-  fbRow.appendChild(cInput); fbRow.appendChild(iInput);
-
-  wrapper.appendChild(row);
-  wrapper.appendChild(fbLabels);
-  wrapper.appendChild(fbRow);
-
-  optionsContainer.appendChild(wrapper);
-  updatePreview();
-  return wrapper;
-}
-
-/* Add option button */
-addOptionBtn.addEventListener('click', ()=> createOptionBlock('','',false,null));
-
-/* AI generate (simulated) */
-aiBtn.addEventListener('click', ()=>{
-  const q = questionText.value.trim();
-  if(!q){ alert('Enter question text to generate options'); return; }
-  // simple mock generation
-  const words = q.split(/\W+/).filter(w=>w.length>3);
-  const base = words[0] || 'Answer';
-  const opts = [
-    {text: `${base} (correct)`, correctFeedback:'Good job!', incorrectFeedback:''},
-    {text: `Not ${words[1]||'this'}`, correctFeedback:'', incorrectFeedback:'Close, but not correct.'},
-    {text: `${words[2]||'Another'} option`, correctFeedback:'', incorrectFeedback:'Incorrect.'},
-    {text: 'None of the above', correctFeedback:'', incorrectFeedback:'Incorrect.'}
-  ];
-  optionsContainer.innerHTML = '';
-  opts.forEach((o,i)=> createOptionBlock(o.text, i===0, false, { text: o.text, correctFeedback: o.correctFeedback, incorrectFeedback: o.incorrectFeedback, checked: i===0 }));
-});
-
-/* ========= Media upload handling ========= */
-let currentMedia = null; // { type:'image'|'video', dataUrl:'...', name:'' }
-
-uploadBox.addEventListener('click', ()=> fileInput.click());
-fileInput.addEventListener('change', handleFileSelect);
-removeMediaBtn.addEventListener('click', ()=> { currentMedia = null; hideMediaPreview(); });
-
-function handleFileSelect(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const allowed = ['image/', 'video/'];
-  if(!allowed.some(p=>file.type.startsWith(p))){ alert('Unsupported file type'); return; }
-
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    const dataUrl = ev.target.result;
-    currentMedia = { type: file.type.startsWith('video') ? 'video' : 'image', dataUrl, name: file.name };
-    showMediaPreview();
-    updatePreview(); // update right preview
-  };
-  reader.readAsDataURL(file);
-}
-
-function showMediaPreview(){
-  if(!currentMedia) return hideMediaPreview();
-  mediaPreview.innerHTML = '';
-  if(currentMedia.type === 'video'){
-    const v = document.createElement('video'); v.controls = true; v.src = currentMedia.dataUrl; v.style.maxWidth='100%';
-    mediaPreview.appendChild(v);
-  } else {
-    const img = document.createElement('img'); img.src = currentMedia.dataUrl; img.alt = currentMedia.name;
-    mediaPreview.appendChild(img);
-  }
-  removeMediaBtn.style.display = '';
-  mediaInfo.innerText = currentMedia.name || '';
-}
-function hideMediaPreview(){
-  mediaPreview.innerHTML = '';
-  removeMediaBtn.style.display = 'none';
-  mediaInfo.innerText = '';
-  fileInput.value = ''; // reset file input
-}
-
-/* ========= Preview rendering ========= */
-function updatePreview(){
-  // question text
-  const qText = questionText.value.trim();
-  previewQ.innerText = qText || 'No question';
-
-  // options or fib
-  previewOptionsArea.innerHTML = '';
-  const type = questionType.value;
-  if(type === 'fib'){
-    const ans = fibAnswer.value.trim() || '_____';
-    const el = document.createElement('div'); el.className = 'preview-option'; el.innerText = 'Answer: ' + ans;
-    previewOptionsArea.appendChild(el);
-  } else {
-    const blocks = Array.from(document.querySelectorAll('.option-block'));
-    blocks.forEach((block, idx)=>{
-      const text = block.querySelector('input[type="text"]').value || `Option ${idx+1}`;
-      const radio = block.querySelector('.opt-radio');
-      const div = document.createElement('div'); div.className='preview-option';
-      const r = document.createElement('input'); r.type='radio'; r.disabled=true; r.checked = radio.checked || false;
-      const span = document.createElement('div'); span.style.marginLeft='10px'; span.innerText = text;
-      div.appendChild(r); div.appendChild(span);
-      previewOptionsArea.appendChild(div);
-
-      // per-option feedback preview (small)
-      const cf = block.querySelectorAll('.feedback-input')[0]?.value || '';
-      const icf = block.querySelectorAll('.feedback-input')[1]?.value || '';
-      if(cf || icf){
-        const pfb = document.createElement('div'); pfb.className='preview-feedback';
-        pfb.innerHTML = '';
-        if(cf) pfb.innerHTML += `<div style="color:#2b8a3e">✔ ${cf}</div>`;
-        if(icf) pfb.innerHTML += `<div style="color:#d33">✖ ${icf}</div>`;
-        previewOptionsArea.appendChild(pfb);
-      }
-    });
-  }
-
-  // media preview in right panel
-  previewMedia.innerHTML = '';
-  if(currentMedia){
-    if(currentMedia.type === 'video'){
-      const v = document.createElement('video'); v.controls = true; v.src = currentMedia.dataUrl; v.style.maxWidth='100%';
-      previewMedia.appendChild(v);
-    } else {
-      const img = document.createElement('img'); img.src = currentMedia.dataUrl; img.style.maxWidth='100%';
-      previewMedia.appendChild(img);
-    }
-  }
-
-  // general feedback hints
-  previewGeneralFb.innerHTML = '';
-  if(generalCorrectFb.value.trim()) previewGeneralFb.innerHTML += `<div style="color:#2b8a3e">General correct feedback set</div>`;
-  if(generalIncorrectFb.value.trim()) previewGeneralFb.innerHTML += `<div style="color:#d33;margin-top:6px">General incorrect feedback set</div>`;
-}
-
-/* live updates */
-questionText.addEventListener('input', updatePreview);
-fibAnswer.addEventListener('input', updatePreview);
-generalCorrectFb.addEventListener('input', updatePreview);
-generalIncorrectFb.addEventListener('input', updatePreview);
-
-/* type change */
-questionType.addEventListener('change', (e)=> { showTypeUI(e.target.value); updatePreview(); });
-
-/* ========= Gather question from editor ========= */
-function gatherQuestionFromEditor(){
-  const type = questionType.value;
-  const text = questionText.value.trim();
-  if(!text){ alert('Enter the question text'); return null; }
-  const obj = { id: uid('q'), type, text, options:[], correctIndex:null, fibAnswer:'', generalCorrectFb: generalCorrectFb.value.trim(), generalIncorrectFb: generalIncorrectFb.value.trim(), media: null };
-
-  if(type === 'fib'){
-    obj.fibAnswer = fibAnswer.value.trim();
-  } else {
-    const blocks = Array.from(document.querySelectorAll('.option-block'));
-    if(blocks.length === 0){ alert('Add at least one option'); return null; }
-    blocks.forEach((block, idx)=>{
-      const text = block.querySelector('input[type="text"]').value.trim();
-      const correctFb = block.querySelectorAll('.feedback-input')[0]?.value.trim() || '';
-      const incorrectFb = block.querySelectorAll('.feedback-input')[1]?.value.trim() || '';
-      obj.options.push({ id: uid('o'), text, correctFeedback: correctFb, incorrectFeedback: incorrectFb });
-      if(block.querySelector('.opt-radio')?.checked) obj.correctIndex = idx;
-    });
-  }
-
-  // attach currentMedia (make a shallow copy)
-  if(currentMedia){
-    obj.media = { type: currentMedia.type, dataUrl: currentMedia.dataUrl, name: currentMedia.name || '' };
-  } else obj.media = null;
-
-  return obj;
-}
-
-/* ========= Add / Update question ========= */
-addQuestionBtn.addEventListener('click', ()=>{
-  const qObj = gatherQuestionFromEditor();
-  if(!qObj) return;
-  questions.push(qObj);
-  renderQuestionsList();
-  resetEditor();
-});
-
-updateQuestionBtn.addEventListener('click', ()=>{
-  if(selectedQuestionIndex < 0) return;
-  const qObj = gatherQuestionFromEditor();
-  if(!qObj) return;
-  qObj.id = questions[selectedQuestionIndex].id;
-  questions[selectedQuestionIndex] = qObj;
-  renderQuestionsList();
-  resetEditor();
-});
-
-/* ========= Render questions list with drag/drop ========= */
-function renderQuestionsList(){
-  questionsContainer.innerHTML = '';
-  if(questions.length === 0){
-    const hint = document.createElement('div'); hint.className='hint'; hint.innerText='No questions added yet';
-    questionsContainer.appendChild(hint);
+// Fix 3: Export includes all randomize flags
+function exportQuiz() {
+  if (state.questions.length === 0) {
+    showAlert('No questions to export');
     return;
   }
-
-  questions.forEach((q, idx)=>{
-    const item = document.createElement('div'); item.className='q-item'; item.draggable = true;
-    if(idx === selectedQuestionIndex) item.classList.add('selected');
-
-    const left = document.createElement('div'); left.style.flex='1'; left.innerHTML = `<strong>${idx+1}.</strong> <span style="margin-left:8px">${q.text.substring(0,70) || '(no text)'}</span>`;
-    const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
-    const editBtn = document.createElement('button'); editBtn.className='btn-ghost'; editBtn.style.padding='6px 8px'; editBtn.innerText='Edit';
-    const delBtn = document.createElement('button'); delBtn.className='btn-ghost'; delBtn.style.padding='6px 8px'; delBtn.innerText='Delete';
-    right.appendChild(editBtn); right.appendChild(delBtn);
-
-    item.appendChild(left); item.appendChild(right);
-    questionsContainer.appendChild(item);
-
-    editBtn.addEventListener('click', ()=> loadQuestionToEditor(idx));
-    delBtn.addEventListener('click', ()=> { if(confirm('Delete this question?')){ questions.splice(idx,1); renderQuestionsList(); resetEditor(); }});
-
-    // DnD
-    item.addEventListener('dragstart', (e)=>{ item.classList.add('dragging'); e.dataTransfer.setData('text/plain', idx.toString()); e.dataTransfer.effectAllowed='move'; });
-    item.addEventListener('dragend', ()=> item.classList.remove('dragging'));
-    item.addEventListener('dragover', (e)=> { e.preventDefault(); e.dataTransfer.dropEffect='move'; });
-    item.addEventListener('drop', (e)=> { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); const to = idx; if(!isNaN(from)) moveQuestion(from,to); });
-  });
-}
-
-function moveQuestion(from,to){
-  if(from === to) return;
-  const it = questions.splice(from,1)[0];
-  questions.splice(to,0,it);
-  renderQuestionsList();
-}
-
-/* ========= Load question into editor for editing ========= */
-function loadQuestionToEditor(index){
-  const q = questions[index];
-  if(!q) return;
-  selectedQuestionIndex = index;
-  questionType.value = q.type;
-  showTypeUI(q.type);
-  questionText.value = q.text;
-  generalCorrectFb.value = q.generalCorrectFb || '';
-  generalIncorrectFb.value = q.generalIncorrectFb || '';
-  optionsContainer.innerHTML = '';
-  fibAnswer.value = q.fibAnswer || '';
-  // media
-  if(q.media){
-    currentMedia = { type: q.media.type, dataUrl: q.media.dataUrl, name: q.media.name || '' };
-    showMediaPreview();
-  } else { currentMedia = null; hideMediaPreview(); }
-
-  if(q.type !== 'fib'){
-    q.options.forEach((opt, i)=>{
-      createOptionBlock(opt.text, i===q.correctIndex, false, { text: opt.text, correctFeedback: opt.correctFeedback || '', incorrectFeedback: opt.incorrectFeedback || '', checked: i===q.correctIndex });
-    });
-  }
-  addQuestionBtn.style.display = 'none';
-  updateQuestionBtn.style.display = '';
-  updatePreview();
-  renderQuestionsList();
-}
-
-/* ========= Clear editor ========= */
-clearBtn.addEventListener('click', resetEditor);
-
-/* ========= Export quiz JSON ========= */
-exportBtn.addEventListener('click', ()=>{
-  // Note: media dataUrls are included (could be large).
-  const out = questions.map(q => ({
+  const o = state.questions.map(q => ({
     id: q.id,
     type: q.type,
     text: q.text,
+    questionImageUrl: q.questionImageUrl,
     options: q.options,
     correctIndex: q.correctIndex,
-    fibAnswer: q.fibAnswer,
+    randomizeOptions: q.randomizeOptions,
+    fibData: q.fibData,
+    matchData: q.matchData,
+    sequenceData: q.sequenceData,
     generalCorrectFb: q.generalCorrectFb,
     generalIncorrectFb: q.generalIncorrectFb,
-    media: q.media // { type, dataUrl, name } or null
+    mediaUrl: q.mediaUrl,
+    mediaName: q.mediaName,
+    mediaType: q.mediaType
   }));
-  const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'quiz.json'; a.click(); URL.revokeObjectURL(a.href);
-});
-/* ========= Load existing quiz card for edit (when opened from Card Flow) ========= */
-async function loadQuizCardForEdit(cardId) {
+  const b = new Blob([JSON.stringify(o, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = 'quiz.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showAlert('Quiz exported successfully!', 'success', 3000);
+}
+
+async function loadQuizCardForEdit(cid) {
+  showLoading('Loading quiz...');
   try {
-    const res = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}`);
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data || !data.success || !data.card) {
-      console.error('Failed to load quiz card detail', data);
-      alert('Failed to load quiz card for editing.');
-      return;
+    const t = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!t) throw new Error('Authentication required');
+    const r = await fetch(`/api/v1/cards/${encodeURIComponent(cid)}`, {
+      headers: { 'Authorization': 'Bearer ' + t },
+      credentials: 'include'
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({ error: 'Failed to load' }));
+      throw new Error(e.error || 'Failed to load quiz');
     }
-    const card = data.card;
-    const cardType = (card.card_type || card.type || '').toLowerCase();
-    if (cardType && cardType !== 'quiz') {
-      console.warn('Loaded non-quiz card in quiz editor:', cardType);
-    }
-
-    if (card.title) {
-      currentCardTitle = card.title;
-    }
-    if (card.display_order != null) {
-      currentCardDisplayOrder = card.display_order;
-    }
-
-    const payload = card.data_json || {};
-    const loadedQuestions = Array.isArray(payload.questions) ? payload.questions : [];
-    questions = loadedQuestions;
+    const d = await r.json();
+    if (!d.success || !d.card) throw new Error(d.error || 'Invalid quiz data');
+    const c = d.card;
+    const ct = (c.card_type || c.type || '').toLowerCase();
+    if (ct && ct !== 'quiz') showAlert('Warning: This is not a quiz card', 'error');
+    currentCardTitle = c.title || 'Quiz';
+    const p = c.data_json || {};
+    const lq = Array.isArray(p.questions) ? p.questions : [];
+    state.questions = lq.map(q => ({
+      ...q,
+      questionImageUrl: q.questionImageUrl || null,
+      mediaUrl: q.media ? (q.media.dataUrl || q.media.url) : null,
+      mediaName: q.media ? q.media.name : null,
+      mediaType: q.media ? q.media.type : null
+    }));
     renderQuestionsList();
-    if (questions.length) {
+    if (state.questions.length) {
       loadQuestionToEditor(0);
+      showAlert('Quiz loaded successfully!', 'success', 3000);
     } else {
       resetEditor();
+      showAlert('Loaded empty quiz', 'info');
     }
   } catch (e) {
-    console.error('Error loading quiz card for edit', e);
-    alert('Failed to load quiz card for editing.');
+    showAlert(`Failed to load quiz: ${e.message}`);
+    console.error('Error loading quiz:', e);
+  } finally {
+    hideLoading();
   }
 }
 
-/* ========= Save Quiz to backend as a card ========= */
-async function saveQuiz(){
+async function saveQuiz(sl = false) {
   if (!topicId) {
-    alert('Missing topic_id in URL. Open this editor from a topic context.');
+    if (!sl) showAlert('Missing topic context. Please open from a topic.');
     return;
   }
-
-  if (!questions.length) {
-    alert('Add at least one question before saving the quiz.');
+  if (!state.questions.length) {
+    if (!sl) showAlert('Add at least one question before saving.');
     return;
   }
-
+  const ot = saveQuizBtn.textContent;
+  if (!sl) {
+    saveQuizBtn.textContent = 'Saving...';
+    saveQuizBtn.disabled = true;
+  }
+  if (!sl) showLoading(cardId ? 'Updating quiz...' : 'Creating quiz...');
   try {
-    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
-    if (!token) {
-      alert('Unable to get admin token. Please log in again as admin.');
-      return;
-    }
-
-    const dataJson = { questions };
-
-    // Edit mode: update existing card
-    if (cardId) {
-      const payload = {
-        title: currentCardTitle || 'Quiz',
-        data_json: dataJson
-      };
-
-      const res = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
-        },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data || !data.success) {
-        const msg = (data && (data.error || data.detail || data.msg)) || '';
-        alert('Failed to update quiz card: ' + msg);
-        return;
-      }
-
-      const goBack = confirm('Quiz card updated. Return to Card Flow?');
-      if (!goBack) return;
-
-      const out = new URLSearchParams();
-      if (lessonId) out.set('lesson_id', lessonId);
-      if (topicId) out.set('topic_id', topicId);
-      const order = (data.card && data.card.display_order != null)
-        ? data.card.display_order
-        : (currentCardDisplayOrder != null ? currentCardDisplayOrder : displayOrderParam);
-      if (order != null) out.set('display_order', String(order));
-
-      const qs = out.toString();
-      const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
-      window.location.href = target;
-      return;
-    }
-
-    // Create mode: compute next display_order and create new card
-    let nextOrder = 1;
-    try {
-      const resCards = await fetch(`/api/v1/topics/${encodeURIComponent(topicId)}/cards`);
-      if (resCards.ok) {
-        const data = await resCards.json().catch(() => null);
-        if (data && Array.isArray(data.cards) && data.cards.length) {
-          const maxOrder = Math.max(...data.cards.map(c => c.display_order || 0));
-          nextOrder = maxOrder + 1;
-        }
-      }
-    } catch (e) {
-      nextOrder = 1;
-    }
-
-    const firstQText = questions[0]?.text || '';
-    const derivedTitle = firstQText ? firstQText.substring(0, 80) : 'Quiz';
-
-    const payload = {
-      card_type: 'quiz',
-      title: derivedTitle,
-      data_json: dataJson,
-      topic_id: Number(topicId),
-      lesson_id: lessonId ? Number(lessonId) : null,
-      display_order: nextOrder
+    const t = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!t) throw new Error('Authentication required');
+    
+    // Fix 4: Use stored mediaType instead of guessing from URL
+    const qd = {
+      questions: state.questions.map(q => ({
+        ...q,
+        questionImageUrl: q.questionImageUrl || null,
+        media: q.mediaUrl ? {
+          url: q.mediaUrl,
+          name: q.mediaName,
+          type: q.mediaType
+        } : null
+      }))
     };
-
-    const res = await fetch('/api/v1/cards', {
-      method: 'POST',
+    
+    let au, m, p;
+    if (cardId) {
+      // Use POST /update endpoint instead of PUT to support environments
+      // where PUT is blocked (mirrors video editor behavior)
+      au = `/api/v1/cards/${encodeURIComponent(cardId)}/update`;
+      m = 'POST';
+      p = { title: currentCardTitle || 'Quiz', data_json: qd };
+    } else {
+      let no = 1;
+      try {
+        const rc = await fetch(`/api/v1/topics/${encodeURIComponent(topicId)}/cards`, {
+          headers: { 'Authorization': 'Bearer ' + t }
+        });
+        if (rc.ok) {
+          const d = await rc.json();
+          if (d && Array.isArray(d.cards)) {
+            const mo = d.cards.reduce((mx, c) => Math.max(mx, c.display_order || 0), 0);
+            no = mo + 1;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch existing cards:', e);
+      }
+      const fq = state.questions[0]?.text || '';
+      const dt = fq ? fq.substring(0, 80) : 'Quiz';
+      au = '/api/v1/cards';
+      m = 'POST';
+      p = {
+        card_type: 'quiz',
+        title: dt,
+        data_json: qd,
+        topic_id: Number(topicId),
+        lesson_id: lessonId ? Number(lessonId) : null,
+        display_order: no
+      };
+    }
+    const r = await fetch(au, {
+      method: m,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
+        'Authorization': 'Bearer ' + t
       },
       credentials: 'include',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(p)
     });
-
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data || !data.success) {
-      const msg = (data && (data.error || data.detail || data.msg)) || '';
-      alert('Failed to save quiz card: ' + msg);
-      return;
+    const d = await r.json().catch(() => null);
+    if (!r.ok || !d || !d.success) {
+      const em = d?.error || d?.detail || d?.msg || 'Unknown error';
+      throw new Error(em);
     }
-
-    const goNow = confirm('Quiz card saved to topic. Open Card Flow now?');
-    if (!goNow) return;
-
-    const out = new URLSearchParams();
-    if (lessonId) out.set('lesson_id', lessonId);
-    if (topicId) out.set('topic_id', topicId);
-    if (data.card && data.card.display_order != null) {
-      out.set('display_order', String(data.card.display_order));
+    const sm = cardId ? 'Quiz updated successfully!' : 'Quiz created successfully!';
+    if (!sl) {
+      showAlert(sm, 'success', 5000);
+      // If this was a newly created card and the backend returned
+      // its details, update cardId so subsequent saves perform an update
+      if (!cardId && d.card && d.card.id) {
+        cardId = String(d.card.id);
+      }
+    } else {
+      showAlert('Auto-saved', 'success', 2000);
     }
-    const qs = out.toString();
-    const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
-    window.location.href = target;
+    // On any successful save (manual or autosave), there are no unsaved changes
+    state.autosave.hasUnsavedChanges = false;
   } catch (e) {
-    alert('Failed to save quiz card: ' + (e.message || e));
+    if (!sl) {
+      showAlert(`Failed to save quiz: ${e.message}`);
+      console.error('Save quiz error:', e);
+    }
+  } finally {
+    if (!sl) {
+      hideLoading();
+      saveQuizBtn.textContent = ot;
+      saveQuizBtn.disabled = false;
+    }
   }
 }
 
-/* ========= Init ========= */
 window.addEventListener('DOMContentLoaded', async () => {
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      saveQuizBtn.click();
+    }
+    if (e.key === 'Escape' && state.selectedQuestionIndex === -1) {
+      clearBtn.click();
+    }
+  });
+
+  backToCardsBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (state.autosave.hasUnsavedChanges) {
+      const cl = confirm('You have unsaved changes. Are you sure you want to leave?');
+      if (!cl) return;
+    }
+    const ou = new URLSearchParams();
+    if (courseId) ou.set('course_id', courseId);
+    if (lessonId) ou.set('lesson_id', lessonId);
+    if (topicId) ou.set('topic_id', topicId);
+    const qs = ou.toString();
+    const tg = '/manage-cards.html' + (qs ? `?${qs}` : '');
+    window.location.href = tg;
+  });
+
+  questionType.addEventListener('change', (e) => {
+    showTypeUI(e.target.value);
+    updatePreview();
+  });
+
+  addOptionBtn.addEventListener('click', () => {
+    addOption('');
+  });
+
+  aiBtn.addEventListener('click', async () => {
+    const q = questionText.value.trim();
+    if (!q) {
+      showAlert('Enter question text to generate options');
+      return;
+    }
+    try {
+      const o = await generateOptionsWithAI(q);
+      state.options = o.map(opt => ({
+        id: uid('opt'),
+        text: opt.text,
+        isCorrect: opt.isCorrect === true
+      }));
+      renderOptions();
+      updatePreview();
+      scheduleAutoSave();
+      showAlert('Options generated successfully!', 'success', 3000);
+    } catch (e) {
+      console.error('AI generation failed:', e);
+    }
+  });
+
+  mcqRandomize.addEventListener('change', () => {
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  questionImageBtn.addEventListener('click', () => questionImageInput.click());
+  questionImageInput.addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    await handleQuestionImageUpload(f);
+  });
+
+  removeQuestionImageBtn.addEventListener('click', () => {
+    hideQuestionImagePreview();
+    scheduleAutoSave();
+  });
+
+  uploadBox.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', handleFileSelect);
+
+  removeMediaBtn.addEventListener('click', () => {
+    state.editor.uploadedMedia.url = null;
+    state.editor.uploadedMedia.name = null;
+    state.editor.uploadedMedia.type = null;
+    hideMediaPreview();
+    scheduleAutoSave();
+  });
+
+  addQuestionBtn.addEventListener('click', addQuestion);
+  updateQuestionBtn.addEventListener('click', updateQuestion);
+  duplicateQuestionBtn.addEventListener('click', duplicateQuestion);
+  clearBtn.addEventListener('click', resetEditor);
+  exportBtn.addEventListener('click', exportQuiz);
+  saveQuizBtn.addEventListener('click', () => saveQuiz(false));
+
+  // FIB mode buttons
+  fibSimpleModeBtn.addEventListener('click', () => setFibMode('simple'));
+  fibAdvancedModeBtn.addEventListener('click', () => setFibMode('advanced'));
+
+  fibMultipleAnswers.addEventListener('change', function () {
+    fibMultipleAnswersContainer.style.display = this.checked ? 'block' : 'none';
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  fibMultipleAnswersInput.addEventListener('input', () => {
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  fibParagraph.addEventListener('input', function () {
+    detectAdvancedBlanks();
+    scheduleAutoSave();
+  });
+
+  refreshBlanksBtn.addEventListener('click', function () {
+    detectAdvancedBlanks(true);
+  });
+
+  fibSimpleText.addEventListener('input', () => {
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  fibSimpleAnswer.addEventListener('input', () => {
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  // Match and Sequence buttons
+  addMatchPairBtn.addEventListener('click', addMatchPair);
+  matchRandomize.addEventListener('change', () => {
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  addSequenceItemBtn.addEventListener('click', addSequenceItem);
+  sequenceRandomize.addEventListener('change', () => {
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  questionText.addEventListener('input', () => {
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  generalCorrectFb.addEventListener('input', () => {
+    updatePreview();
+    scheduleAutoSave();
+  });
+
+  generalIncorrectFb.addEventListener('input', () => {
+    updatePreview();
+    scheduleAutoSave();
+  });
+
   showTypeUI('mcq');
   resetEditor();
   renderQuestionsList();
   updatePreview();
-
-  saveQuizBtn.addEventListener('click', saveQuiz);
-
+  updateQuestionCount();
   if (cardId) {
     await loadQuizCardForEdit(cardId);
   }
+  showAlert('Quiz Builder ready! Press Ctrl+S to save.', 'success', 4000);
 });
-
 </script>
 </body>
 </html>

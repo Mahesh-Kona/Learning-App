@@ -862,8 +862,8 @@ saveBtn.addEventListener('click', async ()=>{
         title: titleVal,
         data_json: dataJson
       };
-      resp = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}`, {
-        method: 'PUT',
+      resp = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}/update`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + token

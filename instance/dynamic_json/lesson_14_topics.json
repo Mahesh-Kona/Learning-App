@@ -1,29 +1,4 @@
 {
   "lesson_id": 14,
-  "topics": [
-    {
-      "id": 23,
-      "lesson_id": 14,
-      "title": "Abstraction",
-      "content_type": "text",
-      "content": "",
-      "description": "dvdf",
-      "duration": 2,
-      "order": 1,
-      "estimated_time": 12,
-      "difficulty": "easy"
-    },
-    {
-      "id": 49,
-      "lesson_id": 14,
-      "title": "test2",
-      "content_type": "text",
-      "content": "",
-      "description": "fgb",
-      "duration": 2,
-      "order": 1,
-      "estimated_time": 12,
-      "difficulty": "medium"
-    }
-  ]
+  "topics": []
 }

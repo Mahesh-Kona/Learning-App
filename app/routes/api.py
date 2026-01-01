@@ -54,12 +54,9 @@ def update_card(card_id):
         except (TypeError, ValueError):
             pass
     db.session.commit()
-    return jsonify({'success': True, 'card': {
-        'id': card.id,
-        'title': card.title,
-        'type': card.card_type,
-        'display_order': card.display_order
-    }}), 200
+    # Reuse the shared serializer so the update response matches GET payloads
+    card_payload = serialize_card(card)
+    return jsonify({'success': True, 'card': card_payload}), 200
 
 # Delete a card by ID
 @api_bp.route('/cards/<int:card_id>', methods=['DELETE'])
@@ -254,6 +251,204 @@ def generate_leaderboard_json(limit=10, write_file=True):
     except Exception:
         current_app.logger.exception('Failed to generate leaderboard')
         return []
+
+
+# ============================================================================
+# SERIALIZERS (JSON HELPERS)
+# ============================================================================
+
+def serialize_course(course, lessons_count=None, enrolled_count=None, topics_count=None, cards_count=None):
+    """Return a stable JSON representation for Course objects.
+
+    Adds a few commonly-needed attributes so that mobile/web clients
+    have richer metadata without needing additional queries.
+    """
+    if not course:
+        return None
+
+    created_at = course.created_at.isoformat() if getattr(course, 'created_at', None) else None
+
+    payload = {
+        # direct DB columns
+        'id': course.id,
+        'title': course.title,
+        'description': course.description or '',
+        'thumbnail_url': course.thumbnail_url,
+        'thumbnail_asset_id': getattr(course, 'thumbnail_asset_id', None),
+        'category': course.category,
+        'class_name': getattr(course, 'class_name', None),
+        'price': getattr(course, 'price', None),
+        'published': getattr(course, 'published', None),
+        'featured': getattr(course, 'featured', False),
+        'duration_weeks': getattr(course, 'duration_weeks', None),
+        'weekly_hours': getattr(course, 'weekly_hours', None),
+        'difficulty': getattr(course, 'difficulty', None),
+        'stream': getattr(course, 'stream', None),
+        'tags': getattr(course, 'tags', None),
+        'created_at': created_at,
+    }
+
+    if lessons_count is not None:
+        # snake_case + camelCase for convenience
+        payload['total_lessons'] = int(lessons_count)
+        payload['totalLessons'] = int(lessons_count)
+    if enrolled_count is not None:
+        payload['enrolled_count'] = int(enrolled_count)
+    if topics_count is not None:
+        payload['total_topics'] = int(topics_count)
+        payload['totalTopics'] = int(topics_count)
+    if cards_count is not None:
+        payload['total_cards'] = int(cards_count)
+        payload['totalCards'] = int(cards_count)
+
+    return payload
+
+
+def serialize_lesson(lesson, topics_count=None, cards_count=None):
+    """JSON representation for Lesson objects used across lesson APIs."""
+    if not lesson:
+        return None
+
+    created_at = lesson.created_at.isoformat() if getattr(lesson, 'created_at', None) else None
+
+    # derive ordering, icon, and rich description from content_json when present
+    meta = lesson.content_json if isinstance(getattr(lesson, 'content_json', None), dict) else {}
+    order_val = None
+    # estimated_time in JSON should mirror DB column `duration`
+    estimated_time = getattr(lesson, 'duration', None)
+    meta_description = None
+    meta_icon = None
+    if isinstance(meta, dict):
+        if meta.get('order') is not None:
+            try:
+                order_val = int(meta.get('order'))
+            except Exception:
+                order_val = meta.get('order')
+        meta_description = meta.get('description')
+        meta_icon = meta.get('icon')
+
+    payload = {
+        # direct DB columns
+        'id': lesson.id,
+        'course_id': lesson.course_id,
+        'title': lesson.title,
+        'content_json': getattr(lesson, 'content_json', None),
+        # prefer description from content_json, fall back to column
+        'description': meta_description or (lesson.description or ''),
+        'duration': getattr(lesson, 'duration', None),
+        'level': getattr(lesson, 'level', None),
+        'objectives': getattr(lesson, 'objectives', None),
+        'content_version': getattr(lesson, 'content_version', None),
+        'created_at': created_at,
+        # derived fields
+        'order': order_val,
+        'estimated_time': estimated_time,
+        'icon': meta_icon,
+    }
+
+    if topics_count is not None:
+        payload['topics_count'] = int(topics_count)
+        payload['topicCount'] = int(topics_count)
+    if cards_count is not None:
+        payload['cardCount'] = int(cards_count)
+
+    return payload
+
+
+def _topic_base_dict(topic):
+    """Helper to extract common Topic fields from data_json."""
+    if not topic:
+        return None
+
+    raw_data = getattr(topic, 'data_json', None)
+    data = raw_data if isinstance(raw_data, dict) else {}
+    created_at = topic.created_at.isoformat() if getattr(topic, 'created_at', None) else None
+
+    return {
+        # direct DB columns
+        'id': topic.id,
+        'lesson_id': topic.lesson_id,
+        'title': topic.title,
+        'data_json': raw_data,
+        'created_at': created_at,
+        # convenient derived fields from data_json
+        'content_type': data.get('type', 'text'),
+        'content': data.get('content', ''),
+        'description': data.get('description', ''),
+        'duration': data.get('duration', 2),
+        'order': data.get('order', 0),
+        'estimated_time': data.get('estimated_time'),
+        'difficulty': data.get('difficulty'),
+    }
+
+
+def serialize_topic(topic, include_lesson_order=False, include_card_count=True):
+    """JSON representation for Topic objects.
+
+    When include_lesson_order is True, attempts to enrich output with the
+    lesson display order (from Lesson.content_json['order']) used in admin UI.
+    """
+    base = _topic_base_dict(topic)
+    if not base:
+        return None
+
+    if include_lesson_order:
+        try:
+            from app.models import Lesson  # local import to avoid cycles
+            lesson = Lesson.query.get(topic.lesson_id) if topic.lesson_id else None
+            meta = lesson.content_json if (lesson and isinstance(lesson.content_json, dict)) else {}
+            lesson_order = None
+            if isinstance(meta, dict) and meta.get('order') is not None:
+                try:
+                    lesson_order = int(meta.get('order'))
+                except Exception:
+                    lesson_order = meta.get('order')
+            base['lesson_order'] = lesson_order
+        except Exception:
+            # If anything fails here, skip lesson_order but keep other fields
+            base['lesson_order'] = None
+
+    # Optionally enrich with per-topic card count
+    if include_card_count:
+        try:
+            from app.models import Card
+            count = Card.query.filter_by(topic_id=topic.id).count()
+            base['cardCount'] = int(count)
+        except Exception:
+            # If cards table/model not available, just omit cardCount
+            base['cardCount'] = 0
+
+    return base
+
+
+def serialize_card(card):
+    """JSON representation for Card objects used in topic/card APIs."""
+    if not card:
+        return None
+
+    raw_data = getattr(card, 'data_json', None)
+    data = raw_data if isinstance(raw_data, dict) else {}
+    created_at = card.created_at.isoformat() if getattr(card, 'created_at', None) else None
+    updated_at = card.updated_at.isoformat() if getattr(card, 'updated_at', None) else None
+
+    return {
+        # direct DB columns
+        'id': card.id,
+        'topic_id': card.topic_id,
+        'lesson_id': card.lesson_id,
+        'card_type': card.card_type,
+        'title': card.title,
+        'data_json': raw_data,
+        'display_order': card.display_order,
+        'created_by': getattr(card, 'created_by', None),
+        'created_at': created_at,
+        'updated_at': updated_at,
+        'published': getattr(card, 'published', False),
+        # convenient/derived fields
+        'type': card.card_type,
+        'content': data.get('content', data),
+        'data': data,
+    }
 
 
 # ============================================================================
@@ -864,10 +1059,26 @@ def get_courses():
         
         # Build response
         courses_list = []
+        from app.models import Card
         for c in courses:
-            # Count lessons
-            lessons_count = Lesson.query.filter_by(course_id=c.id).count()
-            
+            # Collect all lessons for this course
+            lessons = Lesson.query.filter_by(course_id=c.id).all()
+            lesson_ids = [l.id for l in lessons]
+            lessons_count = len(lessons)
+
+            # Totals for topics and cards within this course
+            total_topics = 0
+            total_cards = 0
+            if lesson_ids:
+                try:
+                    total_topics = Topic.query.filter(Topic.lesson_id.in_(lesson_ids)).count()
+                except Exception:
+                    total_topics = 0
+                try:
+                    total_cards = Card.query.filter(Card.lesson_id.in_(lesson_ids)).count()
+                except Exception:
+                    total_cards = 0
+
             # Get enrollment count (if model exists)
             enrolled_count = 0
             Enrollment = get_enrollment_model()
@@ -875,28 +1086,26 @@ def get_courses():
                 try:
                     enrolled_count = Enrollment.query.filter_by(course_id=c.id).count()
                 except Exception:
-                    pass
-            
-            courses_list.append({
-                'id': c.id,
-                'title': c.title,
-                'description': c.description or '',
-                'category': c.category,
-                'thumbnail_url': c.thumbnail_url,
-                'level': c.difficulty or 'beginner',
-                'duration': c.duration_weeks,
-                'weekly_hours': c.weekly_hours,
-                'total_lessons': lessons_count,
-                'enrolled_count': enrolled_count,
-                'rating': 4.5,  # Placeholder - implement rating system
-                'featured': c.featured if hasattr(c, 'featured') else False,
-                'tags': c.tags if hasattr(c, 'tags') else None
-            })
-        
+                    enrolled_count = 0
+
+            # Use shared serializer so all course APIs expose the same fields
+            course_payload = serialize_course(
+                c,
+                lessons_count=lessons_count,
+                enrolled_count=enrolled_count,
+                topics_count=total_topics,
+                cards_count=total_cards,
+            )
+            # Backwards-compatible rating placeholder
+            course_payload['rating'] = 4.5
+            courses_list.append(course_payload)
+
         return jsonify({
             'success': True,
             'total': total,
+            # expose both keys for compatibility with older clients/tests
             'courses': courses_list,
+            'data': courses_list,
             'pagination': {
                 'limit': limit,
                 'offset': offset,
@@ -954,34 +1163,29 @@ def get_course_detail(course_id):
         # Get lessons
         lessons = Lesson.query.filter_by(course_id=course_id).all()
         lessons_list = []
-        
+        from app.models import Card
+
+        total_topics = 0
+        total_cards = 0
+
         for l in lessons:
             topics_count = Topic.query.filter_by(lesson_id=l.id).count()
-            lessons_list.append({
-                'id': l.id,
-                'title': l.title,
-                'description': l.description or '',
-                'duration': l.duration,
-                'level': l.level,
-                'topics_count': topics_count,
-                'objectives': l.objectives
-            })
-        
+            card_count = Card.query.filter_by(lesson_id=l.id).count()
+            total_topics += topics_count
+            total_cards += card_count
+            lessons_list.append(serialize_lesson(l, topics_count=topics_count, cards_count=card_count))
+
+        course_payload = serialize_course(
+            course,
+            lessons_count=len(lessons_list),
+            topics_count=total_topics,
+            cards_count=total_cards,
+        )
+        course_payload['lessons'] = lessons_list
+
         return jsonify({
             'success': True,
-            'course': {
-                'id': course.id,
-                'title': course.title,
-                'description': course.description,
-                'category': course.category,
-                'thumbnail_url': course.thumbnail_url,
-                'level': course.difficulty or 'beginner',
-                'duration': course.duration_weeks,
-                'weekly_hours': course.weekly_hours,
-                'total_lessons': len(lessons_list),
-                'lessons': lessons_list,
-                'tags': course.tags if hasattr(course, 'tags') else None
-            }
+            'course': course_payload
         }), 200
         
     except Exception as e:
@@ -1009,24 +1213,39 @@ def get_courses_by_category(category_name):
         courses = query.offset(offset).limit(limit).all()
         
         courses_list = []
+        from app.models import Card
         for c in courses:
-            lessons_count = Lesson.query.filter_by(course_id=c.id).count()
-            courses_list.append({
-                'id': c.id,
-                'title': c.title,
-                'description': c.description or '',
-                'category': c.category,
-                'thumbnail_url': c.thumbnail_url,
-                'level': c.difficulty or 'beginner',
-                'duration': c.duration_weeks,
-                'total_lessons': lessons_count
-            })
-        
+            lessons = Lesson.query.filter_by(course_id=c.id).all()
+            lesson_ids = [l.id for l in lessons]
+            lessons_count = len(lessons)
+
+            total_topics = 0
+            total_cards = 0
+            if lesson_ids:
+                try:
+                    total_topics = Topic.query.filter(Topic.lesson_id.in_(lesson_ids)).count()
+                except Exception:
+                    total_topics = 0
+                try:
+                    total_cards = Card.query.filter(Card.lesson_id.in_(lesson_ids)).count()
+                except Exception:
+                    total_cards = 0
+
+            courses_list.append(
+                serialize_course(
+                    c,
+                    lessons_count=lessons_count,
+                    topics_count=total_topics,
+                    cards_count=total_cards,
+                )
+            )
+
         return jsonify({
             'success': True,
             'total': total,
             'category': category_name,
-            'courses': courses_list
+            'courses': courses_list,
+            'data': courses_list,
         }), 200
         
     except Exception as e:
@@ -1095,21 +1314,16 @@ def get_course_lessons(course_id):
         
         lessons = Lesson.query.filter_by(course_id=course_id).all()
         lessons_list = []
-        
+        from app.models import Card
+
         for l in lessons:
             topics_count = Topic.query.filter_by(lesson_id=l.id).count()
-            lessons_list.append({
-                'id': l.id,
-                'title': l.title,
-                'description': l.description or '',
-                'duration': l.duration,
-                'level': l.level,
-                'topics_count': topics_count,
-                'objectives': l.objectives
-            })
-        
+            card_count = Card.query.filter_by(lesson_id=l.id).count()
+            lessons_list.append(serialize_lesson(l, topics_count=topics_count, cards_count=card_count))
+
         return jsonify({
             'success': True,
+            'course_id': course_id,
             'lessons': lessons_list
         }), 200
         
@@ -1141,27 +1355,22 @@ def get_lesson_detail(lesson_id):
     """
     try:
         lesson = Lesson.query.get(lesson_id)
-        
+
         if not lesson:
             return jsonify({
                 'success': False,
                 'error': 'Lesson not found'
             }), 404
-        
+        from app.models import Card
+
         topics_count = Topic.query.filter_by(lesson_id=lesson_id).count()
-        
+        card_count = Card.query.filter_by(lesson_id=lesson_id).count()
+
+        lesson_payload = serialize_lesson(lesson, topics_count=topics_count, cards_count=card_count)
+
         return jsonify({
             'success': True,
-            'lesson': {
-                'id': lesson.id,
-                'course_id': lesson.course_id,
-                'title': lesson.title,
-                'description': lesson.description,
-                'duration': lesson.duration,
-                'level': lesson.level,
-                'topics_count': topics_count,
-                'objectives': lesson.objectives
-            }
+            'lesson': lesson_payload
         }), 200
         
     except Exception as e:
@@ -1188,19 +1397,13 @@ def get_course_lesson_detail(course_id, lesson_id):
         if not lesson or lesson.course_id != course_id:
             return jsonify({'success': False, 'error': 'Lesson not found in course'}), 404
 
+        from app.models import Card
         topics_count = Topic.query.filter_by(lesson_id=lesson_id).count()
+        card_count = Card.query.filter_by(lesson_id=lesson_id).count()
+        lesson_payload = serialize_lesson(lesson, topics_count=topics_count, cards_count=card_count)
         return jsonify({
             'success': True,
-            'lesson': {
-                'id': lesson.id,
-                'course_id': lesson.course_id,
-                'title': lesson.title,
-                'description': lesson.description,
-                'duration': lesson.duration,
-                'level': lesson.level,
-                'topics_count': topics_count,
-                'objectives': lesson.objectives
-            }
+            'lesson': lesson_payload
         }), 200
     except Exception:
         current_app.logger.exception('Get nested lesson detail failed')
@@ -1252,23 +1455,10 @@ def get_lesson_topics(lesson_id):
         
         topics = Topic.query.filter_by(lesson_id=lesson_id).order_by(Topic.id).all()
         topics_list = []
-        
+
         for t in topics:
-            data = t.data_json if isinstance(t.data_json, dict) else {}
-            
-            topics_list.append({
-                'id': t.id,
-                'lesson_id': t.lesson_id,
-                'title': t.title,
-                'content_type': data.get('type', 'text'),
-                'content': data.get('content', ''),
-                'description': data.get('description', ''),
-                'duration': data.get('duration', 2),
-                'order': data.get('order', 0),
-                'estimated_time': data.get('estimated_time'),
-                'difficulty': data.get('difficulty')
-            })
-        
+            topics_list.append(serialize_topic(t))
+
         return jsonify({
             'success': True,
             'lesson_id': lesson_id,
@@ -1301,21 +1491,7 @@ def get_course_lesson_topics(course_id, lesson_id):
             return jsonify({'success': False, 'error': 'Lesson not found in course'}), 404
 
         topics = Topic.query.filter_by(lesson_id=lesson_id).order_by(Topic.id).all()
-        topics_list = []
-        for t in topics:
-            data = t.data_json if isinstance(t.data_json, dict) else {}
-            topics_list.append({
-                'id': t.id,
-                'lesson_id': t.lesson_id,
-                'title': t.title,
-                'content_type': data.get('type', 'text'),
-                'content': data.get('content', ''),
-                'description': data.get('description', ''),
-                'duration': data.get('duration', 2),
-                'order': data.get('order', 0),
-                'estimated_time': data.get('estimated_time'),
-                'difficulty': data.get('difficulty')
-            })
+        topics_list = [serialize_topic(t) for t in topics]
 
         return jsonify({'success': True, 'lesson_id': lesson_id, 'topics': topics_list}), 200
     except Exception:
@@ -1350,23 +1526,12 @@ def get_topic_detail(topic_id):
                 'success': False,
                 'error': 'Topic not found'
             }), 404
-        
-        data = topic.data_json if isinstance(topic.data_json, dict) else {}
-        
+
+        topic_payload = serialize_topic(topic, include_lesson_order=True)
+
         return jsonify({
             'success': True,
-            'topic': {
-                'id': topic.id,
-                'lesson_id': topic.lesson_id,
-                'title': topic.title,
-                'content_type': data.get('type', 'text'),
-                'content': data.get('content', ''),
-                'description': data.get('description', ''),
-                'duration': data.get('duration', 2),
-                'order': data.get('order', 0),
-                'estimated_time': data.get('estimated_time'),
-                'difficulty': data.get('difficulty')
-            }
+            'topic': topic_payload
         }), 200
         
     except Exception as e:
@@ -1392,18 +1557,7 @@ def get_topic_cards(topic_id):
         from app.models import Card
         # Fetch all published cards for this topic ordered by display_order then id
         cards_q = Card.query.filter_by(topic_id=topic_id, published=True).order_by(Card.display_order, Card.id).all()
-        cards = []
-        for c in cards_q:
-            data = c.data_json if isinstance(c.data_json, dict) else {}
-            cards.append({
-                'id': c.id,
-                'topic_id': c.topic_id,
-                'lesson_id': c.lesson_id,
-                'title': c.title,
-                'type': c.card_type,
-                'content': data.get('content', data),
-                'display_order': c.display_order
-            })
+        cards = [serialize_card(c) for c in cards_q]
         return jsonify({'success': True, 'count': len(cards), 'cards': cards}), 200
     except Exception:
         current_app.logger.exception('Get topic cards failed')
@@ -1430,21 +1584,10 @@ def get_course_lesson_topic_detail(course_id, lesson_id, topic_id):
         if not topic or topic.lesson_id != lesson_id:
             return jsonify({'success': False, 'error': 'Topic not found in lesson'}), 404
 
-        data = topic.data_json if isinstance(topic.data_json, dict) else {}
+        topic_payload = serialize_topic(topic, include_lesson_order=True)
         return jsonify({
             'success': True,
-            'topic': {
-                'id': topic.id,
-                'lesson_id': topic.lesson_id,
-                'title': topic.title,
-                'content_type': data.get('type', 'text'),
-                'content': data.get('content', ''),
-                'description': data.get('description', ''),
-                'duration': data.get('duration', 2),
-                'order': data.get('order', 0),
-                'estimated_time': data.get('estimated_time'),
-                'difficulty': data.get('difficulty')
-            }
+            'topic': topic_payload
         }), 200
     except Exception:
         current_app.logger.exception('Get nested topic detail failed')
@@ -1479,18 +1622,7 @@ def get_course_lesson_topic_cards(course_id, lesson_id, topic_id):
 
         from app.models import Card
         cards_q = Card.query.filter_by(topic_id=topic_id, published=True).order_by(Card.display_order, Card.id).all()
-        cards = []
-        for c in cards_q:
-            data = c.data_json if isinstance(c.data_json, dict) else {}
-            cards.append({
-                'id': c.id,
-                'topic_id': c.topic_id,
-                'lesson_id': c.lesson_id,
-                'title': c.title,
-                'type': c.card_type,
-                'content': data.get('content', data),
-                'display_order': c.display_order
-            })
+        cards = [serialize_card(c) for c in cards_q]
         return jsonify({'success': True, 'count': len(cards), 'cards': cards}), 200
     except Exception:
         current_app.logger.exception('Get nested topic cards failed')
@@ -1522,19 +1654,10 @@ def get_course_lesson_topic_card_detail(course_id, lesson_id, topic_id, card_id)
         if not card or card.topic_id != topic_id:
             return jsonify({'success': False, 'error': 'Card not found in topic'}), 404
 
-        data = card.data_json if isinstance(card.data_json, dict) else {}
+        card_payload = serialize_card(card)
         return jsonify({
             'success': True,
-            'card': {
-                'id': card.id,
-                'topic_id': card.topic_id,
-                'lesson_id': card.lesson_id,
-                'title': card.title,
-                'type': card.card_type,
-                'content': data.get('content', data),
-                'display_order': card.display_order,
-                'published': card.published
-            }
+            'card': card_payload
         }), 200
     except Exception:
         current_app.logger.exception('Get nested card detail failed')

@@ -4,12 +4,12 @@
       "id": 15,
       "title": "E2E Test Course",
       "description": "created by automated test",
-      "category": null,
+      "category": "Physics",
       "thumbnail_url": "/uploads/test.png",
-      "difficulty": null,
-      "duration_weeks": null,
+      "difficulty": "beginner",
+      "duration_weeks": 24,
       "total_lessons": 2,
-      "published": false
+      "published": true
     },
     {
       "id": 23,
@@ -39,8 +39,8 @@
       "description": "Created by automated test",
       "category": null,
       "thumbnail_url": null,
-      "difficulty": null,
-      "duration_weeks": null,
+      "difficulty": "beginner",
+      "duration_weeks": 23,
       "total_lessons": 0,
       "published": null
     },
@@ -52,7 +52,7 @@
       "thumbnail_url": "/uploads/jsflow.png",
       "difficulty": "advanced",
       "duration_weeks": 10,
-      "total_lessons": 1,
+      "total_lessons": 2,
       "published": true
     },
     {
@@ -61,7 +61,7 @@
       "description": "Hyper text markup language",
       "category": null,
       "thumbnail_url": null,
-      "difficulty": null,
+      "difficulty": "intermediate",
       "duration_weeks": null,
       "total_lessons": 2,
       "published": null
@@ -84,7 +84,7 @@
       "category": "physics",
       "thumbnail_url": null,
       "difficulty": "beginner",
-      "duration_weeks": null,
+      "duration_weeks": 23,
       "total_lessons": 0,
       "published": true
     }

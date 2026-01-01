@@ -1,27 +1,27 @@
 {
-  "lesson_id": 9,
+  "lesson_id": 18,
   "topics": [
     {
-      "id": 11,
-      "lesson_id": 9,
-      "title": "Frames",
+      "id": 60,
+      "lesson_id": 18,
+      "title": "test2",
       "content_type": "text",
       "content": "",
-      "description": "Frames",
-      "duration": 2,
+      "description": "df bd",
+      "duration": 12,
       "order": 1,
       "estimated_time": 12,
       "difficulty": "easy"
     },
     {
-      "id": 22,
-      "lesson_id": 9,
-      "title": "Frames",
+      "id": 61,
+      "lesson_id": 18,
+      "title": "test3",
       "content_type": "text",
       "content": "",
-      "description": "test",
-      "duration": 2,
-      "order": 1,
+      "description": "axs",
+      "duration": 12,
+      "order": 2,
       "estimated_time": 12,
       "difficulty": "medium"
     }

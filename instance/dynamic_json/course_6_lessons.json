@@ -1,4 +1,12 @@
 {
   "course_id": 6,
-  "lessons": []
+  "lessons": [
+    {
+      "id": 24,
+      "title": "sample",
+      "description": "hi this is a sample one",
+      "duration": 12,
+      "level": "intermediate"
+    }
+  ]
 }

@@ -75,12 +75,14 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            text-decoration: none;
         }
 
         .btn-add:hover {
             background: #059669;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            text-decoration: none;
         }
 
         .btn-add::before {
@@ -580,7 +582,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="courseDuration">Duration (minutes)</label>
+                    <label for="courseDuration">Duration (weeks)</label>
                     <input type="number" id="courseDuration" placeholder="e.g., 45" min="0">
                 </div>
 
@@ -652,7 +654,7 @@
                             <div class="course-description">${course.description || 'No description provided'}</div>
                             <div class="course-meta">
                                 <span class="meta-item meta-duration">
-                                    ${course.duration ? course.duration + ' minutes' : 'N/A minutes'}
+                                    ${course.duration ? course.duration + ' weeks' : 'N/A weeks'}
                                 </span>
                                 <span class="meta-item meta-level">
                                     <span class="level-badge level-${course.level}">${capitalizeFirst(course.level || 'N/A')}</span>
@@ -669,7 +671,7 @@
                         </div>
                         
                         <div class="course-actions">
-                            <button class="btn btn-view" data-course-id="${course.id}" title="View Lessons">View Lessons</button>
+                            <button class="btn btn-view" data-course-id="${course.id}" title="Manage Course Content">Manage</button>
                             <button class="btn btn-edit" data-course-id="${course.id}" title="Edit Course">Edit</button>
                             <button class="btn btn-delete" data-course-id="${course.id}" title="Delete Course">Delete</button>
                         </div>
@@ -952,12 +954,16 @@
                 });
             }
 
-            // Delegated click handler for course action buttons (works even if inline onclick fails)
+            // Delegated click handler for course action buttons
             document.addEventListener('click', function (e) {
                 const btn = e.target.closest('button[data-course-id]');
                 if (!btn) return;
                 const id = parseInt(btn.getAttribute('data-course-id'));
-                if (btn.classList.contains('btn-view')) return viewLessons(id);
+                if (btn.classList.contains('btn-view')) {
+                    // Navigate to the course content management page for this course
+                    window.location.href = '{{ url_for("admin_bp.course_content_page") }}' + '?course_id=' + encodeURIComponent(id);
+                    return;
+                }
                 if (btn.classList.contains('btn-edit')) return editCourse(id);
                 if (btn.classList.contains('btn-delete')) return deleteCourse(id);
             });

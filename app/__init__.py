@@ -151,6 +151,18 @@ def create_app():
         except Exception:
             return jsonify({"message": "Flask Learning Backend is running 🚀"})
 
+    @app.route('/manage-cards.html')
+    def manage_cards_page():
+        """Render the topic card management UI.
+
+        Expects optional query params: lesson_id, topic_id, course_id.
+        """
+        from flask import render_template as _rt
+        lesson_id = request.args.get('lesson_id')
+        topic_id = request.args.get('topic_id')
+        course_id = request.args.get('course_id')
+        return _rt('manage-cards.html', lesson_id=lesson_id, topic_id=topic_id, course_id=course_id)
+
     # Serve uploaded files from UPLOAD_PATH in development
     @app.route('/uploads/<path:filename>')
     def uploaded_file(filename):

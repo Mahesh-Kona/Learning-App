@@ -1,0 +1,17 @@
+{
+  "lesson_id": 22,
+  "topics": [
+    {
+      "id": 63,
+      "lesson_id": 22,
+      "title": "test3",
+      "content_type": "text",
+      "content": "",
+      "description": "fvd gf",
+      "duration": 14,
+      "order": 1,
+      "estimated_time": 14,
+      "difficulty": "easy"
+    }
+  ]
+}

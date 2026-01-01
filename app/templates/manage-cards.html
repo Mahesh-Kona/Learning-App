@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Topic Card Management - EduSaint</title>
+
+<script src="/static/admin_jwt_check.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f6f6f8; --card:#fff; --muted:#6b7280;
+  --accent:#7d4dff; --danger:#ff6b5b;
+}
+html,body{height:100%;font-family:Inter, system-ui}
+body{background:var(--bg);color:#111; overflow:auto}
+
+.app{min-height:100vh;}
+
+/* CENTER */
+.center{
+  width:100%;
+  background:var(--bg);
+  padding:24px;
+  max-width:1400px;
+  margin:0 auto;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:12px 0;
+  font-size:13px;
+  color:var(--muted);
+  margin-bottom:20px;
+  flex-wrap:wrap;
+}
+
+.breadcrumb a {
+  color:#3498db;
+  text-decoration:none;
+  transition:color 0.2s;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+
+.breadcrumb a:hover {
+  color:#2980b9;
+  text-decoration:underline;
+}
+
+.breadcrumb .separator {
+  color:#adb5bd;
+  margin:0 4px;
+}
+
+.breadcrumb .current {
+  color:#495057;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+
+/* Topic Header */
+.topic-header{
+  background:var(--card);
+  padding:24px 30px;
+  border-radius:12px;
+  margin-bottom:20px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+}
+
+.header-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+  flex-wrap:wrap;
+  margin-bottom:16px;
+}
+
+.header-left h1{
+  font-size:24px;
+  color:#2c3e50;
+  margin-bottom:8px;
+}
+
+.topic-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:linear-gradient(135deg, #366e4eff 0%, #19765bff 100%);
+  color:white;
+  padding:6px 14px;
+  border-radius:20px;
+  font-size:13px;
+  font-weight:600;
+}
+
+.header-right{
+  display:flex;
+  gap:10px;
+}
+
+.topic-description{
+  color:#7f8c8d;
+  font-size:14px;
+  line-height:1.6;
+  padding:14px;
+  background:#f8f9fa;
+  border-radius:8px;
+  border-left:4px solid #096535ff;
+}
+
+/* Stats */
+.stats-overview{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+  gap:16px;
+  margin-bottom:20px;
+}
+
+.stat-item{
+  background:var(--card);
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  text-align:center;
+}
+
+.stat-number{
+  display:block;
+  font-size:32px;
+  font-weight:700;
+  color:#667eea;
+  margin-bottom:6px;
+}
+
+.stat-label{
+  display:block;
+  font-size:13px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+
+/* Cards Container */
+.cards-container{
+  background:var(--card);
+  padding:30px;
+  border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  margin-bottom:40px;
+}
+
+.cards-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+  padding-bottom:16px;
+  border-bottom:2px solid #115f4eff;
+}
+
+.cards-header h2{
+  font-size:20px;
+  color:#2c3e50;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+/* Info Box */
+.info-box{
+  border-radius:8px;
+  padding:12px 16px;
+  margin-bottom:20px;
+  font-size:13px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:#e7f3ff;
+  border:1px solid #b3d9ff;
+  color:#0c5ba0;
+}
+
+.info-box strong{font-weight:700}
+.info-box .highlight{
+  background:white;
+  padding:2px 6px;
+  border-radius:4px;
+  font-weight:700;
+}
+
+/* Card List */
+.card-list{display:grid;gap:16px}
+
+.existing-card{
+  border:2px solid #eee;
+  border-radius:16px;
+  padding:20px;
+  background:#fff;
+  cursor:grab;
+  transition: all 0.2s ease;
+}
+.existing-card:hover{
+  border-color:#ccc;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.existing-card.dragging{
+  opacity:0.4;
+  cursor:grabbing;
+}
+
+.card-header{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.card-icon{
+  width:44px;
+  height:44px;
+  border-radius:12px;
+  display:grid;
+  place-items:center;
+  font-size:22px;
+  flex-shrink:0;
+}
+.card-icon.concept{background:rgba(255,198,0,0.15);color:#ffb400}
+.card-icon.quiz{background:rgba(255,107,91,0.12);color:var(--danger)}
+.card-icon.interactive{background:rgba(140,40,255,0.12);color:#7b2cff}
+.card-icon.video{background:rgba(45,177,76,0.12);color:#2db14c}
+
+.card-content{flex:1}
+.card-number{
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted);
+  margin-bottom:4px;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+.existing-card h4{
+  font-size:16px;
+  margin-bottom:4px;
+  color:#111;
+}
+.existing-card p{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.5;
+  margin-top:4px;
+}
+
+.card-actions{
+  margin-top:16px;
+  display:flex;
+  gap:10px;
+  padding-top:16px;
+  border-top:1px solid #f0f0f0;
+}
+
+.btn{
+  padding:9px 16px;
+  border-radius:10px;
+  border:none;
+  cursor:pointer;
+  font-weight:700;
+  font-size:13px;
+  transition: all 0.2s ease;
+}
+.btn:hover{
+  transform: translateY(-1px);
+}
+.btn-secondary{background:#e9ecef;color:#495057}
+.btn-secondary:hover{background:#dee2e6}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{
+  background:#6a3eeb;
+  box-shadow: 0 4px 12px rgba(15, 112, 55, 0.3);
+}
+.btn.edit{background:#f3ecff;color:var(--accent)}
+.btn.edit:hover{background:#e8dcff}
+.btn.delete{background:#ffecec;color:var(--danger)}
+.btn.delete:hover{background:#ffd6d6}
+
+.drag-hint{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:12px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  opacity:0.7;
+}
+.drag-hint::before{
+  content:"⋮⋮";
+  font-size:16px;
+}
+
+/* Empty State */
+.empty{
+  text-align:center;
+  color:var(--muted);
+  padding:60px 20px;
+}
+.empty-icon{
+  font-size:48px;
+  margin-bottom:12px;
+  opacity:0.5;
+}
+.empty p{
+  font-size:15px;
+  line-height:1.6;
+  margin-bottom:8px;
+}
+
+/* Add Button */
+.add-card-btn{
+  background:white;
+  border:2px dashed #dee2e6;
+  border-radius:12px;
+  padding:20px;
+  text-align:center;
+  cursor:pointer;
+  transition: all 0.2s ease;
+  color:var(--muted);
+  font-weight:600;
+  margin-top:16px;
+  font-size:14px;
+}
+
+.add-card-btn:hover{
+  border-color:#667eea;
+  color:#667eea;
+  background:#f8f9fa;
+}
+
+/* Save Button */
+.save-wrap{
+  margin-top:24px;
+  text-align:right;
+  padding:20px 0 40px 0;
+}
+.save-btn{
+  padding:12px 28px;
+  border-radius:12px;
+  border:none;
+  background:var(--accent);
+  color:#fff;
+  font-weight:800;
+  font-size:14px;
+  cursor:pointer;
+  transition: all 0.2s ease;
+}
+.save-btn:hover{
+  background:#6a3eeb;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(125,77,255,0.3);
+}
+
+/* Modal */
+.modal{
+  display:none;
+  position:fixed;
+  z-index:1000;
+  left:0;
+  top:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.5);
+  align-items:center;
+  justify-content:center;
+  overflow-y:auto;
+  padding:20px;
+}
+
+.modal.active{
+  display:flex;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn{
+  from{opacity:0}
+  to{opacity:1}
+}
+
+.modal-content{
+  background:white;
+  border-radius:16px;
+  padding:30px;
+  max-width:600px;
+  width:90%;
+  max-height:90vh;
+  overflow-y:auto;
+  animation: slideUp 0.3s ease;
+  margin:auto;
+}
+
+@keyframes slideUp{
+  from{transform:translateY(20px); opacity:0}
+  to{transform:translateY(0); opacity:1}
+}
+
+.modal-header{
+  margin-bottom:24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.modal-header h3{
+  font-size:22px;
+  color:#2c3e50;
+}
+
+.close-btn{
+  background:none;
+  border:none;
+  font-size:28px;
+  cursor:pointer;
+  color:#95a5a6;
+  transition:color 0.2s;
+  line-height:1;
+  width:32px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.close-btn:hover{
+  color:#e74c3c;
+}
+
+/* Card Type Selector */
+.card-types-grid{
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:16px;
+  margin-bottom:20px;
+}
+
+.card-type-option{
+  border-radius:12px;
+  padding:24px 20px;
+  text-align:center;
+  cursor:pointer;
+  transition: all 0.3s ease;
+  border:2px solid transparent;
+}
+
+.card-type-option:hover{
+  transform:translateY(-4px);
+  box-shadow:0 8px 20px rgba(0,0,0,0.15);
+}
+
+.card-type-option.concept{
+  background:linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+}
+
+.card-type-option.quiz{
+  background:linear-gradient(135deg, #ff7675 0%, #d63031 100%);
+  color:white;
+}
+
+.card-type-option.interactive{
+  background:linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+  color:white;
+}
+
+.card-type-option.video{
+  background:linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+  color:white;
+}
+
+.card-type-icon{
+  font-size:40px;
+  margin-bottom:10px;
+}
+
+.card-type-name{
+  font-weight:700;
+  font-size:16px;
+  margin-bottom:6px;
+}
+
+.card-type-desc{
+  font-size:13px;
+  opacity:0.85;
+}
+
+/* MOBILE */
+@media(max-width:1000px){
+  .center{padding:16px}
+  .topic-header{padding:20px}
+  .cards-container{padding:20px}
+  .header-top{flex-direction:column; align-items:flex-start}
+  .header-right{width:100%; flex-direction:column}
+  .stats-overview{grid-template-columns:1fr}
+  .card-types-grid{grid-template-columns:1fr}
+  .modal-content{padding:24px}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<!-- CENTER -->
+<div class="center">
+  
+  <!-- Breadcrumb Navigation -->
+  <div class="breadcrumb">
+    <a href="/admin/dashboard">🚀 Admin Panel</a>
+    <span class="separator">›</span>
+    <a href="/admin/all_courses">📚 Courses</a>
+    <span class="separator">›</span>
+    <span class="current" id="breadcrumbCurrent">💡 Topic</span>
+  </div>
+
+  <!-- Topic Header -->
+  <div class="topic-header">
+    <div class="header-top">
+      <div class="header-left">
+        <h1 id="topicTitleHeading">💡 Topic</h1>
+        <div class="topic-badge">
+          <span>📚</span>
+          <span id="topicLessonLabel">Lesson</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-secondary" onclick="goBackToLesson()">
+         Back to Lesson
+        </button>
+      </div>
+    </div>
+    <div class="topic-description">
+      <strong>Topic Description:</strong>
+      <span id="topicDescriptionText">Loading topic details...</span>
+    </div>
+  </div>
+
+  <!-- Stats Overview -->
+  <div class="stats-overview">
+    <div class="stat-item">
+      <span class="stat-number" id="statTotal">0</span>
+      <span class="stat-label">Total Cards</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number" id="statConcepts">0</span>
+      <span class="stat-label">Concepts</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number" id="statQuizzes">0</span>
+      <span class="stat-label">Quizzes</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number" id="statTime">0</span>
+      <span class="stat-label">Est. Time (min)</span>
+    </div>
+  </div>
+
+  <!-- Cards Container -->
+  <div class="cards-container">
+    <div class="cards-header">
+      <h2>🎴 Cards</h2>
+      <button class="btn btn-primary" onclick="openAddCardModal()">+ Add New Card</button>
+    </div>
+
+    <div class="info-box">
+      <span>💡</span>
+      <div>
+        <strong>Tip:</strong> Drag cards using the <span class="highlight">⋮⋮</span> handle to reorder them. The order determines how students will see them.
+      </div>
+    </div>
+
+    <div id="cardList" class="card-list"></div>
+
+    <div id="emptyState" class="empty" style="display:none">
+      <div class="empty-icon">📭</div>
+      <p>No cards added yet.</p>
+      <p>Click "Add New Card" button to get started!</p>
+    </div>
+
+    <div class="add-card-btn" onclick="openAddCardModal()">
+      ➕ Add New Card to Topic
+    </div>
+
+    <div class="save-wrap">
+      <button class="save-btn" onclick="saveFlow()">💾 Save Order</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Add Card Modal -->
+<div id="addCardModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>🎴 Choose Card Type</h3>
+      <button class="close-btn" onclick="closeAddCardModal()">×</button>
+    </div>
+
+    <div class="card-types-grid">
+      <div class="card-type-option concept" onclick="openCardEditor('concept')">
+        <div class="card-type-icon">📘</div>
+        <div class="card-type-name">Concept Card</div>
+        <div class="card-type-desc">Text, images, explanations</div>
+      </div>
+
+      <div class="card-type-option quiz" onclick="openCardEditor('quiz')">
+        <div class="card-type-icon">❓</div>
+        <div class="card-type-name">Quiz Card</div>
+        <div class="card-type-desc">MCQ, True/False questions</div>
+      </div>
+
+      <div class="card-type-option interactive" onclick="openCardEditor('interactive')">
+        <div class="card-type-icon">🧩</div>
+        <div class="card-type-name">Interactive</div>
+        <div class="card-type-desc">Drag & drop, matching games</div>
+      </div>
+
+      <div class="card-type-option video" onclick="openCardEditor('video')">
+        <div class="card-type-icon">🎬</div>
+        <div class="card-type-name">Video Card</div>
+        <div class="card-type-desc">Video with questions</div>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="closeAddCardModal()" style="width: 100%; margin-top: 12px;">Cancel</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+let cards = [];
+
+// Utility to get query params (fallback if template vars not set)
+function getQueryParam(name) {
+  const url = new URL(window.location.href);
+  return url.searchParams.get(name);
+}
+
+// Prefer server-provided IDs if present, otherwise fall back to query params
+const lessonId = ("{{ lesson_id or '' }}" || getQueryParam('lesson_id')) || null;
+const topicId = ("{{ topic_id or '' }}" || getQueryParam('topic_id')) || null;
+const courseId = ("{{ course_id or '' }}" || getQueryParam('course_id')) || null;
+
+// Navigate back to the Course Content Management page for this lesson
+function goBackToLesson() {
+  const params = new URLSearchParams();
+  if (courseId) params.set('course_id', courseId);
+  if (lessonId) params.set('lesson_id', lessonId);
+  const qs = params.toString();
+  const base = '{{ url_for("admin_bp.course_content_page") }}';
+  window.location.href = base + (qs ? `?${qs}` : '');
+}
+
+// Modal functions
+function openAddCardModal() {
+  document.getElementById('addCardModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeAddCardModal() {
+  document.getElementById('addCardModal').classList.remove('active');
+  document.body.style.overflow = 'auto';
+}
+
+// Close modal on outside click
+window.onclick = function(event) {
+  const modal = document.getElementById('addCardModal');
+  if (event.target === modal) {
+    closeAddCardModal();
+  }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeAddCardModal();
+  }
+});
+
+function openCardEditor(type) {
+  const displayOrder = (cards.length + 1);
+  const params = new URLSearchParams();
+  if (lessonId) params.set('lesson_id', lessonId);
+  if (topicId) params.set('topic_id', topicId);
+  if (courseId) params.set('course_id', courseId);
+  params.set('display_order', displayOrder);
+
+  let path = '/admin/concept-editor';
+  if (type === 'quiz') path = '/admin/quiz-editor';
+  else if (type === 'interactive') path = '/admin/interactive-editor';
+  else if (type === 'video') path = '/admin/video-editor';
+
+  const qs = params.toString();
+  window.location.href = qs ? `${path}?${qs}` : path;
+}
+
+async function fetchCards() {
+  if (!topicId) {
+    console.warn('No topic_id provided, cannot load cards');
+    render();
+    updateStats();
+    return;
+  }
+  
+  const url = `/api/v1/topics/${encodeURIComponent(topicId)}/cards`;
+  let data = null;
+  let res;
+  
+  try {
+    res = await fetch(url);
+    data = await res.json().catch(() => null);
+  } catch (e) {
+    console.error('Network error while loading cards', e);
+    render();
+    updateStats();
+    return;
+  }
+
+  if (res.ok && data && data.success && Array.isArray(data.cards)) {
+    cards = data.cards;
+    render();
+    updateStats();
+    return;
+  }
+
+  console.warn('Failed to load cards from API', data);
+  render();
+  updateStats();
+}
+
+function getCardIcon(type) {
+  const icons = {
+    'concept': '📘',
+    'quiz': '❓',
+    'interactive': '🧩',
+    'video': '🎬'
+  };
+  return icons[type] || '📄';
+}
+
+function getCardTypeName(type) {
+  const names = {
+    'concept': 'Concept Card',
+    'quiz': 'Quiz Card',
+    'interactive': 'Interactive Card',
+    'video': 'Video Card'
+  };
+  return names[type] || 'Card';
+}
+
+const list = document.getElementById("cardList");
+const empty = document.getElementById("emptyState");
+
+function render() {
+  list.innerHTML = "";
+  empty.style.display = cards.length ? "none" : "block";
+
+  cards.forEach((c, i) => {
+    const div = document.createElement("div");
+    div.className = "existing-card";
+    div.dataset.id = c.id;
+    
+    const isSample = String(c.id).startsWith('sample-');
+    
+    // Only make real cards draggable
+    if (!isSample) {
+      div.draggable = true;
+    } else {
+      div.style.opacity = '0.9';
+    }
+
+    const cardTitle = c.title || 'Untitled Card';
+    const rawType = (c.card_type || c.type || 'concept').toLowerCase();
+    const cardType = rawType;
+    const cardIcon = getCardIcon(cardType);
+    const cardTypeName = getCardTypeName(cardType);
+    
+    let cardInfo = '';
+    if (c.content && typeof c.content === 'string') {
+      cardInfo = c.content.substring(0, 100);
+    } else if (c.content && typeof c.content === 'object' && c.content.text) {
+      cardInfo = c.content.text.substring(0, 100);
+    }
+
+    const sampleBadge = isSample ? '<span style="background:#ffc107;color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-left:8px">SAMPLE</span>' : '';
+
+    div.innerHTML = `
+      <div class="card-header">
+        <div class="card-icon ${cardType}">${cardIcon}</div>
+        <div class="card-content">
+          <div class="card-number">Card ${i + 1} • ${cardTypeName}${sampleBadge}</div>
+          <h4>${cardTitle}</h4>
+          <p>${cardInfo || 'No description'}</p>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="btn edit" onclick="editCard('${c.id}')">✏️ Edit</button>
+        <button class="btn delete" onclick="deleteCard('${c.id}')">🗑️ Delete</button>
+      </div>
+      ${isSample ? '<div class="drag-hint" style="opacity:0.5">Sample card - Create your own to edit</div>' : '<div class="drag-hint">Drag to reorder</div>'}
+    `;
+    
+    if (!isSample) {
+      addDragEvents(div);
+    }
+    list.appendChild(div);
+  });
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = cards.length;
+  
+  const concepts = cards.filter(c => (c.card_type || c.type || '').toLowerCase() === 'concept').length;
+  const quizzes = cards.filter(c => (c.card_type || c.type || '').toLowerCase() === 'quiz').length;
+  
+  document.getElementById('statConcepts').textContent = concepts;
+  document.getElementById('statQuizzes').textContent = quizzes;
+  
+  // Estimate time (5 min per card average)
+  const estTime = cards.length * 5;
+  document.getElementById('statTime').textContent = estTime;
+}
+
+function addDragEvents(el) {
+  el.addEventListener("dragstart", () => el.classList.add("dragging"));
+  el.addEventListener("dragend", () => {
+    el.classList.remove("dragging");
+    updateOrder();
+    render();
+    updateStats();
+  });
+}
+
+list.addEventListener("dragover", e => {
+  e.preventDefault();
+  const after = getDragAfter(list, e.clientY);
+  const dragging = document.querySelector(".dragging");
+  if (!dragging) return;
+  after ? list.insertBefore(dragging, after) : list.appendChild(dragging);
+});
+
+function getDragAfter(container, y) {
+  return [...container.querySelectorAll(".existing-card:not(.dragging)")]
+    .reduce((c, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      return offset < 0 && offset > c.offset ? {offset, element: child} : c;
+    }, {offset: -Infinity}).element;
+}
+
+function updateOrder() {
+  const order = [...list.children].map(el => +el.dataset.id);
+  cards.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+}
+
+async function saveFlow() {
+  try {
+    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!token) {
+      alert('Unable to get admin token. Please log in again as admin.');
+      return;
+    }
+
+    const updates = cards.map((c, idx) => {
+      if (!c.id) return null;
+      const payload = { display_order: idx + 1 };
+      return fetch(`/api/v1/cards/${c.id}/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(payload),
+        credentials: 'include'
+      });
+    }).filter(Boolean);
+
+    await Promise.all(updates);
+    alert("✅ Card order saved successfully!");
+  } catch (e) {
+    alert('❌ Failed to save card order: ' + (e.message || e));
+  }
+}
+
+async function editCard(id) {
+  const card = cards.find(c => String(c.id) === String(id));
+  if (!card) {
+    alert('Card not found');
+    return;
+  }
+
+  const rawType = (card.card_type || card.type || 'concept').toLowerCase();
+  let path = '/admin/concept-editor';
+  if (rawType === 'quiz') path = '/admin/quiz-editor';
+  else if (rawType === 'interactive') path = '/admin/interactive-editor';
+  else if (rawType === 'video') path = '/admin/video-editor';
+
+  const params = new URLSearchParams();
+  if (lessonId) params.set('lesson_id', lessonId);
+  if (topicId) params.set('topic_id', topicId);
+    if (courseId) params.set('course_id', courseId);
+  params.set('card_id', String(id));
+  if (card.display_order != null) {
+    params.set('display_order', String(card.display_order));
+  }
+
+  const qs = params.toString();
+  window.location.href = qs ? `${path}?${qs}` : path;
+}
+
+async function deleteCard(id) {
+  if (!confirm('Are you sure you want to delete this card? This action cannot be undone.')) {
+    return;
+  }
+
+  try {
+    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!token) {
+      alert('Unable to get admin token. Please log in again as admin.');
+      return;
+    }
+
+    const res = await fetch(`/api/v1/cards/${id}/delete`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token
+      },
+      credentials: 'include'
+    });
+
+    if (res.ok) {
+      alert('✅ Card deleted successfully');
+      cards = cards.filter(c => String(c.id) !== String(id));
+      render();
+      updateStats();
+    } else {
+      const data = await res.json().catch(() => null);
+      const serverMsg = data?.error || data?.detail || data?.message;
+      const fallbackMsg = `${res.status} ${res.statusText || ''}`.trim();
+      alert('❌ Failed to delete card: ' + (serverMsg || fallbackMsg || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('❌ Failed to delete card: ' + (e.message || e));
+  }
+}
+
+// Load topic meta (title, description) from API
+async function loadTopicMeta() {
+  if (!topicId) return;
+
+  const url = `/api/v1/topics/${encodeURIComponent(topicId)}`;
+  let data = null;
+  try {
+    const res = await fetch(url);
+    data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.success || !data.topic) return;
+
+    const t = data.topic;
+    const title = t.title || 'Topic';
+    const desc = t.description || 'No description yet.';
+
+    const headingEl = document.getElementById('topicTitleHeading');
+    const descEl = document.getElementById('topicDescriptionText');
+    const badgeEl = document.getElementById('topicLessonLabel');
+    const crumbEl = document.getElementById('breadcrumbCurrent');
+
+    if (headingEl) headingEl.textContent = '💡 ' + title;
+    if (descEl) descEl.textContent = desc;
+
+    // Prefer lesson display order (from admin metadata) over raw lesson id
+    const lessonLabelValue = (t.lesson_order !== null && t.lesson_order !== undefined)
+      ? t.lesson_order
+      : t.lesson_id;
+    if (badgeEl) badgeEl.textContent = lessonLabelValue ? `Lesson ${lessonLabelValue}` : 'Lesson';
+    if (crumbEl) crumbEl.textContent = '💡 ' + title;
+  } catch (e) {
+    console.warn('Failed to load topic meta', e);
+  }
+}
+
+// Initialize
+loadTopicMeta().catch(() => {});
+fetchCards().catch(() => {
+  console.warn('Failed to load cards');
+});
+</script>
+
+</body>
+</html>

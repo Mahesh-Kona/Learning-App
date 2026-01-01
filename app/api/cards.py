@@ -371,6 +371,17 @@ def update_card(card_id):
         return {"success": False, "error": "Failed to update card", "detail": str(e), "code": 500}, 500
 
 
+@bp.route("/cards/<int:card_id>/update", methods=["POST"])
+@jwt_required()
+@limiter.limit("30/minute")
+def update_card_via_post(card_id):
+    """Update an existing card via POST for environments that block PUT.
+
+    This simply forwards to update_card to keep logic in one place.
+    """
+    return update_card(card_id)
+
+
 @bp.route("/cards/<int:card_id>", methods=["DELETE"])
 @jwt_required()
 @limiter.limit("30/minute")

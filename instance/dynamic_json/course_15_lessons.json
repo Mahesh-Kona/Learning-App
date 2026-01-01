@@ -2,6 +2,13 @@
   "course_id": 15,
   "lessons": [
     {
+      "id": 25,
+      "title": "Images in html",
+      "description": "gf",
+      "duration": 76,
+      "level": "intermediate"
+    },
+    {
       "id": 15,
       "title": "rfe2",
       "description": "hi",

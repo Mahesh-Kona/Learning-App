@@ -1,0 +1,17 @@
+{
+  "lesson_id": 24,
+  "topics": [
+    {
+      "id": 65,
+      "lesson_id": 24,
+      "title": "sample topic",
+      "content_type": "text",
+      "content": "",
+      "description": "this is a sample one bro",
+      "duration": 12,
+      "order": 1,
+      "estimated_time": 12,
+      "difficulty": "medium"
+    }
+  ]
+}

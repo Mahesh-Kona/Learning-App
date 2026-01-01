@@ -1,0 +1,17 @@
+{
+  "lesson_id": 20,
+  "topics": [
+    {
+      "id": 62,
+      "lesson_id": 20,
+      "title": "suggest",
+      "content_type": "text",
+      "content": "",
+      "description": "EWCFER",
+      "duration": 12,
+      "order": 1,
+      "estimated_time": 12,
+      "difficulty": "easy"
+    }
+  ]
+}

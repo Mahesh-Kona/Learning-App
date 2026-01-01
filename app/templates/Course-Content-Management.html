@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin - Course Content Manager</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
 <style>
 /* Reset & Base Styles */
 * {
@@ -1125,17 +1127,22 @@ textarea.form-control {
 </head>
 <body>
 
+<div class="dashboard">
+
+
+  <main class="main-content">
+
 <div class="container">
   <!-- Admin Header -->
   <div class="admin-header">
     <!-- Admin Breadcrumb -->
     <div class="admin-breadcrumb">
-      <a href="/admin">🚀 Admin Panel</a>
+      <a href="{{ url_for('admin_bp.admin_dashboard') }}">🚀 Admin Panel</a>
       <span class="separator">></span>
-      <a href="/admin/courses">📋 Course Management</a>
+      <a href="{{ url_for('admin_bp.all_courses_page') }}">📋 All Courses</a>
       <span class="separator">></span>
       <span class="current-course">
-        🎓 Physics Grade 10
+        🎓 {{ course.title if course else 'Unknown Course' }}{% if course and course.class_name %} - {{ course.class_name }}{% endif %}
         <span class="admin-badge">EDITING</span>
       </span>
       <span class="separator">></span>
@@ -1150,7 +1157,7 @@ textarea.form-control {
       <h1>
         Course Content Manager
         <span style="font-size: 14px; color: #64748b; font-weight: normal;">
-          | <strong style="color: #ef4444;">Physics Grade 10</strong>
+          | <strong style="color: #ef4444;">{% if course %}{{ course.title }}  {% if course.class_name %} Grade {{ course.class_name }}{% endif %}{% else %}Unknown Course{% endif %}</strong>
         </span>
       </h1>
     </div>
@@ -1163,13 +1170,13 @@ textarea.form-control {
     <!-- Course Meta - Simplified -->
     <div class="course-meta">
       <div class="course-meta-item">
-        <span>🏷️</span> Category: Science
+        <span>🏷️</span> Category: {{ course.category if course and course.category else 'N/A' }}
       </div>
       <div class="course-meta-item">
-        <span>🎯</span> Grade: 10th
+        <span>🎯</span> Class: {{ course.class_name if course and course.class_name else 'N/A' }}
       </div>
       <div class="course-meta-item">
-        <span>👥</span> Students: 245
+        <span>⏱️</span> Duration (weeks): {{ course.duration_weeks if course and course.duration_weeks else 'N/A' }}
       </div>
     </div>
     
@@ -1186,17 +1193,17 @@ textarea.form-control {
     <div class="admin-stats">
       <div class="admin-stat">
         <div class="stat-label">📖 Total Lessons</div>
-        <div class="stat-value">8</div>
+        <div class="stat-value">{{ lessons_count }}</div>
       </div>
       
       <div class="admin-stat">
-        <div class="stat-label">📋 Total Topics</div>
-        <div class="stat-value">24</div>
+        <div class="stat-label">🏷️ Difficulty</div>
+        <div class="stat-value">{{ course.difficulty if course and course.difficulty else 'N/A' }}</div>
       </div>
       
       <div class="admin-stat">
-        <div class="stat-label">🎴 Total Cards</div>
-        <div class="stat-value">142</div>
+        <div class="stat-label">📅 Created</div>
+        <div class="stat-value">{{ course.created_at.strftime('%Y-%m-%d') if course and course.created_at else 'N/A' }}</div>
       </div>
     </div>
     
@@ -1227,224 +1234,11 @@ textarea.form-control {
   <!-- Lessons Container -->
   <div class="lessons-container">
     <div class="lessons-header">
-      <h2><span>📖</span> Lessons in This Course (8)</h2>
+      <h2><span>📖</span> Lessons in This Course (0)</h2>
     </div>
 
     <div class="lesson-list" id="lessonList">
-      <!-- Lesson 1 -->
-      <div class="lesson-item expanded" id="lesson-1">
-        <div class="lesson-item-header" onclick="toggleLesson('lesson-1')">
-          <div class="lesson-main-info">
-            <div class="lesson-number">1</div>
-            <div class="lesson-details">
-              <div class="lesson-title">Light - Reflection & Refraction</div>
-              <div class="lesson-meta">
-                <span><span>⏱️</span> 45 min</span>
-                <span><span>📋</span> 4 Topics</span>
-                <span><span>🎴</span> 12 Cards</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="lesson-actions">
-            <button class="btn btn-primary" onclick="event.stopPropagation(); openLessonModal('edit', 1)">
-              <span>✏️</span> Edit
-            </button>
-            <span class="expand-icon">▼</span>
-          </div>
-        </div>
-
-        <!-- Topics Container -->
-        <div class="topics-container">
-          <div class="topics-header">
-            <h3><span>📋</span> Topics in This Lesson (4)</h3>
-            <div class="topics-header-actions">
-              <button class="btn" onclick="openTopicModal('add', 1)">
-                <span>➕</span> Add Topic
-              </button>
-            </div>
-          </div>
-
-          <div class="topics-grid">
-            <!-- Topic 1 -->
-            <div class="topic-card" onclick="openTopicEditor(1)">
-              <div class="topic-card-header">
-                <div class="topic-icon">💡</div>
-                <div class="topic-card-info">
-                  <h4>Reflection of Light</h4>
-                  <p>Understanding laws of reflection</p>
-                </div>
-              </div>
-              <div class="topic-card-body">
-                <div class="topic-stats">
-                  <div class="topic-stat">
-                    <span class="value">4</span>
-                    <span class="label">Cards</span>
-                  </div>
-                  
-                </div>
-                <div class="topic-card-footer">
-                  <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(1, 1)">
-                    <span>🎴</span> Manage Cards
-                  </button>
-                  <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', 1, 1)">
-                    <span>✏️</span> Edit
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Topic 2 -->
-            <div class="topic-card" onclick="openTopicEditor(2)">
-              <div class="topic-card-header">
-                <div class="topic-icon">🔬</div>
-                <div class="topic-card-info">
-                  <h4>Mirror Types & Image Formation</h4>
-                  <p>Plane, concave and convex mirrors</p>
-                </div>
-              </div>
-              <div class="topic-card-body">
-                <div class="topic-stats">
-                  <div class="topic-stat">
-                    <span class="value">3</span>
-                    <span class="label">Cards</span>
-                  </div>
-                  
-                </div>
-                <div class="topic-card-footer">
-                  <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(1, 2)">
-                    <span>🎴</span> Manage Cards
-                  </button>
-                  <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', 1, 2)">
-                    <span>✏️</span> Edit
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Topic 3 -->
-            <div class="topic-card" onclick="openTopicEditor(3)">
-              <div class="topic-card-header">
-                <div class="topic-icon">🌈</div>
-                <div class="topic-card-info">
-                  <h4>Refraction Through Lenses</h4>
-                  <p>Convex and concave lens properties</p>
-                </div>
-              </div>
-              <div class="topic-card-body">
-                <div class="topic-stats">
-                  <div class="topic-stat">
-                    <span class="value">5</span>
-                    <span class="label">Cards</span>
-                  </div>
-                  
-                </div>
-                <div class="topic-card-footer">
-                  <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(1, 3)">
-                    <span>🎴</span> Manage Cards
-                  </button>
-                  <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', 1, 3)">
-                    <span>✏️</span> Edit
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Topic 4 -->
-            <div class="topic-card" onclick="openTopicEditor(4)">
-              <div class="topic-card-header">
-                <div class="topic-icon">⚡</div>
-                <div class="topic-card-info">
-                  <h4>Applications in Daily Life</h4>
-                  <p>Real-world examples and experiments</p>
-                </div>
-              </div>
-              <div class="topic-card-body">
-                <div class="topic-stats">
-                  <div class="topic-stat">
-                    <span class="value">2</span>
-                    <span class="label">Cards</span>
-                  </div>
-                  
-                </div>
-                <div class="topic-card-footer">
-                  <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(1, 4)">
-                    <span>🎴</span> Manage Cards
-                  </button>
-                  <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', 1, 4)">
-                    <span>✏️</span> Edit
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lesson 2 -->
-      <div class="lesson-item" id="lesson-2">
-        <div class="lesson-item-header" onclick="toggleLesson('lesson-2')">
-          <div class="lesson-main-info">
-            <div class="lesson-number">2</div>
-            <div class="lesson-details">
-              <div class="lesson-title">Human Eye & Colorful World</div>
-              <div class="lesson-meta">
-                <span><span>⏱️</span> 50 min</span>
-                <span><span>📋</span> 5 Topics</span>
-                <span><span>🎴</span> 15 Cards</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="lesson-actions">
-            <button class="btn btn-primary" onclick="event.stopPropagation(); openLessonModal('edit', 2)">
-              <span>✏️</span> Edit
-            </button>
-            <span class="expand-icon">▼</span>
-          </div>
-        </div>
-
-        <div class="topics-container">
-          <div class="topics-header">
-            <h3><span>📋</span> Topics in This Lesson (5)</h3>
-            <div class="topics-header-actions">
-              <button class="btn" onclick="openTopicModal('add', 2)">
-                <span>➕</span> Add Topic
-              </button>
-            </div>
-          </div>
-
-          <div class="topics-grid">
-            <!-- Topic 5 -->
-            <div class="topic-card" onclick="openTopicEditor(5)">
-              <div class="topic-card-header">
-                <div class="topic-icon">👁️</div>
-                <div class="topic-card-info">
-                  <h4>Structure of Human Eye</h4>
-                  <p>Parts and functions of the eye</p>
-                </div>
-              </div>
-              <div class="topic-card-body">
-                <div class="topic-stats">
-                  <div class="topic-stat">
-                    <span class="value">3</span>
-                    <span class="label">Cards</span>
-                  </div>
-                  
-                </div>
-                <div class="topic-card-footer">
-                  <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(2, 5)">
-                    <span>🎴</span> Manage Cards
-                  </button>
-                  <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', 2, 5)">
-                    <span>✏️</span> Edit
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Lessons will be loaded from the database -->
     </div>
 
     <!-- Add New Lesson Button -->
@@ -1456,7 +1250,6 @@ textarea.form-control {
       </div>
     </div>
   </div>
-</div>
 
 <!-- ========== LESSON MODAL ========== -->
 <div class="modal-overlay" id="lessonModal">
@@ -1496,9 +1289,9 @@ textarea.form-control {
 
         
           <div class="form-group">
-            <label for="estimatedTime">Estimated Time (minutes)</label>
+            <label for="lessonEstimatedTime">Estimated Time (minutes)</label>
             <input type="number"
-                   id="estimatedTime"
+                   id="lessonEstimatedTime"
                    class="form-control"
                    placeholder="e.g., 45"
                    min="5"
@@ -1601,9 +1394,9 @@ textarea.form-control {
         
         <div class="form-row">
           <div class="form-group">
-            <label for="topicPoints">Estimated Time (minutes)</label>
-            <input type="number"
-                   id="estimatedTime"
+                 <label for="topicEstimatedTime">Estimated Time (minutes)</label>
+                 <input type="number"
+                   id="topicEstimatedTime"
                    class="form-control"
                    placeholder="e.g., 15"
                    min="1"
@@ -1663,8 +1456,12 @@ textarea.form-control {
 </div>
 
 <script>
+// Initial data from backend
+const COURSE_ID = {{ course.id if course else 'null' }};
+const INITIAL_LESSONS = {{ lessons_for_ui|tojson|safe if lessons_for_ui else '[]' }};
+
 // State Management
-let expandedLesson = 'lesson-1';
+let expandedLesson = null;
 let currentLessonModalMode = 'add';
 let currentTopicModalMode = 'add';
 let currentLessonId = null;
@@ -1694,6 +1491,21 @@ function openLessonModal(mode, lessonId = null) {
     submitBtnText.textContent = '✅ Create Lesson';
     deleteBtn.style.display = 'none';
     resetLessonForm();
+
+    // Autofill next lesson order based on existing lessons in this course
+    try {
+      const lessons = Array.from(document.querySelectorAll('.lesson-item'));
+      let maxOrder = 0;
+      lessons.forEach(el => {
+        const val = parseInt(el.dataset.order || '0', 10);
+        if (!isNaN(val) && val > maxOrder) maxOrder = val;
+      });
+      const nextOrder = (maxOrder || lessons.length) + 1;
+      const orderInput = document.getElementById('lessonorder');
+      if (orderInput) orderInput.value = nextOrder;
+    } catch (e) {
+      // ignore autofill errors; user can still type manually
+    }
   } else if (mode === 'edit' && lessonId) {
     modalTitle.innerHTML = '<span>✏️</span> Edit Lesson';
     submitBtnText.textContent = '✅ Update Lesson';
@@ -1719,23 +1531,29 @@ function openLessonModal(mode, lessonId = null) {
       const metaItems = lessonElement.querySelectorAll('.lesson-meta span');
       
       // Extract data from meta
-      let time = '45', points = '500';
-      metaItems.forEach(item => {
-        const text = item.textContent;
-        if (text.includes('min')) {
-          time = text.match(/\d+/)?.[0] || '45';
-        }
-        if (text.includes('Points')) {
-          points = text.match(/\d+/)?.[0] || '500';
-        }
-      });
+      let time = '45';
+metaItems.forEach(item => {
+  const text = item.textContent;
+  if (text.includes('min')) {
+    time = text.match(/\d+/)?.[0] || '45';
+  }
+});
       
       // Fill the form
       document.getElementById('lessonId').value = lessonId;
       document.getElementById('lessonTitle').value = title;
-      document.getElementById('estimatedTime').value = time;
-      document.getElementById('lessonPoints').value = points;
-      document.getElementById('lessonDescription').value = `Edit description for ${title}`;
+      document.getElementById('lessonEstimatedTime').value = time;
+      document.getElementById('learningLevel').value =
+  lessonElement.dataset.level || '';
+
+document.getElementById('lessonorder').value =
+  lessonElement.dataset.order || '';
+
+document.getElementById('prerequisiteInput').value =
+  lessonElement.dataset.prerequisite || '';
+
+  // Load existing description from data attribute if present
+  document.getElementById('lessonDescription').value = lessonElement.dataset.description || '';
     }
   }
   
@@ -1759,8 +1577,11 @@ function submitLessonForm(event) {
   
   const lessonId = document.getElementById('lessonId').value;
   const title = document.getElementById('lessonTitle').value;
-  const time = document.getElementById('estimatedTime').value;
-  const points = document.getElementById('lessonPoints').value;
+  const time = document.getElementById('lessonEstimatedTime').value;
+  const level = document.getElementById('learningLevel').value;
+  const order = document.getElementById('lessonorder').value;
+  const prerequisite = document.getElementById('prerequisiteInput').value;
+
   const description = document.getElementById('lessonDescription').value;
   
   // Validation
@@ -1768,17 +1589,45 @@ function submitLessonForm(event) {
     showNotification('Please enter a lesson title', 'info');
     return;
   }
+  if (!COURSE_ID) {
+    showNotification('Missing course information for this lesson', 'error');
+    return;
+  }
   
   if (currentLessonModalMode === 'add') {
-    // CREATE NEW LESSON
+    // CREATE NEW LESSON ON SERVER
     showNotification('Creating lesson...', 'info');
-    
-    setTimeout(() => {
-      const newLessonId = Date.now();
-      const lessonCount = document.querySelectorAll('.lesson-item').length + 1;
-      
-      const newLessonHTML = `
-        <div class="lesson-item" id="lesson-${newLessonId}">
+
+    const payload = {
+      title: title,
+      course_id: COURSE_ID,
+      description: description || undefined,
+      duration: time ? parseInt(time, 10) : undefined,
+      level: level || undefined,
+      order: order ? parseInt(order, 10) : undefined,
+      prerequisite: prerequisite || undefined
+    };
+
+    fetch('/admin/create_lesson', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success && body.id) {
+        const newLessonId = body.id;
+        const lessonList = document.querySelector('.lesson-list');
+        if (lessonList) {
+          const lessonCount = document.querySelectorAll('.lesson-item').length + 1;
+
+          const newLessonHTML = `
+        <div class="lesson-item" id="lesson-${newLessonId}" data-level="${level || ''}" data-order="${order || ''}" data-prerequisite="${prerequisite || ''}" data-description="${(description || '').replace(/"/g, '&quot;')}">
           <div class="lesson-item-header" onclick="toggleLesson('lesson-${newLessonId}')">
             <div class="lesson-main-info">
               <div class="lesson-number">${lessonCount}</div>
@@ -1788,11 +1637,9 @@ function submitLessonForm(event) {
                   <span><span>⏱️</span> ${time || 30} min</span>
                   <span><span>📋</span> 0 Topics</span>
                   <span><span>🎴</span> 0 Cards</span>
-                  <span><span>⭐</span> ${points || 0} Points</span>
                 </div>
               </div>
             </div>
-            
             <div class="lesson-actions">
               <button class="btn btn-primary" onclick="event.stopPropagation(); openLessonModal('edit', ${newLessonId})">
                 <span>✏️</span> Edit
@@ -1822,46 +1669,85 @@ function submitLessonForm(event) {
             </div>
           </div>
         </div>
-      `;
-      
-      // Add to lesson list
-      const lessonList = document.querySelector('.lesson-list');
-      const addButton = document.querySelector('.add-lesson-btn');
-      lessonList.insertBefore(createElementFromHTML(newLessonHTML), addButton);
-      
-      // Update lesson count
-      updateLessonCount(1);
-      
-      closeLessonModal();
-      showNotification('Lesson created successfully!', 'success');
-      
-      // Auto-expand the new lesson
-      setTimeout(() => {
-        toggleLesson(`lesson-${newLessonId}`);
-      }, 300);
-      
-    }, 1000);
+          `;
+
+          const addButton = document.querySelector('.add-lesson-btn');
+          if (addButton && addButton.parentNode === lessonList) {
+            lessonList.insertBefore(createElementFromHTML(newLessonHTML), addButton);
+          } else {
+            lessonList.appendChild(createElementFromHTML(newLessonHTML));
+          }
+
+          updateLessonCount(1);
+        }
+
+        closeLessonModal();
+        showNotification('Lesson created successfully!', 'success');
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to create lesson';
+        showNotification(msg, 'error');
+      }
+    })
+    .catch(err => {
+      console.error('create_lesson error', err);
+      showNotification('Failed to create lesson (network error)', 'error');
+    });
     
   } else if (currentLessonModalMode === 'edit' && lessonId) {
     // UPDATE EXISTING LESSON
     showNotification('Updating lesson...', 'info');
-    
-    setTimeout(() => {
-      const lessonElement = document.getElementById(`lesson-${lessonId}`);
-      if (lessonElement) {
-        // Update title
-        lessonElement.querySelector('.lesson-title').textContent = title;
-        
-        // Update meta
-        const metaItems = lessonElement.querySelectorAll('.lesson-meta span');
-        metaItems[0].innerHTML = `<span>⏱️</span> ${time || 30} min`;
-        metaItems[3].innerHTML = `<span>⭐</span> ${points || 0} Points`;
+
+    const payload = {
+      id: lessonId,
+      title: title,
+      course_id: COURSE_ID,
+      description: description || undefined,
+      duration: time ? parseInt(time, 10) : undefined,
+      level: level || undefined,
+      order: order ? parseInt(order, 10) : undefined,
+      prerequisite: prerequisite || undefined
+    };
+
+    fetch('/admin/update_lesson', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success) {
+        const lessonElement = document.getElementById(`lesson-${lessonId}`);
+        if (lessonElement) {
+          // Update title
+          lessonElement.querySelector('.lesson-title').textContent = title;
+
+          // Update meta
+          const metaItems = lessonElement.querySelectorAll('.lesson-meta span');
+          if (metaItems[0]) {
+            metaItems[0].innerHTML = `<span>⏱️</span> ${time || 30} min`;
+          }
+          lessonElement.dataset.level = level;
+          lessonElement.dataset.order = order;
+          lessonElement.dataset.prerequisite = prerequisite;
+          lessonElement.dataset.description = description || '';
+        }
+
+        closeLessonModal();
+        showNotification('Lesson updated successfully!', 'success');
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to update lesson';
+        showNotification(msg, 'error');
       }
-      
-      closeLessonModal();
-      showNotification('Lesson updated successfully!', 'success');
-      
-    }, 1000);
+    })
+    .catch(err => {
+      console.error('update_lesson error', err);
+      showNotification('Failed to update lesson (network error)', 'error');
+    });
   }
 }
 
@@ -1870,19 +1756,38 @@ function deleteLesson() {
   
   if (confirm(`Are you sure you want to delete this lesson?\nThis action cannot be undone.`)) {
     showNotification('Deleting lesson...', 'info');
-    
-    setTimeout(() => {
-      const lessonElement = document.getElementById(`lesson-${currentLessonId}`);
-      if (lessonElement) {
-        lessonElement.remove();
-        updateLessonCount(-1);
+
+    fetch('/admin/delete_lesson', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ id: currentLessonId })
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success) {
+        const lessonElement = document.getElementById(`lesson-${currentLessonId}`);
+        if (lessonElement) {
+          lessonElement.remove();
+          updateLessonCount(-1);
+          // Optionally, also adjust total lessons stat if present
+          renumberLessons();
+        }
         closeLessonModal();
         showNotification('Lesson deleted successfully!', 'success');
-        
-        // Re-number lessons
-        renumberLessons();
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to delete lesson';
+        showNotification(msg, 'error');
       }
-    }, 1000);
+    })
+    .catch(err => {
+      console.error('delete_lesson error', err);
+      showNotification('Failed to delete lesson (network error)', 'error');
+    });
   }
 }
 
@@ -1910,6 +1815,22 @@ function openTopicModal(mode, lessonId, topicId = null) {
     submitBtnText.textContent = '✅ Create Topic';
     deleteBtn.style.display = 'none';
     resetTopicForm();
+
+    // Autofill next topic order within this lesson
+    try {
+      const lessonElement = document.getElementById(`lesson-${lessonId}`);
+      const topics = lessonElement ? Array.from(lessonElement.querySelectorAll('.topic-card')) : [];
+      let maxOrder = 0;
+      topics.forEach(el => {
+        const val = parseInt(el.dataset.order || '0', 10);
+        if (!isNaN(val) && val > maxOrder) maxOrder = val;
+      });
+      const nextOrder = (maxOrder || topics.length) + 1;
+      const orderInput = document.getElementById('topicOrder');
+      if (orderInput) orderInput.value = nextOrder;
+    } catch (e) {
+      // ignore autofill errors; user can still type manually
+    }
   } else if (mode === 'edit' && topicId) {
     modalTitle.innerHTML = '<span>✏️</span> Edit Topic';
     submitBtnText.textContent = '✅ Update Topic';
@@ -1923,13 +1844,23 @@ function openTopicModal(mode, lessonId, topicId = null) {
       const stats = topicCard.querySelectorAll('.topic-stat .value');
       const points = stats[1]?.textContent || '150';
       const icon = topicCard.querySelector('.topic-icon').textContent;
+      const difficulty = topicCard.dataset.difficulty || '';
+const time = topicCard.dataset.time || '';
+const order = topicCard.dataset.order || '';
+
       
       // Fill the form
+      
       document.getElementById('topicId').value = topicId;
       document.getElementById('topicTitle').value = title;
       document.getElementById('topicDescription').value = description;
-      document.getElementById('topicPoints').value = points;
       document.getElementById('parentLessonId').value = lessonId;
+
+
+      document.getElementById('difficultyLevel').value = topicCard.dataset.difficulty || 'medium';
+      document.getElementById('topicEstimatedTime').value = topicCard.dataset.time || '';
+      document.getElementById('topicOrder').value = topicCard.dataset.order || '';
+
       
       // Select icon
       selectedIcon = icon;
@@ -1951,6 +1882,10 @@ function resetTopicForm() {
   document.getElementById('topicForm').reset();
   document.getElementById('topicId').value = '';
   document.getElementById('parentLessonId').value = '';
+  document.getElementById('difficultyLevel').value = '';
+document.getElementById('topicEstimatedTime').value = '';
+document.getElementById('topicOrder').value = '';
+
   selectedIcon = '💡';
   updateIconSelection();
 }
@@ -1962,7 +1897,11 @@ function submitTopicForm(event) {
   const parentLessonId = document.getElementById('parentLessonId').value || currentParentLessonId;
   const title = document.getElementById('topicTitle').value;
   const description = document.getElementById('topicDescription').value;
-  const points = document.getElementById('topicPoints').value;
+  const difficulty = document.getElementById('difficultyLevel').value;
+  const time = document.getElementById('topicEstimatedTime').value;
+  const order = document.getElementById('topicOrder').value;
+
+
   
   // Validation
   if (!title) {
@@ -1976,20 +1915,45 @@ function submitTopicForm(event) {
   }
   
   if (currentTopicModalMode === 'add') {
-    // CREATE NEW TOPIC
+    // CREATE NEW TOPIC ON SERVER
     showNotification('Creating topic...', 'info');
-    
-    setTimeout(() => {
-      const newTopicId = Date.now();
-      const lessonElement = document.getElementById(`lesson-${parentLessonId}`);
-      
-      if (lessonElement) {
-        const topicsGrid = lessonElement.querySelector('.topics-grid');
-        const topicsCount = lessonElement.querySelectorAll('.topic-card').length;
-        
-        // Create new topic card
-        const newTopicHTML = `
-          <div class="topic-card" onclick="openTopicEditor(${newTopicId})">
+
+    const payload = {
+      title: title,
+      lesson_id: parentLessonId,
+      description: description || undefined,
+      estimated_time: time ? parseInt(time, 10) : undefined,
+      difficulty: difficulty || undefined,
+      order: order ? parseInt(order, 10) : undefined,
+      icon: selectedIcon
+    };
+
+    fetch('/admin/create_topic', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success && body.id) {
+        const newTopicId = body.id;
+        const lessonElement = document.getElementById(`lesson-${parentLessonId}`);
+
+        if (lessonElement) {
+          const topicsGrid = lessonElement.querySelector('.topics-grid');
+
+          const newTopicHTML = `
+          <div class="topic-card"
+            data-difficulty="${difficulty || 'medium'}"
+            data-time="${time || ''}"
+            data-order="${order || ''}"
+            onclick="openTopicEditor(${newTopicId})">
+
             <div class="topic-card-header">
               <div class="topic-icon">${selectedIcon}</div>
               <div class="topic-card-info">
@@ -2003,10 +1967,6 @@ function submitTopicForm(event) {
                   <span class="value">0</span>
                   <span class="label">Cards</span>
                 </div>
-                <div class="topic-stat">
-                  <span class="value">${points || 0}</span>
-                  <span class="label">Points</span>
-                </div>
               </div>
               <div class="topic-card-footer">
                 <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(${parentLessonId}, ${newTopicId})">
@@ -2018,50 +1978,82 @@ function submitTopicForm(event) {
               </div>
             </div>
           </div>
-        `;
-        
-        // Remove empty state if it exists
-        const emptyState = topicsGrid.querySelector('.empty-state');
-        if (emptyState) {
-          emptyState.remove();
+          `;
+
+          // Remove empty state if it exists
+          const emptyState = topicsGrid.querySelector('.empty-state');
+          if (emptyState) {
+            emptyState.remove();
+          }
+
+          // Add new topic
+          topicsGrid.insertBefore(createElementFromHTML(newTopicHTML), topicsGrid.firstChild);
+
+          // Update topic count
+          updateTopicCount(parentLessonId, 1);
+          updateTotalTopicCount(1);
         }
-        
-        // Add new topic
-        topicsGrid.insertBefore(createElementFromHTML(newTopicHTML), topicsGrid.firstChild);
-        
-        // Update topic count
-        updateTopicCount(parentLessonId, 1);
-        updateTotalTopicCount(1);
-        
+
         closeTopicModal();
         showNotification('Topic created successfully!', 'success');
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to create topic';
+        showNotification(msg, 'error');
       }
-      
-    }, 1000);
+    })
+    .catch(err => {
+      console.error('create_topic error', err);
+      showNotification('Failed to create topic (network error)', 'error');
+    });
     
   } else if (currentTopicModalMode === 'edit' && topicId) {
     // UPDATE EXISTING TOPIC
     showNotification('Updating topic...', 'info');
-    
-    setTimeout(() => {
-      const topicCard = findTopicCard(topicId);
-      if (topicCard) {
-        // Update topic card
-        topicCard.querySelector('h4').textContent = title;
-        topicCard.querySelector('p').textContent = description || 'No description';
-        topicCard.querySelector('.topic-icon').textContent = selectedIcon;
-        
-        // Update points
-        const pointsElement = topicCard.querySelectorAll('.topic-stat .value')[1];
-        if (pointsElement) {
-          pointsElement.textContent = points || 0;
+
+    const payload = {
+      id: topicId,
+      title: title,
+      description: description || undefined,
+      estimated_time: time ? parseInt(time, 10) : undefined,
+      difficulty: difficulty || undefined,
+      order: order ? parseInt(order, 10) : undefined,
+      icon: selectedIcon
+    };
+
+    fetch('/admin/update_topic', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success) {
+        const topicCard = findTopicCard(topicId);
+        if (topicCard) {
+          topicCard.querySelector('h4').textContent = title;
+          topicCard.querySelector('p').textContent = description || 'No description';
+          topicCard.querySelector('.topic-icon').textContent = selectedIcon;
+          topicCard.dataset.difficulty = difficulty || 'medium';
+          topicCard.dataset.time = time || '';
+          topicCard.dataset.order = order || '';
         }
+
+        closeTopicModal();
+        showNotification('Topic updated successfully!', 'success');
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to update topic';
+        showNotification(msg, 'error');
       }
-      
-      closeTopicModal();
-      showNotification('Topic updated successfully!', 'success');
-      
-    }, 1000);
+    })
+    .catch(err => {
+      console.error('update_topic error', err);
+      showNotification('Failed to update topic (network error)', 'error');
+    });
   }
 }
 
@@ -2070,38 +2062,58 @@ function deleteTopic() {
   
   if (confirm(`Are you sure you want to delete this topic?\nThis action cannot be undone.`)) {
     showNotification('Deleting topic...', 'info');
-    
-    setTimeout(() => {
-      const topicCard = findTopicCard(currentTopicId);
-      if (topicCard) {
-        const lessonElement = document.getElementById(`lesson-${currentParentLessonId}`);
-        
-        // Remove topic card
-        topicCard.remove();
-        
-        // Update counts
-        updateTopicCount(currentParentLessonId, -1);
-        updateTotalTopicCount(-1);
-        
-        // Add empty state if no topics left
-        const topicsGrid = lessonElement?.querySelector('.topics-grid');
-        if (topicsGrid && topicsGrid.children.length === 0) {
-          const emptyStateHTML = `
-            <div class="empty-state">
-              <div class="empty-state-icon">🔭</div>
-              <p>No topics in this lesson yet.</p>
-              <p style="margin-top: 8px; color: #94a3b8;">
-                Start by adding your first topic!
-              </p>
-            </div>
-          `;
-          topicsGrid.appendChild(createElementFromHTML(emptyStateHTML));
+
+    fetch('/admin/delete_topic', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ id: currentTopicId })
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success) {
+        const topicCard = findTopicCard(currentTopicId);
+        if (topicCard) {
+          const lessonElement = document.getElementById(`lesson-${currentParentLessonId}`);
+
+          // Remove topic card
+          topicCard.remove();
+
+          // Update counts
+          updateTopicCount(currentParentLessonId, -1);
+          updateTotalTopicCount(-1);
+
+          // Add empty state if no topics left
+          const topicsGrid = lessonElement?.querySelector('.topics-grid');
+          if (topicsGrid && topicsGrid.children.length === 0) {
+            const emptyStateHTML = `
+              <div class="empty-state">
+                <div class="empty-state-icon">🔭</div>
+                <p>No topics in this lesson yet.</p>
+                <p style="margin-top: 8px; color: #94a3b8;">
+                  Start by adding your first topic!
+                </p>
+              </div>
+            `;
+            topicsGrid.appendChild(createElementFromHTML(emptyStateHTML));
+          }
         }
-        
+
         closeTopicModal();
         showNotification('Topic deleted successfully!', 'success');
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to delete topic';
+        showNotification(msg, 'error');
       }
-    }, 1000);
+    })
+    .catch(err => {
+      console.error('delete_topic error', err);
+      showNotification('Failed to delete topic (network error)', 'error');
+    });
   }
 }
 
@@ -2130,6 +2142,136 @@ function createElementFromHTML(htmlString) {
   const div = document.createElement('div');
   div.innerHTML = htmlString.trim();
   return div.firstChild;
+}
+
+function renderInitialLessons() {
+  const lessonList = document.querySelector('.lesson-list');
+  if (!lessonList) return;
+
+  lessonList.innerHTML = '';
+
+  if (!Array.isArray(INITIAL_LESSONS) || INITIAL_LESSONS.length === 0) {
+    // Nothing to render; header count already shows 0
+    return;
+  }
+
+  INITIAL_LESSONS.forEach((lesson, index) => {
+    const lessonId = lesson.id;
+    const title = lesson.title || 'Untitled Lesson';
+    const duration = lesson.duration || 30;
+    const level = lesson.level || '';
+    const order = lesson.order || '';
+    const prerequisite = lesson.prerequisite || '';
+    const description = lesson.description || '';
+    const topics = Array.isArray(lesson.topics) ? lesson.topics : [];
+
+    const topicsCount = topics.length;
+
+    // Build topics HTML
+    let topicsInnerHTML = '';
+    if (topicsCount === 0) {
+      topicsInnerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🔭</div>
+          <p>No topics in this lesson yet.</p>
+          <p style="margin-top: 8px; color: #94a3b8;">
+            Start by adding your first topic!
+          </p>
+        </div>
+      `;
+    } else {
+      topics.forEach((topic) => {
+        const topicId = topic.id;
+        const topicTitle = topic.title || 'Untitled Topic';
+        const topicDesc = topic.description || 'No description';
+        const topicIcon = topic.icon || '💡';
+        const topicDifficulty = topic.difficulty || 'medium';
+        const topicTime = topic.estimated_time || '';
+        const topicOrder = topic.order || '';
+
+        topicsInnerHTML += `
+          <div class="topic-card"
+            data-difficulty="${topicDifficulty}"
+            data-time="${topicTime}"
+            data-order="${topicOrder}"
+            onclick="openTopicEditor(${topicId})">
+
+            <div class="topic-card-header">
+              <div class="topic-icon">${topicIcon}</div>
+              <div class="topic-card-info">
+                <h4>${topicTitle}</h4>
+                <p>${topicDesc}</p>
+              </div>
+            </div>
+            <div class="topic-card-body">
+              <div class="topic-stats">
+                <div class="topic-stat">
+                  <span class="value">${topic.cards_count || 0}</span>
+                  <span class="label">Cards</span>
+                </div>
+              </div>
+              <div class="topic-card-footer">
+                <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(${lessonId}, ${topicId})">
+                  <span>🎴</span> Manage Cards
+                </button>
+                <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', ${lessonId}, ${topicId})">
+                  <span>✏️</span> Edit
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    const lessonHTML = `
+      <div class="lesson-item" id="lesson-${lessonId}" data-level="${level}" data-order="${order}" data-prerequisite="${prerequisite}" data-description="${description.replace(/"/g, '&quot;')}">
+        <div class="lesson-item-header" onclick="toggleLesson('lesson-${lessonId}')">
+          <div class="lesson-main-info">
+            <div class="lesson-number">${index + 1}</div>
+            <div class="lesson-details">
+              <div class="lesson-title">${title}</div>
+              <div class="lesson-meta">
+                <span><span>⏱️</span> ${duration} min</span>
+                <span><span>📋</span> ${topicsCount} Topics</span>
+                <span><span>🎴</span> 0 Cards</span>
+              </div>
+            </div>
+          </div>
+          <div class="lesson-actions">
+            <button class="btn btn-primary" onclick="event.stopPropagation(); openLessonModal('edit', ${lessonId})">
+              <span>✏️</span> Edit
+            </button>
+            <span class="expand-icon">▼</span>
+          </div>
+        </div>
+
+        <div class="topics-container">
+          <div class="topics-header">
+            <h3><span>📋</span> Topics in This Lesson (${topicsCount})</h3>
+            <div class="topics-header-actions">
+              <button class="btn" onclick="openTopicModal('add', ${lessonId})">
+                <span>➕</span> Add Topic
+              </button>
+            </div>
+          </div>
+
+          <div class="topics-grid">
+            ${topicsInnerHTML}
+          </div>
+        </div>
+      </div>
+    `;
+
+    lessonList.appendChild(createElementFromHTML(lessonHTML));
+  });
+
+  // Update lessons header count
+  const header = document.querySelector('.lessons-header h2');
+  if (header) {
+    header.innerHTML = header.innerHTML.replace(/\(\d+\)/, `(${INITIAL_LESSONS.length})`);
+  }
+
 }
 
 function toggleLesson(lessonId) {
@@ -2201,20 +2343,53 @@ function openTopicEditor(topicId) {
 
 function manageCards(lessonId, topicId) {
   showNotification(`Opening card manager for Lesson ${lessonId}, Topic ${topicId}`, 'info');
-  // This would typically navigate to a card management interface
-  // For now, just showing a notification
+  const params = new URLSearchParams();
+  if (COURSE_ID) params.set('course_id', COURSE_ID);
+  if (lessonId) params.set('lesson_id', lessonId);
+  if (topicId) params.set('topic_id', topicId);
+  const qs = params.toString();
+  window.location.href = `/manage-cards.html${qs ? `?${qs}` : ''}`;
 }
 
 function editCourseSettings() {
   showNotification('Opening course settings', 'info');
+  setTimeout(() => {
+    window.location.href = "coursesetting.html";
+  }, 300);
 }
 
 function saveAndPublish() {
   if (confirm('Publish all changes to live course?\nThis will make changes visible to all students.')) {
+    if (!COURSE_ID) {
+      showNotification('Missing course information for publish', 'error');
+      return;
+    }
+
     showNotification('Publishing changes...', 'info');
-    setTimeout(() => {
-      showNotification('✔ Changes published successfully!', 'success');
-    }, 1500);
+
+    fetch('/admin/update_course', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ id: COURSE_ID, published: true })
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success) {
+        showNotification('✔ Changes published successfully!', 'success');
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to publish changes';
+        showNotification(msg, 'error');
+      }
+    })
+    .catch(err => {
+      console.error('publish_course error', err);
+      showNotification('Failed to publish changes (network error)', 'error');
+    });
   }
 }
 
@@ -2232,8 +2407,9 @@ function filterContent(searchTerm) {
         hasMatch = true;
       }
     });
-    
-    lesson.style.display = searchTerm === '' || hasMatch ? 'flex' : 'none';
+
+    // When visible, use default CSS display so structure/spacing stays normal
+    lesson.style.display = (searchTerm === '' || hasMatch) ? '' : 'none';
   });
 }
 
@@ -2292,15 +2468,42 @@ document.addEventListener('keydown', function(e) {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
-  const firstLesson = document.getElementById('lesson-1');
-  if (firstLesson) {
-    firstLesson.classList.add('expanded');
-  }
-  
   // Initialize icon grid
   updateIconSelection();
+  // Render lessons and topics from backend data
+  renderInitialLessons();
+
+  // Ensure all lessons start collapsed so topics are hidden initially
+  document.querySelectorAll('.lesson-item').forEach(item => {
+    item.classList.remove('expanded');
+  });
+
+  // If a specific lesson_id is provided in the URL, auto-expand and scroll to it
+  try {
+    const url = new URL(window.location.href);
+    const lessonIdParam = url.searchParams.get('lesson_id');
+    if (lessonIdParam) {
+      const targetId = `lesson-${lessonIdParam}`;
+      const el = document.getElementById(targetId);
+      if (el) {
+        // Expand this lesson if not already expanded
+        if (!el.classList.contains('expanded')) {
+          toggleLesson(targetId);
+        }
+        // Scroll it into view after layout is ready
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+  } catch (e) {
+    // Ignore URL/scroll errors; page still works normally
+  }
 });
 </script>
+
+  </main>
+</div>
 
 </body>
 </html>

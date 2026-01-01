@@ -2,9 +2,16 @@
   "course_id": 22,
   "lessons": [
     {
+      "id": 22,
+      "title": "Images in html",
+      "description": "Edit",
+      "duration": 1,
+      "level": "intermediate"
+    },
+    {
       "id": 14,
       "title": "Intro Lesson",
-      "description": "fvrb ",
+      "description": "Edit description for Intro Lesson",
       "duration": 13,
       "level": "intermediate"
     }
