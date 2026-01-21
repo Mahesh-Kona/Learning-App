@@ -38,7 +38,7 @@
           <li class="submenu-item {% if active == 'categories' %}active{% endif %}"><a href="{{ url_for('admin_bp.category_management') }}">Categories</a></li>
         </ul>
       </li>
-      <li class="menu-item {% if active == 'analytics' %}active{% endif %}"><a href="#"><i class="fas fa-chart-bar"></i><span>Analytics</span></a></li>
+      <li class="menu-item {% if active == 'analytics' %}active{% endif %}"><a href="{{ url_for('admin_bp.analytics_page') }}"><i class="fas fa-chart-bar"></i><span>Analytics</span></a></li>
       <li class="menu-item {% if active == 'settings' %}active{% endif %}"><a href="#"><i class="fas fa-cog"></i><span>Settings</span></a></li>
     </ul>
   </nav>

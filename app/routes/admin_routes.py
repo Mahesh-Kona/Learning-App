@@ -291,6 +291,22 @@ def students_page():
     return render_template('student.html', user=user, active='students')
 
 
+@admin_bp.route('/analytics', methods=['GET'])
+def analytics_page():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    return render_template('analytics.html', user=user, active='analytics')
+
+
 @admin_bp.route('/students/<int:student_id>', methods=['GET'])
 def view_student(student_id: int):
     uid = session.get('admin_user_id')

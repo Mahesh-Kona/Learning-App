@@ -15,9 +15,17 @@ document.addEventListener('DOMContentLoaded', function () {
       e.preventDefault();
       const action = this.querySelector('span').textContent.trim();
 
-      // ✅ Redirect if the action is "Create Course" to the Flask route
-      if (action.toLowerCase().includes('create course')) {
+      const actionLower = action.toLowerCase();
+
+      // Redirect specific quick actions to their proper pages
+      if (actionLower.includes('create course')) {
         window.location.href = '/admin/create_course';
+      } else if (actionLower.includes('add student')) {
+        // Use the anchor's href so query params like ?open_add=1 work
+        const href = this.getAttribute('href');
+        if (href) {
+          window.location.href = href;
+        }
       } else {
         alert(`Opening ${action} form...`);
       }

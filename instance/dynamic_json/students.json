@@ -16,7 +16,7 @@
       "name": "Aayushman",
       "email": "aayush@gmail.com",
       "enrollmentDate": "2025-12-02",
-      "courses": "English,General Knowledge",
+      "courses": "Mathematics, JS Flow Course",
       "progress": 0,
       "xp": 0,
       "lastLogin": "",
@@ -56,50 +56,6 @@
       "status": "active"
     },
     {
-      "id": 8,
-      "name": "xyz",
-      "email": "xyz@gmail.com",
-      "enrollmentDate": "2025-12-11",
-      "courses": "english",
-      "progress": 0,
-      "xp": 0,
-      "lastLogin": "",
-      "status": "active"
-    },
-    {
-      "id": 9,
-      "name": "aayushmann",
-      "email": "gakkharaayushmann@gmail.com",
-      "enrollmentDate": "2025-12-11",
-      "courses": "Maths , Social Studies",
-      "progress": 0,
-      "xp": 0,
-      "lastLogin": "",
-      "status": "active"
-    },
-    {
-      "id": 17,
-      "name": "Mek",
-      "email": "mek@gmail.com",
-      "enrollmentDate": "2025-12-12",
-      "courses": "english , hindi",
-      "progress": 0,
-      "xp": 0,
-      "lastLogin": "",
-      "status": "active"
-    },
-    {
-      "id": 20,
-      "name": "Parth Goel",
-      "email": "parth12@gmail.com",
-      "enrollmentDate": "2025-12-13",
-      "courses": "english, hindi",
-      "progress": 0,
-      "xp": 0,
-      "lastLogin": "",
-      "status": "active"
-    },
-    {
       "id": 23,
       "name": "xyzx",
       "email": "xyzx@gmail.com",
@@ -111,16 +67,16 @@
       "status": "active"
     },
     {
-      "id": 24,
-      "name": "man",
-      "email": "man@gmail.com",
-      "enrollmentDate": "2025-12-19",
-      "courses": "Mathematics",
+      "id": 25,
+      "name": "AKULA SAMPURNA",
+      "email": "n210160@rguktn.ac.in",
+      "enrollmentDate": "2026-01-21",
+      "courses": "New test course 15 dec",
       "progress": 0,
       "xp": 0,
       "lastLogin": "",
       "status": "active"
     }
   ],
-  "total": 11
+  "total": 7
 }

@@ -275,6 +275,7 @@ def get_students():
             "enrollmentDate": enrollment_date,
             # Map Courses column using courses field, fallback to legacy subjects
             "courses": (getattr(student, 'courses', None) or getattr(student, 'subjects', None) or ""),
+            "syllabus": getattr(student, 'syllabus', None),
             "class": getattr(student, 'class_', None),
             "progress": 0,
             "xp": 0,
@@ -328,6 +329,7 @@ def get_student(student_id):
         "email": student.email or "",
         "enrollmentDate": enrollment_date,
         "courses": (getattr(student, 'courses', None) or getattr(student, 'subjects', None) or ""),
+        "syllabus": getattr(student, 'syllabus', None),
         "class": getattr(student, 'class_', None),
         "progress": 0,
         "xp": 0,
@@ -343,8 +345,24 @@ def get_student(student_id):
 @limiter.limit("30/minute")
 def create_student():
     """Create a new student record in the database. Admin only.
-    
-    Expected JSON: { name, email, courses?, date? } (accepts legacy subjects)
+
+    Expected JSON (all fields besides name/email optional):
+
+    {
+        "name": "Full Name",          # required
+        "email": "student@example.com",  # required
+        "courses": "...",            # optional, or legacy "subjects"
+        "date": "YYYY-MM-DD",        # optional enrollment date
+        "mobile": "9876543210",      # optional 10-digit mobile
+        "class": "10",               # optional class/grade
+        "syllabus": "CBSE",          # optional board/syllabus
+        "password": "...",           # optional raw password (stored in students table only)
+        "status": "active"|"inactive",  # optional status, defaults to "active"
+        "second_language": "...",    # optional
+        "third_language": "..."      # optional
+    }
+
+    Accepts legacy "subjects" instead of "courses".
     """
     # Check if user is admin
     claims = get_jwt()
@@ -362,16 +380,50 @@ def create_student():
         return {"success": False, "error": "Name and email are required", "code": 400}, 400
     
     try:
+        # Optional mobile validation (10 digits)
+        mobile_in = data.get('mobile')
+        mobile_val = None
+        if mobile_in:
+            m = str(mobile_in)
+            if len(m) == 10 and m.isdigit():
+                mobile_val = m
+            else:
+                return {"success": False, "error": "Mobile must be 10 digits", "code": 400}, 400
+
+        # Status (active/inactive), default active
+        status_val = 'active'
+        if 'status' in data and data['status'] in ['active', 'inactive']:
+            status_val = data['status']
+
+        # Prefer courses; fallback to legacy subjects
+        courses_val = data.get('courses', data.get('subjects', ''))
+
         new_student = Student(
             name=name,
             email=email,
-            courses=data.get('courses', data.get('subjects', '')),
-            password='',  # Empty password for now
-            syllabus='',  # Default empty string instead of None
-            class_='',
-            second_language='',
-            third_language=''
+            courses=courses_val,
+            # Store raw password in Student table (legacy behavior, similar to /auth/register)
+            password=data.get('password', ''),
+            syllabus=data.get('syllabus', data.get('board', '')),
+            class_=data.get('class', ''),
+            second_language=data.get('second_language', ''),
+            third_language=data.get('third_language', ''),
+            mobile=mobile_val,
+            status=status_val
         )
+
+        # Also create/update a User record so /api/v1/auth/login works (hashed password).
+        # Only do this when a non-empty password is provided.
+        pw_in = data.get('password')
+        if pw_in is not None and str(pw_in).strip() != '':
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                # Keep role as-is; just update password
+                existing_user.set_password(str(pw_in))
+            else:
+                u = User(email=email, role='student')
+                u.set_password(str(pw_in))
+                db.session.add(u)
         
         # Parse enrollment date if provided
         date_str = data.get('date', '').strip()
@@ -515,7 +567,7 @@ def upload_current_student_avatar():
 def update_student(student_id):
     """Update a student record in the database. Admin only.
     
-    Expected JSON: { name?, email?, courses?, date?, status?, mobile?, class? } (accepts legacy subjects)
+    Expected JSON: { name?, email?, courses?, date?, status?, mobile?, class?, syllabus?, password? } (accepts legacy subjects/board)
     """
     # Check if user is admin
     claims = get_jwt()
@@ -531,6 +583,8 @@ def update_student(student_id):
         return {"success": False, "error": "Student not found", "code": 404}, 404
     
     try:
+        original_email = student.email
+
         # Update fields if provided
         if 'name' in data:
             student.name = data['name']
@@ -564,6 +618,50 @@ def update_student(student_id):
                 student.mobile = None
         if 'class' in data:
             student.class_ = data['class']
+
+        # Optional password update (admin-driven). Keep behavior consistent with create_student.
+        if 'password' in data:
+            pw = data['password']
+            if pw is None or str(pw).strip() == '':
+                # Do not overwrite existing password with empty
+                pass
+            else:
+                student.password = str(pw)
+
+        # Sync to User auth table when password/email are changed so /api/v1/auth/login works.
+        if ('password' in data) or ('email' in data):
+            new_email = (student.email or '').strip()
+            pw = data.get('password') if 'password' in data else None
+
+            # Find user by original email first, then by new email.
+            user = None
+            if original_email:
+                user = User.query.filter_by(email=original_email).first()
+            if not user and new_email:
+                user = User.query.filter_by(email=new_email).first()
+
+            # Handle email change on User record
+            if user and ('email' in data) and new_email and user.email != new_email:
+                conflict = User.query.filter(User.email == new_email, User.id != user.id).first()
+                if conflict:
+                    return {"success": False, "error": "Email already registered", "code": 400}, 400
+                user.email = new_email
+
+            # Handle password change on User record
+            if pw is not None and str(pw).strip() != '':
+                if user:
+                    user.set_password(str(pw))
+                elif new_email:
+                    # Create a user record if missing (needed for JWT-based login)
+                    u = User(email=new_email, role='student')
+                    u.set_password(str(pw))
+                    db.session.add(u)
+
+        # Keep naming consistent with create_student (syllabus) and UI label (board)
+        if 'syllabus' in data:
+            student.syllabus = data['syllabus']
+        elif 'board' in data:
+            student.syllabus = data['board']
         
         db.session.commit()
         # Regenerate students JSON
@@ -600,6 +698,7 @@ def update_student_fallback_post(student_id):
         return {"success": False, "error": "Student not found", "code": 404}, 404
 
     try:
+        original_email = student.email
         if 'name' in data:
             student.name = data['name']
         if 'email' in data:
@@ -629,6 +728,42 @@ def update_student_fallback_post(student_id):
                 student.mobile = None
         if 'class' in data:
             student.class_ = data['class']
+
+        if 'password' in data:
+            pw = data['password']
+            if pw is None or str(pw).strip() == '':
+                pass
+            else:
+                student.password = str(pw)
+
+        if ('password' in data) or ('email' in data):
+            new_email = (student.email or '').strip()
+            pw = data.get('password') if 'password' in data else None
+
+            user = None
+            if original_email:
+                user = User.query.filter_by(email=original_email).first()
+            if not user and new_email:
+                user = User.query.filter_by(email=new_email).first()
+
+            if user and ('email' in data) and new_email and user.email != new_email:
+                conflict = User.query.filter(User.email == new_email, User.id != user.id).first()
+                if conflict:
+                    return {"success": False, "error": "Email already registered", "code": 400}, 400
+                user.email = new_email
+
+            if pw is not None and str(pw).strip() != '':
+                if user:
+                    user.set_password(str(pw))
+                elif new_email:
+                    u = User(email=new_email, role='student')
+                    u.set_password(str(pw))
+                    db.session.add(u)
+
+        if 'syllabus' in data:
+            student.syllabus = data['syllabus']
+        elif 'board' in data:
+            student.syllabus = data['board']
 
         db.session.commit()
         try:

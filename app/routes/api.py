@@ -1596,34 +1596,27 @@ def get_course_lesson_topic_detail(course_id, lesson_id, topic_id):
 
 @api_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>/topics/<int:topic_id>/cards', methods=['GET'])
 def get_course_lesson_topic_cards(course_id, lesson_id, topic_id):
-    """
-    Get cards for a topic with full nested path validation.
+    """Mobile-focused endpoint to fetch cards for a topic.
 
-    Ensures the `topic_id` belongs to `lesson_id` and that lesson belongs to `course_id`.
-
-    Response:
-    {
-        "success": true,
-        "topic": { ... }  // same shape as get_topic_detail
-    }
+    Looks up the topic by ``topic_id`` and ``lesson_id`` and then returns all
+    published cards for that topic, ordered by ``display_order`` and
+    ``created_at``. The response includes both ``cards`` and ``data`` keys for
+    compatibility with different clients.
     """
     try:
-        course = Course.query.get(course_id)
-        if not course:
-            return jsonify({'success': False, 'error': 'Course not found'}), 404
-
-        lesson = Lesson.query.get(lesson_id)
-        if not lesson or lesson.course_id != course_id:
-            return jsonify({'success': False, 'error': 'Lesson not found in course'}), 404
-
-        topic = Topic.query.get(topic_id)
-        if not topic or topic.lesson_id != lesson_id:
-            return jsonify({'success': False, 'error': 'Topic not found in lesson'}), 404
-
         from app.models import Card
-        cards_q = Card.query.filter_by(topic_id=topic_id, published=True).order_by(Card.display_order, Card.id).all()
+
+        # Ensure the topic exists and belongs to the given lesson
+        topic = Topic.query.filter_by(id=topic_id, lesson_id=lesson_id).first()
+        if not topic:
+            return jsonify({'success': False, 'error': 'Topic not found'}), 404
+
+        q = Card.query.filter_by(topic_id=topic_id, lesson_id=lesson_id, published=True)
+        cards_q = q.order_by(Card.display_order, Card.created_at).all()
         cards = [serialize_card(c) for c in cards_q]
-        return jsonify({'success': True, 'count': len(cards), 'cards': cards}), 200
+
+        # Expose both "cards" and "data" so older and newer clients work
+        return jsonify({'success': True, 'count': len(cards), 'cards': cards, 'data': cards}), 200
     except Exception:
         current_app.logger.exception('Get nested topic cards failed')
         return jsonify({'success': False, 'error': 'Failed to load topic cards'}), 500
@@ -1662,6 +1655,319 @@ def get_course_lesson_topic_card_detail(course_id, lesson_id, topic_id, card_id)
     except Exception:
         current_app.logger.exception('Get nested card detail failed')
         return jsonify({'success': False, 'error': 'Failed to load card'}), 500
+
+
+# ============================================================================
+# CLASSES APIs (group courses by class/grade)
+# ============================================================================
+
+@api_bp.route('/classes', methods=['GET'])
+def get_classes():
+    """Return the list of available classes (grades).
+
+    Currently this is derived from ``Course.class_name`` for all published
+    courses. Each entry includes the class identifier and how many courses are
+    available for that class.
+
+    Response example:
+    {
+        "success": true,
+        "classes": [
+            {"id": "6", "name": "6", "courses_count": 4},
+            {"id": "7", "name": "7", "courses_count": 3}
+        ]
+    }
+    """
+    try:
+        from sqlalchemy import func
+
+        # Look at all courses that have a non-null class_name, regardless of
+        # published status, so that every class present in the database (e.g.
+        # MariaDB) shows up in this list.
+        rows = db.session.query(
+            Course.class_name,
+            func.count(Course.id)
+        ).filter(
+            Course.class_name.isnot(None)
+        ).group_by(Course.class_name).order_by(Course.class_name).all()
+
+        classes = []
+        for class_name, cnt in rows:
+            if not class_name:
+                continue
+            # Normalize whitespace in case values like "8 " exist in the DB
+            normalized = str(class_name).strip()
+            if not normalized:
+                continue
+            classes.append({
+                'id': normalized,
+                'name': normalized,
+                'courses_count': int(cnt)
+            })
+
+        return jsonify({'success': True, 'classes': classes}), 200
+    except Exception:
+        current_app.logger.exception('Get classes failed')
+        return jsonify({'success': False, 'error': 'Failed to load classes'}), 500
+
+
+@api_bp.route('/classes/<class_id>', methods=['GET'])
+def get_class_detail(class_id):
+    """Return summary information for a given class/grade.
+
+    This is a *class* detail endpoint, not a full course listing. It
+    returns a small summary payload that includes the number of courses
+    for this class and a lightweight list of those courses. For the full
+    course list (with pagination metadata) use
+    ``GET /api/v1/classes/<class_id>/courses`` instead.
+    """
+    try:
+        from sqlalchemy import func
+        # Count how many courses belong to this class (trimmed)
+        total = Course.query.filter(
+            Course.class_name.isnot(None),
+            func.trim(Course.class_name) == str(class_id)
+        ).count()
+
+        return jsonify(
+            {
+                "success": True,
+                "class": {
+                    "id": str(class_id),
+                    "name": str(class_id),
+                    "courses_count": total,
+                },
+            }
+        ), 200
+    except Exception:
+        current_app.logger.exception('Get class detail failed')
+        return jsonify({'success': False, 'error': 'Failed to load class courses'}), 500
+
+
+# ============================================================================
+# CLASS-SCOPED NESTED COURSE/LESSON/TOPIC/CARD APIs
+# ============================================================================
+
+@api_bp.route('/classes/<class_id>/courses', methods=['GET'])
+def get_class_courses(class_id):
+    """List courses for a given class/grade.
+
+    The JSON structure and pagination semantics mirror the
+    ``/api/v1/courses`` endpoint from app.api.courses.list_courses, but
+    results are filtered to courses whose ``class_name`` (trimmed)
+    equals ``class_id``.
+
+    Example: ``GET /api/v1/classes/8/courses``.
+    """
+    try:
+        from sqlalchemy import func
+
+        # Same pagination and basic filters as app.api.courses.list_courses
+        try:
+            page = int(request.args.get('page', 1))
+            limit = int(request.args.get('limit', 20))
+        except ValueError:
+            page, limit = 1, 20
+
+        q = Course.query
+
+        # Optional title filter (matches list_courses)
+        title = request.args.get('title')
+        if title:
+            q = q.filter(Course.title.ilike(f"%{title}%"))
+
+        # Constrain to the requested class id (trimmed)
+        q = q.filter(
+            Course.class_name.isnot(None),
+            func.trim(Course.class_name) == str(class_id)
+        )
+
+        # Paginate in the same way as list_courses
+        items = q.order_by(Course.created_at.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+        from app.models import Card
+        data = []
+        for c in items.items:
+            # Aggregate counts, mirroring list_courses
+            lessons = Lesson.query.filter_by(course_id=c.id).all()
+            lesson_ids = [l.id for l in lessons]
+            total_lessons = len(lessons)
+
+            total_topics = 0
+            total_cards = 0
+            if lesson_ids:
+                try:
+                    total_topics = Topic.query.filter(Topic.lesson_id.in_(lesson_ids)).count()
+                except Exception:
+                    total_topics = 0
+                try:
+                    total_cards = Card.query.filter(Card.lesson_id.in_(lesson_ids)).count()
+                except Exception:
+                    total_cards = 0
+
+            data.append(
+                {
+                    "id": c.id,
+                    "title": c.title,
+                    "description": c.description,
+                    "created_at": c.created_at.isoformat() if c.created_at else None,
+                    "class_name": getattr(c, "class_name", None),
+                    "category": getattr(c, "category", None),
+                    "totalLessons": int(total_lessons),
+                    "totalTopics": int(total_topics),
+                    "totalCards": int(total_cards),
+                }
+            )
+
+        return jsonify(
+            {
+                "success": True,
+                "data": data,
+                "meta": {
+                    "page": items.page,
+                    "pages": items.pages,
+                    "total": items.total,
+                },
+            }
+        ), 200
+    except Exception:
+        current_app.logger.exception('Get class courses failed')
+        return jsonify({'success': False, 'error': 'Failed to load class courses'}), 500
+
+
+@api_bp.route('/classes/<class_id>/courses/<int:course_id>', methods=['GET'])
+def get_class_course_detail(class_id, course_id):
+    """Get a single course under a specific class.
+
+    This validates that the course belongs to the given class and then
+    returns the same payload as the main ``/api/v1/courses/<id>`` endpoint
+    (implemented in ``app.api.courses.get_course``).
+    """
+    from sqlalchemy import func
+    from app.api.courses import get_course as api_get_course
+
+    course = Course.query.filter(
+        Course.id == course_id,
+        Course.class_name.isnot(None),
+        func.trim(Course.class_name) == str(class_id)
+    ).first()
+    if not course:
+        return jsonify({'success': False, 'error': 'Course not found in class'}), 404
+
+    # Delegate to the canonical course-detail API so the JSON structure is
+    # identical to /api/v1/courses/<course_id>.
+    return api_get_course(course_id)
+
+
+@api_bp.route('/classes/<class_id>/courses/<int:course_id>/lessons', methods=['GET'])
+def get_class_course_lessons(class_id, course_id):
+    """List lessons for a course scoped by class.
+
+    Example: ``GET /api/v1/classes/8/courses/4/lessons``.
+    """
+    from sqlalchemy import func
+    from app.api.courses import get_course_lessons as api_get_course_lessons
+
+    course = Course.query.filter(
+        Course.id == course_id,
+        Course.class_name.isnot(None),
+        func.trim(Course.class_name) == str(class_id)
+    ).first()
+    if not course:
+        return jsonify({'success': False, 'error': 'Course not found in class'}), 404
+
+    # Delegate to the canonical lessons-list API so the JSON structure is
+    # identical to /api/v1/courses/<course_id>/lessons.
+    return api_get_course_lessons(course_id)
+
+
+@api_bp.route('/classes/<class_id>/courses/<int:course_id>/lessons/<int:lesson_id>', methods=['GET'])
+def get_class_course_lesson_detail(class_id, course_id, lesson_id):
+    """Get a single lesson under a specific class and course.
+
+    Mirrors ``get_course_lesson_detail`` but with an additional class check.
+    """
+    from sqlalchemy import func
+
+    course = Course.query.filter(
+        Course.id == course_id,
+        Course.class_name.isnot(None),
+        func.trim(Course.class_name) == str(class_id)
+    ).first()
+    if not course:
+        return jsonify({'success': False, 'error': 'Course not found in class'}), 404
+
+    return get_course_lesson_detail(course_id, lesson_id)
+
+
+@api_bp.route('/classes/<class_id>/courses/<int:course_id>/lessons/<int:lesson_id>/topics', methods=['GET'])
+def get_class_course_lesson_topics(class_id, course_id, lesson_id):
+    """List topics for a lesson under class + course.
+
+    Example: ``GET /api/v1/classes/8/courses/4/lessons/9/topics``.
+    """
+    from sqlalchemy import func
+
+    course = Course.query.filter(
+        Course.id == course_id,
+        Course.class_name.isnot(None),
+        func.trim(Course.class_name) == str(class_id)
+    ).first()
+    if not course:
+        return jsonify({'success': False, 'error': 'Course not found in class'}), 404
+
+    return get_course_lesson_topics(course_id, lesson_id)
+
+
+@api_bp.route('/classes/<class_id>/courses/<int:course_id>/lessons/<int:lesson_id>/topics/<int:topic_id>', methods=['GET'])
+def get_class_course_lesson_topic_detail(class_id, course_id, lesson_id, topic_id):
+    """Get topic details under class + course + lesson.
+    """
+    from sqlalchemy import func
+
+    course = Course.query.filter(
+        Course.id == course_id,
+        Course.class_name.isnot(None),
+        func.trim(Course.class_name) == str(class_id)
+    ).first()
+    if not course:
+        return jsonify({'success': False, 'error': 'Course not found in class'}), 404
+
+    return get_course_lesson_topic_detail(course_id, lesson_id, topic_id)
+
+
+@api_bp.route('/classes/<class_id>/courses/<int:course_id>/lessons/<int:lesson_id>/topics/<int:topic_id>/cards', methods=['GET'])
+def get_class_course_lesson_topic_cards(class_id, course_id, lesson_id, topic_id):
+    """List cards for a topic under class + course + lesson.
+    """
+    from sqlalchemy import func
+
+    course = Course.query.filter(
+        Course.id == course_id,
+        Course.class_name.isnot(None),
+        func.trim(Course.class_name) == str(class_id)
+    ).first()
+    if not course:
+        return jsonify({'success': False, 'error': 'Course not found in class'}), 404
+
+    return get_course_lesson_topic_cards(course_id, lesson_id, topic_id)
+
+
+@api_bp.route('/classes/<class_id>/courses/<int:course_id>/lessons/<int:lesson_id>/topics/<int:topic_id>/cards/<int:card_id>', methods=['GET'])
+def get_class_course_lesson_topic_card_detail(class_id, course_id, lesson_id, topic_id, card_id):
+    """Get a single card under class + course + lesson + topic.
+    """
+    from sqlalchemy import func
+
+    course = Course.query.filter(
+        Course.id == course_id,
+        Course.class_name.isnot(None),
+        func.trim(Course.class_name) == str(class_id)
+    ).first()
+    if not course:
+        return jsonify({'success': False, 'error': 'Course not found in class'}), 404
+
+    return get_course_lesson_topic_card_detail(course_id, lesson_id, topic_id, card_id)
 
 
 # ============================================================================
@@ -2116,6 +2422,108 @@ def get_overall_progress():
             'success': False,
             'error': 'Failed to load progress'
         }), 500
+
+
+@api_bp.route('/students/<int:student_id>/courses-completed', methods=['GET'])
+def get_student_courses_completed(student_id):
+    """Return aggregated course completion stats for a student.
+
+    Endpoint shape:
+      GET /api/v1/students/{studentId}/courses-completed?view=day|month&year=2025|2024
+
+    Response (placeholder example):
+      {
+        "success": true,
+        "student_id": 1,
+        "view": "day",
+        "year": 2025,
+        "data": [
+          {"date": "2025-01-01", "completed": 2},
+          {"date": "2025-01-02", "completed": 0}
+        ]
+      }
+
+    Aggregation logic:
+      - Uses the Enrollment model (if present).
+      - Counts how many courses reached completed_at on each day or month
+        of the given year for the specified student_id.
+    """
+    from datetime import datetime
+
+    view = (request.args.get('view') or 'day').lower()
+    if view not in ('day', 'month'):
+        view = 'day'
+
+    year_raw = request.args.get('year') or '2025'
+    try:
+        year = int(year_raw)
+    except Exception:
+        year = 2025
+
+    if year not in (2024, 2025):
+        year = 2025
+
+    Enrollment = get_enrollment_model()
+    if not Enrollment:
+        # Enrollment table not available yet
+        return jsonify({
+            'success': True,
+            'student_id': student_id,
+            'view': view,
+            'year': year,
+            'data': []
+        }), 200
+
+    # Determine time window for the requested year
+    try:
+        start = datetime(year, 1, 1)
+        end = datetime(year + 1, 1, 1)
+    except Exception:
+        # Fallback: no date filtering if datetime construction fails
+        start = None
+        end = None
+
+    try:
+        q = Enrollment.query.filter_by(student_id=student_id, is_active=True)
+        # Only include enrollments that have been completed
+        if getattr(Enrollment, 'completed_at', None) is not None:
+            q = q.filter(Enrollment.completed_at.isnot(None))
+
+            if start is not None and end is not None:
+                q = q.filter(Enrollment.completed_at >= start, Enrollment.completed_at < end)
+
+        enrollments = q.all()
+    except Exception:
+        current_app.logger.exception('Failed to load enrollments for courses-completed endpoint')
+        enrollments = []
+
+    # Aggregate completions per day or month
+    buckets = {}
+    for e in enrollments:
+        completed_at = getattr(e, 'completed_at', None)
+        if not completed_at:
+            continue
+
+        if view == 'day':
+            key = completed_at.date().isoformat()
+        else:  # month view
+            key = completed_at.strftime('%Y-%m')
+
+        buckets[key] = buckets.get(key, 0) + 1
+
+    # Convert to sorted list of {date, completed} objects
+    data = [
+        {'date': k, 'completed': buckets[k]}
+        for k in sorted(buckets.keys())
+    ]
+
+    return jsonify({
+        'success': True,
+        'student_id': student_id,
+        'view': view,
+        'year': year,
+        'data': data
+    }), 200
 
 
 @api_bp.route('/students/progress/<int:course_id>', methods=['GET'])

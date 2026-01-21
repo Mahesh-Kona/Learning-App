@@ -8,26 +8,15 @@
       "thumbnail_url": "/uploads/test.png",
       "difficulty": "beginner",
       "duration_weeks": 24,
-      "total_lessons": 2,
+      "total_lessons": 3,
       "published": true
     },
     {
-      "id": 23,
-      "title": "ebfgfgh",
-      "description": "hgngfnh",
-      "category": null,
-      "thumbnail_url": "/uploads/passport_size.png",
-      "difficulty": "beginner",
-      "duration_weeks": 45,
-      "total_lessons": 0,
-      "published": true
-    },
-    {
-      "id": 18,
-      "title": "gfhhy",
-      "description": "ythyju",
-      "category": "physics",
-      "thumbnail_url": "/uploads/IMG20220228115358.jpg",
+      "id": 29,
+      "title": "E2E Test Course",
+      "description": "created by automated test",
+      "category": "TestCat",
+      "thumbnail_url": "/uploads/test.png",
       "difficulty": null,
       "duration_weeks": null,
       "total_lessons": 0,
@@ -41,7 +30,7 @@
       "thumbnail_url": null,
       "difficulty": "beginner",
       "duration_weeks": 23,
-      "total_lessons": 0,
+      "total_lessons": 1,
       "published": null
     },
     {
@@ -85,6 +74,28 @@
       "thumbnail_url": null,
       "difficulty": "beginner",
       "duration_weeks": 23,
+      "total_lessons": 0,
+      "published": true
+    },
+    {
+      "id": 28,
+      "title": "PlainSubmit Course",
+      "description": "plain form submit test",
+      "category": "science",
+      "thumbnail_url": "/uploads/dd0fa29f4146445cad6eac3547c804ba_plain.png",
+      "difficulty": "intermediate",
+      "duration_weeks": 8,
+      "total_lessons": 0,
+      "published": true
+    },
+    {
+      "id": 30,
+      "title": "PlainSubmit Course",
+      "description": "plain form submit test",
+      "category": "science",
+      "thumbnail_url": "/uploads/21bd6c4e40534e92947fa181756e4e30_plain.png",
+      "difficulty": "intermediate",
+      "duration_weeks": 8,
       "total_lessons": 0,
       "published": true
     }

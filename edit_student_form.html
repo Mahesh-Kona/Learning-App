@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Student - EduSaint</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .btn-trigger {
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-trigger:hover {
+            background-color: #1b5e20;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            background-color: #2e7d32;
+            color: white;
+            padding: 20px 24px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .close-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .form-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2e7d32;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        label .required {
+            color: #d32f2f;
+            margin-left: 2px;
+        }
+
+        input, select, textarea {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            font-family: inherit;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #2e7d32;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+        }
+
+        input:disabled, select:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+
+        .photo-upload {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .photo-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .photo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-preview-icon {
+            font-size: 32px;
+            color: #999;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .file-input-label:hover {
+            background-color: #e0e0e0;
+        }
+
+        .info-note {
+            background-color: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #856404;
+            margin-top: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .courses-section {
+            background-color: #f9f9f9;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .course-selection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .btn-add-course {
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-add-course:hover {
+            background-color: #1b5e20;
+        }
+
+        .selected-courses-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .course-item {
+            background-color: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .course-info {
+            flex: 1;
+        }
+
+        .course-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .course-details {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .btn-remove-course {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-remove-course:hover {
+            background-color: #d32f2f;
+        }
+
+        .empty-courses {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .course-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            z-index: 2000;
+            width: 90%;
+            max-width: 500px;
+            animation: popIn 0.3s ease;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: translate(-50%, -50%) scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .course-modal.active {
+            display: block;
+        }
+
+        .course-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1999;
+        }
+
+        .course-modal-overlay.active {
+            display: block;
+        }
+
+        .course-modal h3 {
+            margin-bottom: 20px;
+            color: #2e7d32;
+        }
+
+        .course-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .password-input-group {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+            padding: 4px;
+        }
+
+        .password-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-generate, .btn-auto-password {
+            padding: 6px 12px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-generate:hover, .btn-auto-password:hover {
+            background-color: #e0e0e0;
+        }
+
+        .password-strength {
+            margin-top: 6px;
+            font-size: 12px;
+        }
+
+        .strength-bar {
+            height: 4px;
+            background-color: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s, background-color 0.3s;
+        }
+
+        .strength-weak .strength-fill {
+            width: 33%;
+            background-color: #f44336;
+        }
+
+        .strength-medium .strength-fill {
+            width: 66%;
+            background-color: #ff9800;
+        }
+
+        .strength-strong .strength-fill {
+            width: 100%;
+            background-color: #4caf50;
+        }
+
+        .password-reset-section {
+            background-color: #fff3e0;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #ffb74d;
+        }
+
+        .password-reset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .password-reset-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e65100;
+        }
+
+        .btn-reset-password {
+            background-color: #ff9800;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-reset-password:hover {
+            background-color: #f57c00;
+        }
+
+        .reset-info {
+            font-size: 13px;
+            color: #e65100;
+            line-height: 1.5;
+        }
+
+        .notification-options {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+        }
+
+        .notification-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .notification-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .notification-checkbox label {
+            margin: 0;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 400;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-cancel {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-cancel:hover {
+            background-color: #e0e0e0;
+        }
+
+        .btn-submit {
+            background-color: #2e7d32;
+            color: white;
+        }
+
+        .btn-submit:hover {
+            background-color: #1b5e20;
+        }
+
+        .btn-submit:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-submit.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            display: none;
+            background-color: #4caf50;
+            color: white;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            text-align: center;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .modal {
+                width: 95%;
+                max-height: 95vh;
+            }
+
+            .notification-options {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="btn-trigger" onclick="openModal()">
+        <span>✏️</span> Edit Student
+    </button>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Edit Student</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="success-message" id="successMessage">
+                    ✓ Student updated successfully!
+                </div>
+                <form id="editStudentForm">
+                    <!-- Personal Details -->
+                    <div class="form-section">
+                        <div class="section-title">Personal Details</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Full Name <span class="required">*</span></label>
+                                <input type="text" id="studentName" name="studentName" required placeholder="Enter full name">
+                            </div>
+                            <div class="form-group">
+                                <label>Date of Birth <span class="required">*</span></label>
+                                <input type="date" id="birthDate" name="birthDate" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Gender <span class="required">*</span></label>
+                                <select id="gender" name="gender" required>
+                                    <option value="">Select Gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Profile Photo</label>
+                                <div class="photo-upload">
+                                    <div class="photo-preview" id="photoPreview">
+                                        <span class="photo-preview-icon">👤</span>
+                                    </div>
+                                    <div class="file-input-wrapper">
+                                        <input type="file" id="profilePhoto" name="profilePhoto" accept="image/jpeg,image/png,image/jpg" onchange="validateAndPreviewPhoto(event)">
+                                        <label for="profilePhoto" class="file-input-label">Change Photo</label>
+                                    </div>
+                                </div>
+                                <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">Max file size: 100 KB (JPEG, PNG only)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Information -->
+                    <div class="form-section">
+                        <div class="section-title">Contact Information</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Email Address <span class="required">*</span></label>
+                                <input type="email" id="email" name="email" required placeholder="student@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Number <span class="required">*</span></label>
+                                <input type="tel" id="phone" name="phone" required placeholder="+91 XXXXX XXXXX" pattern="[+]?[0-9]{10,15}">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>City</label>
+                                <input type="text" id="city" name="city" placeholder="Auto-detected from location">
+                            </div>
+                            <div class="form-group">
+                                <label>School Name</label>
+                                <input type="text" id="schoolName" name="schoolName" placeholder="Enter school name">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Academic Details -->
+                    <div class="form-section">
+                        <div class="section-title">Academic Details</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Current Class/Grade <span class="required">*</span></label>
+                                <select id="studentClass" name="studentClass" required>
+                                    <option value="">Select Class</option>
+                                    <option value="1">Class 1</option>
+                                    <option value="2">Class 2</option>
+                                    <option value="3">Class 3</option>
+                                    <option value="4">Class 4</option>
+                                    <option value="5">Class 5</option>
+                                    <option value="6">Class 6</option>
+                                    <option value="7">Class 7</option>
+                                    <option value="8">Class 8</option>
+                                    <option value="9">Class 9</option>
+                                    <option value="10">Class 10</option>
+                                    <option value="11">Class 11</option>
+                                    <option value="12">Class 12</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Board</label>
+                                <select id="board" name="board">
+                                    <option value="">Select Board</option>
+                                    <option value="CBSE">CBSE</option>
+                                    <option value="ICSE">ICSE</option>
+                                    <option value="State Board">State Board</option>
+                                    <option value="IB">IB (International Baccalaureate)</option>
+                                    <option value="IGCSE">IGCSE</option>
+                                    <option value="NIOS">NIOS</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Enrollment Date</label>
+                                <input type="date" id="enrollmentDate" name="enrollmentDate" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>Status <span class="required">*</span></label>
+                                <select id="status" name="status" required>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="Suspended">Suspended</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group full-width" style="margin-top: 16px;">
+                            <label>Enrolled Courses <span class="required">*</span></label>
+                            <div class="courses-section">
+                                <div class="course-selection-header">
+                                    <span style="font-size: 13px; color: #666;">Selected Courses: <strong id="courseCount">0</strong></span>
+                                    <button type="button" class="btn-add-course" onclick="openCourseModal()">
+                                        <span>➕</span> Add Course
+                                    </button>
+                                </div>
+                                <div class="selected-courses-list" id="selectedCoursesList">
+                                    <div class="empty-courses">
+                                        No courses selected yet.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Password Management -->
+                    <div class="form-section">
+                        <div class="section-title">Password Management</div>
+                        
+                        <!-- Option 1: Send Reset Link -->
+                        <div class="password-reset-section" style="margin-bottom: 16px;">
+                            <div class="password-reset-header">
+                                <span class="password-reset-title">🔐 Option 1: Send Password Reset Link</span>
+                                <button type="button" class="btn-reset-password" onclick="sendPasswordReset()">
+                                    <span>📧</span> Send Reset Link
+                                </button>
+                            </div>
+                            <div class="reset-info">
+                                Student will receive a secure link to reset their password themselves. Link expires in 24 hours.
+                            </div>
+                            <div class="notification-options">
+                                <div class="notification-checkbox">
+                                    <input type="checkbox" id="resetEmail" name="resetEmail" checked>
+                                    <label for="resetEmail">Send via Email</label>
+                                </div>
+                                <div class="notification-checkbox">
+                                    <input type="checkbox" id="resetSms" name="resetSms" checked>
+                                    <label for="resetSms">Send via SMS</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Option 2: Create New Password -->
+                        <div class="password-reset-section">
+                            <div class="password-reset-header">
+                                <span class="password-reset-title">🔑 Option 2: Create & Send New Password</span>
+                            </div>
+                            <div class="reset-info" style="margin-bottom: 12px;">
+                                Admin creates a new password and sends it directly to the student.
+                            </div>
+                            
+                            <div class="form-group full-width">
+                                <label>New Password</label>
+                                <div class="password-input-group">
+                                    <input type="password" id="newPassword" name="newPassword" placeholder="Enter new password" oninput="checkPasswordStrength()">
+                                    <button type="button" class="password-toggle" onclick="togglePassword()">👁️</button>
+                                </div>
+                                <div class="password-actions">
+                                    <button type="button" class="btn-generate" onclick="generatePassword()">🔑 Generate Strong Password</button>
+                                    <button type="button" class="btn-auto-password" onclick="autoGeneratePassword()">⚡ Auto-Generate</button>
+                                </div>
+                                <div class="password-strength" id="passwordStrength">
+                                    <div class="strength-bar">
+                                        <div class="strength-fill" id="strengthFill"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="notification-options" style="margin-top: 12px;">
+                                <div class="notification-checkbox">
+                                    <input type="checkbox" id="sendNewPwEmail" name="sendNewPwEmail" checked>
+                                    <label for="sendNewPwEmail">Send via Email</label>
+                                </div>
+                                <div class="notification-checkbox">
+                                    <input type="checkbox" id="sendNewPwSms" name="sendNewPwSms" checked>
+                                    <label for="sendNewPwSms">Send via SMS</label>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn-reset-password" style="margin-top: 12px; width: 100%;" onclick="sendNewPassword()">
+                                <span>📨</span> Create & Send New Password
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-submit" onclick="submitForm()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Course Selection Modal -->
+    <div class="course-modal-overlay" id="courseModalOverlay"></div>
+    <div class="course-modal" id="courseModal">
+        <h3>Add Course</h3>
+        <div class="form-group">
+            <label>Select Class <span class="required">*</span></label>
+            <select id="courseLevel" onchange="loadCourses()">
+                <option value="">Select Class</option>
+                <option value="1">Class 1</option>
+                <option value="2">Class 2</option>
+                <option value="3">Class 3</option>
+                <option value="4">Class 4</option>
+                <option value="5">Class 5</option>
+                <option value="6">Class 6</option>
+                <option value="7">Class 7</option>
+                <option value="8">Class 8</option>
+                <option value="9">Class 9</option>
+                <option value="10">Class 10</option>
+                <option value="11">Class 11</option>
+                <option value="12">Class 12</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-top: 16px;">
+            <label>Select Subject <span class="required">*</span></label>
+            <select id="subjectName" disabled>
+                <option value="">First select a class</option>
+            </select>
+        </div>
+        <div class="course-modal-actions">
+            <button class="btn btn-cancel" onclick="closeCourseModal()">Cancel</button>
+            <button class="btn btn-submit" onclick="addCourse()">Add Course</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedCourses = [];
+        let passwordVisible = false;
+
+        // Sample student data - In production, this would be loaded from API
+        const studentData = {
+            studentName: 'Sachin',
+            birthDate: '2010-05-15',
+            gender: 'male',
+            email: 'sachin.patro@edusaint.in',
+            phone: '7102824020',
+            city: 'Mumbai',
+            schoolName: 'Delhi Public School',
+            studentClass: '10',
+            board: 'CBSE',
+            enrollmentDate: '2025-04-12',
+            status: 'Active',
+            profilePhoto: null,
+            enrolledCourses: [
+                { class: '10', name: 'Science' },
+                { class: '10', name: 'Mathematics' }
+            ]
+        };
+
+        // Sample courses data
+        const availableCourses = {
+            '1': ['English Foundation', 'Math Basics', 'Hindi', 'EVS'],
+            '2': ['English Foundation', 'Math Basics', 'Hindi', 'EVS'],
+            '3': ['English', 'Mathematics', 'Hindi', 'EVS', 'General Science'],
+            '4': ['English', 'Mathematics', 'Hindi', 'EVS', 'General Science'],
+            '5': ['English', 'Mathematics', 'Hindi', 'Science', 'Social Studies'],
+            '6': ['English', 'Mathematics', 'Hindi', 'Science', 'Social Studies', 'Sanskrit'],
+            '7': ['English', 'Mathematics', 'Hindi', 'Science', 'Social Studies', 'Sanskrit', 'Computer Science'],
+            '8': ['English', 'Mathematics', 'Hindi', 'Science', 'Social Studies', 'Sanskrit', 'Computer Science'],
+            '9': ['English', 'Mathematics', 'Hindi', 'Science', 'Social Studies', 'Sanskrit', 'Computer Science', 'Physical Education'],
+            '10': ['English', 'Mathematics', 'Hindi', 'Science', 'Social Studies', 'Sanskrit', 'Computer Science', 'Physical Education'],
+            '11': ['English', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'Economics', 'Business Studies', 'Accountancy'],
+            '12': ['English', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'Economics', 'Business Studies', 'Accountancy']
+        };
+
+        function openModal() {
+            document.getElementById('modalOverlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+            loadStudentData();
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('passwordStrength').className = 'password-strength';
+            document.getElementById('strengthFill').style.width = '0%';
+        }
+
+        function loadStudentData() {
+            // Populate form with existing student data
+            document.getElementById('studentName').value = studentData.studentName;
+            document.getElementById('birthDate').value = studentData.birthDate;
+            document.getElementById('gender').value = studentData.gender;
+            document.getElementById('email').value = studentData.email;
+            document.getElementById('phone').value = studentData.phone;
+            document.getElementById('city').value = studentData.city;
+            document.getElementById('schoolName').value = studentData.schoolName;
+            document.getElementById('studentClass').value = studentData.studentClass;
+            document.getElementById('board').value = studentData.board;
+            document.getElementById('enrollmentDate').value = studentData.enrollmentDate;
+            document.getElementById('status').value = studentData.status;
+            
+            // Load courses
+            selectedCourses = [...studentData.enrolledCourses];
+            updateCoursesList();
+            
+            // Load profile photo if exists
+            if (studentData.profilePhoto) {
+                document.getElementById('photoPreview').innerHTML = `<img src="${studentData.profilePhoto}" alt="Profile">`;
+            }
+        }
+
+        function validateAndPreviewPhoto(event) {
+            const file = event.target.files[0];
+            const maxSize = 100 * 1024; // 100 KB
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+            
+            if (!file) return;
+            
+            if (!allowedTypes.includes(file.type)) {
+                alert('⚠️ Invalid file type!\n\nOnly JPEG and PNG images are allowed.');
+                event.target.value = '';
+                return;
+            }
+            
+            if (file.size > maxSize) {
+                const fileSizeKB = (file.size / 1024).toFixed(2);
+                alert(`⚠️ File too large!\n\nYour file is ${fileSizeKB} KB.\nMaximum allowed size is 100 KB.\n\nPlease compress or resize your image.`);
+                event.target.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('photoPreview').innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function openCourseModal() {
+            document.getElementById('courseModalOverlay').classList.add('active');
+            document.getElementById('courseModal').classList.add('active');
+            document.getElementById('courseLevel').value = '';
+            document.getElementById('subjectName').disabled = true;
+            document.getElementById('subjectName').innerHTML = '<option value="">First select a class</option>';
+        }
+
+        function closeCourseModal() {
+            document.getElementById('courseModalOverlay').classList.remove('active');
+            document.getElementById('courseModal').classList.remove('active');
+        }
+
+        function loadCourses() {
+            const classValue = document.getElementById('courseLevel').value;
+            const courseSelect = document.getElementById('subjectName');
+            
+            if (!classValue) {
+                courseSelect.disabled = true;
+                courseSelect.innerHTML = '<option value="">First select a class</option>';
+                return;
+            }
+
+            courseSelect.disabled = false;
+            courseSelect.innerHTML = '<option value="">Select Subject</option>';
+            
+            const courses = availableCourses[classValue] || [];
+            courses.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course;
+                option.textContent = course;
+                courseSelect.appendChild(option);
+            });
+        }
+
+        function addCourse() {
+            const classValue = document.getElementById('courseLevel').value;
+            const courseName = document.getElementById('subjectName').value;
+
+            if (!classValue || !courseName) {
+                alert('⚠️ Please select both class and subject');
+                return;
+            }
+
+            const exists = selectedCourses.some(c => c.class === classValue && c.name === courseName);
+            
+            if (exists) {
+                alert(`⚠️ Already Added!\n\n"${courseName}" from Class ${classValue} is already in the enrollment list.`);
+                return;
+            }
+
+            selectedCourses.push({
+                class: classValue,
+                name: courseName
+            });
+
+            updateCoursesList();
+            closeCourseModal();
+        }
+
+        function removeCourse(index) {
+            selectedCourses.splice(index, 1);
+            updateCoursesList();
+        }
+
+        function updateCoursesList() {
+            const listContainer = document.getElementById('selectedCoursesList');
+            const countElement = document.getElementById('courseCount');
+            
+            countElement.textContent = selectedCourses.length;
+
+            if (selectedCourses.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="empty-courses">
+                        No courses selected yet.
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = selectedCourses.map((course, index) => `
+                <div class="course-item">
+                    <div class="course-info">
+                        <div class="course-name">${course.name}</div>
+                        <div class="course-details">Class ${course.class}</div>
+                    </div>
+                    <button type="button" class="btn-remove-course" onclick="removeCourse(${index})">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        function sendPasswordReset() {
+            const sendEmail = document.getElementById('resetEmail').checked;
+            const sendSms = document.getElementById('resetSms').checked;
+
+            if (!sendEmail && !sendSms) {
+                alert('⚠️ Please select at least one notification method (Email or SMS)');
+                return;
+            }
+
+            const confirmMsg = 'Are you sure you want to send a password reset link to this student?';
+            if (!confirm(confirmMsg)) return;
+
+            const resetData = {
+                studentEmail: document.getElementById('email').value,
+                studentPhone: document.getElementById('phone').value,
+                sendEmail: sendEmail,
+                sendSms: sendSms,
+                resetToken: generateResetToken(),
+                expiresIn: '24 hours'
+            };
+
+            console.log('Password Reset Request:', resetData);
+
+            let notificationMsg = '';
+            if (sendEmail && sendSms) {
+                notificationMsg = 'Password reset link sent via Email and SMS!';
+            } else if (sendEmail) {
+                notificationMsg = 'Password reset link sent via Email!';
+            } else {
+                notificationMsg = 'Password reset link sent via SMS!';
+            }
+
+            alert(`✅ ${notificationMsg}\n\nThe link will expire in 24 hours.`);
+        }
+
+        function generateResetToken() {
+            return 'reset_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        }
+
+        function togglePassword() {
+            const passwordInput = document.getElementById('newPassword');
+            const toggleBtn = document.querySelector('.password-toggle');
+            
+            if (passwordVisible) {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁️';
+                passwordVisible = false;
+            } else {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+                passwordVisible = true;
+            }
+        }
+
+        function generatePassword() {
+            const length = 12;
+            const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+            let password = '';
+            
+            password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
+            password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
+            password += '0123456789'[Math.floor(Math.random() * 10)];
+            password += '!@#$%^&*'[Math.floor(Math.random() * 8)];
+            
+            for (let i = password.length; i < length; i++) {
+                password += charset[Math.floor(Math.random() * charset.length)];
+            }
+            
+            password = password.split('').sort(() => Math.random() - 0.5).join('');
+            
+            document.getElementById('newPassword').value = password;
+            checkPasswordStrength();
+            
+            document.getElementById('newPassword').type = 'text';
+            document.querySelector('.password-toggle').textContent = '🙈';
+            passwordVisible = true;
+        }
+
+        function autoGeneratePassword() {
+            generatePassword();
+            alert('Strong password generated! The password is now visible in the field.');
+        }
+
+        function checkPasswordStrength() {
+            const password = document.getElementById('newPassword').value;
+            const strengthElement = document.getElementById('passwordStrength');
+            
+            if (password.length === 0) {
+                strengthElement.className = 'password-strength';
+                return;
+            }
+            
+            let strength = 0;
+            
+            if (password.length >= 8) strength++;
+            if (password.length >= 12) strength++;
+            if (/[a-z]/.test(password)) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^a-zA-Z0-9]/.test(password)) strength++;
+            
+            if (strength <= 2) {
+                strengthElement.className = 'password-strength strength-weak';
+            } else if (strength <= 4) {
+                strengthElement.className = 'password-strength strength-medium';
+            } else {
+                strengthElement.className = 'password-strength strength-strong';
+            }
+        }
+
+        function sendNewPassword() {
+            const newPassword = document.getElementById('newPassword').value;
+            const sendEmail = document.getElementById('sendNewPwEmail').checked;
+            const sendSms = document.getElementById('sendNewPwSms').checked;
+
+            if (!newPassword || newPassword.trim() === '') {
+                alert('⚠️ Please enter a new password or use the generate button');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                alert('⚠️ Password must be at least 6 characters long');
+                return;
+            }
+
+            if (!sendEmail && !sendSms) {
+                alert('⚠️ Please select at least one notification method (Email or SMS)');
+                return;
+            }
+
+            const confirmMsg = `Are you sure you want to create and send a new password to this student?\n\nThe student's current password will be replaced.`;
+            if (!confirm(confirmMsg)) return;
+
+            const passwordData = {
+                studentEmail: document.getElementById('email').value,
+                studentPhone: document.getElementById('phone').value,
+                newPassword: newPassword,
+                sendEmail: sendEmail,
+                sendSms: sendSms,
+                createdBy: 'Admin',
+                createdAt: new Date().toISOString()
+            };
+
+            // Safe logging - mask password
+            const safeData = {...passwordData, newPassword: '[PROTECTED]'};
+            console.log('New Password Request:', safeData);
+
+            let notificationMsg = '';
+            if (sendEmail && sendSms) {
+                notificationMsg = 'New password sent via Email and SMS!';
+            } else if (sendEmail) {
+                notificationMsg = 'New password sent via Email!';
+            } else {
+                notificationMsg = 'New password sent via SMS!';
+            }
+
+            alert(`✅ ${notificationMsg}\n\nStudent can now login with the new password.`);
+            
+            // Clear password field after sending
+            document.getElementById('newPassword').value = '';
+            document.getElementById('passwordStrength').className = 'password-strength';
+        }
+
+        function submitForm() {
+            const form = document.getElementById('editStudentForm');
+            const submitBtn = document.querySelector('.btn-submit');
+            
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            if (selectedCourses.length === 0) {
+                alert('⚠️ Please add at least one course');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+            submitBtn.innerHTML = '<span class="spinner"></span> Saving Changes...';
+
+            const formData = {
+                studentName: document.getElementById('studentName').value,
+                birthDate: document.getElementById('birthDate').value,
+                gender: document.getElementById('gender').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                city: document.getElementById('city').value || null,
+                schoolName: document.getElementById('schoolName').value,
+                studentClass: document.getElementById('studentClass').value,
+                board: document.getElementById('board').value,
+                enrolledCourses: selectedCourses,
+                status: document.getElementById('status').value,
+                updatedAt: new Date().toISOString()
+            };
+
+            console.log('Updated Student Data:', formData);
+
+            setTimeout(() => {
+                const successMsg = document.getElementById('successMessage');
+                successMsg.textContent = '✓ Student updated successfully!';
+                successMsg.style.display = 'block';
+
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+                submitBtn.textContent = 'Save Changes';
+
+                setTimeout(() => {
+                    closeModal();
+                }, 2000);
+            }, 1500);
+
+            /* 
+            // PRODUCTION CODE:
+            fetch(`/api/students/${studentId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                const successMsg = document.getElementById('successMessage');
+                successMsg.textContent = '✓ Student updated successfully!';
+                successMsg.style.display = 'block';
+                setTimeout(() => closeModal(), 2000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Failed to update student. Please try again.');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+                submitBtn.textContent = 'Save Changes';
+            });
+            */
+        }
+
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        document.getElementById('courseModalOverlay').addEventListener('click', closeCourseModal);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (document.getElementById('courseModal').classList.contains('active')) {
+                    closeCourseModal();
+                } else {
+                    closeModal();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Analytics - EduSaint{% endblock %}
+
+{% block content %}
+  <header class="header">
+    <div>
+      <h1>Analytics</h1>
+      <p class="sub">Student course completion analytics dashboard.</p>
+    </div>
+  </header>
+
+  <section class="dashboard-content">
+    <div class="panel" style="padding: 1.5rem;">
+      <!-- This layout mirrors student_analytics_page_edu_saint.jsx as static HTML -->
+      <div class="analytics-root" style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <!-- Stats Row -->
+        <div class="stats-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <div class="card">
+            <div class="card-body">
+              <p class="label">Current Streak</p>
+              <p class="value">🔥 0 days</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <p class="label">Best Day / Month</p>
+              <p class="value">🏆 —</p>
+              <p class="muted">0 courses</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <p class="label">Total Completed</p>
+              <p class="value">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trend Graph Placeholder -->
+        <div class="card">
+          <div class="card-body">
+            <p class="label">Completion Trend</p>
+            <div style="height: 180px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc; border-radius: 8px; color: #777; font-size: 0.9rem;">
+              Chart placeholder (was Recharts LineChart in JSX)
+            </div>
+          </div>
+        </div>
+
+        <!-- Table + Controls -->
+        <div class="card">
+          <div class="card-body">
+            <div class="table-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem;">
+              <h2 style="font-size: 1rem; font-weight: 600;">Courses Completed</h2>
+
+              <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                <select style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;">
+                  <option>Per Day</option>
+                  <option>Per Month</option>
+                </select>
+
+                <select style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;">
+                  <option>2025</option>
+                  <option>2024</option>
+                </select>
+
+                <input
+                  type="text"
+                  placeholder="Search date / month"
+                  style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;"
+                />
+
+                <button type="button" style="padding: 0.4rem 0.8rem; border-radius: 6px; border: none; background: #16a34a; color: #fff; font-size: 0.8rem; cursor: pointer;">
+                  Export Excel
+                </button>
+              </div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; font-size: 0.9rem;">
+              <thead style="background: #f1f5f9;">
+                <tr>
+                  <th style="text-align: left; padding: 0.5rem 0.75rem; cursor: pointer;">Date / Month</th>
+                  <th style="text-align: left; padding: 0.5rem 0.75rem; cursor: pointer;">Courses Completed</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-top: 1px solid #e2e8f0;">
+                  <td style="padding: 0.5rem 0.75rem;">—</td>
+                  <td style="padding: 0.5rem 0.75rem; font-weight: 500;">0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+{% endblock %}

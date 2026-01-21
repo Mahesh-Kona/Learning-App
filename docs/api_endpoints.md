@@ -46,6 +46,17 @@ Notes:
 - `GET /api/v1/courses/<int:id>` — get course details
 - `GET /api/v1/courses/<int:id>/lessons` — list lessons for a course
 
+- `GET /api/v1/classes` — list available classes/grades (derived from courses)
+- `GET /api/v1/classes/<id>` — list courses for a given class/grade
+- `GET /api/v1/classes/<id>/courses` — same as above, explicit `/courses` suffix
+- `GET /api/v1/classes/<id>/courses/<int:course_id>` — get course details scoped by class
+- `GET /api/v1/classes/<id>/courses/<int:course_id>/lessons` — list lessons for a course scoped by class
+- `GET /api/v1/classes/<id>/courses/<int:course_id>/lessons/<int:lesson_id>` — get lesson details scoped by class and course
+- `GET /api/v1/classes/<id>/courses/<int:course_id>/lessons/<int:lesson_id>/topics` — list topics for a lesson scoped by class and course
+- `GET /api/v1/classes/<id>/courses/<int:course_id>/lessons/<int:lesson_id>/topics/<int:topic_id>` — get topic details scoped by class and course
+- `GET /api/v1/classes/<id>/courses/<int:course_id>/lessons/<int:lesson_id>/topics/<int:topic_id>/cards` — list cards for a topic scoped by class and course
+- `GET /api/v1/classes/<id>/courses/<int:course_id>/lessons/<int:lesson_id>/topics/<int:topic_id>/cards/<int:card_id>` — get a single card scoped by class and course
+
 - `GET /api/v1/content/<int:lesson_id>` — get lesson content (cloud/lesson content)
 
 - `GET /api/v1/lessons/<int:id>` — get lesson details
