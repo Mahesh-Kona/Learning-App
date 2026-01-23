@@ -59,7 +59,7 @@
 					<div class="stat-card green">
 						<div class="stat-header">
 							<div class="stat-info">
-								<div class="stat-number">1,248</div>
+								<div class="stat-number">{{ total_students_count or 0 }}</div>
 								<div class="stat-title">Total Students</div>
 								<div class="stat-trend trend-up">
 									<i class="fas fa-arrow-up"></i> 12% from last month
@@ -74,7 +74,7 @@
 					<div class="stat-card blue">
 						<div class="stat-header">
 							<div class="stat-info">
-								<div class="stat-number">48</div>
+								<div class="stat-number">{{ total_staff_count or 0 }}</div>
 								<div class="stat-title">Staff</div>
 								<div class="stat-trend trend-up">
 									<i class="fas fa-arrow-up"></i> 3 new this month

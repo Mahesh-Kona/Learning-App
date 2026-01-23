@@ -12,17 +12,6 @@
       "published": true
     },
     {
-      "id": 29,
-      "title": "E2E Test Course",
-      "description": "created by automated test",
-      "category": "TestCat",
-      "thumbnail_url": "/uploads/test.png",
-      "difficulty": null,
-      "duration_weeks": null,
-      "total_lessons": 0,
-      "published": false
-    },
-    {
       "id": 6,
       "title": "Integration Test Course",
       "description": "Created by automated test",
@@ -82,18 +71,7 @@
       "title": "PlainSubmit Course",
       "description": "plain form submit test",
       "category": "science",
-      "thumbnail_url": "/uploads/dd0fa29f4146445cad6eac3547c804ba_plain.png",
-      "difficulty": "intermediate",
-      "duration_weeks": 8,
-      "total_lessons": 0,
-      "published": true
-    },
-    {
-      "id": 30,
-      "title": "PlainSubmit Course",
-      "description": "plain form submit test",
-      "category": "science",
-      "thumbnail_url": "/uploads/21bd6c4e40534e92947fa181756e4e30_plain.png",
+      "thumbnail_url": "/uploads/86e9861e3da349d4b83a79e6948403c8_plain.png",
       "difficulty": "intermediate",
       "duration_weeks": 8,
       "total_lessons": 0,

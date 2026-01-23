@@ -1,0 +1,2326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Management - EduSaint</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 0;
+            position: relative;
+        }
+
+        /* Header Styles */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #2e7d32;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-add {
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-add:hover {
+            background-color: #1b5e20;
+        }
+
+        /* Filters */
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 6px;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2e7d32;
+        }
+
+        /* Staff Grid */
+        .staff-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .staff-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .staff-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .staff-header {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .staff-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background-color: #e8f5e9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+
+        .staff-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .staff-info {
+            flex: 1;
+        }
+
+        .staff-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .staff-role {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .staff-department {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .staff-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .detail-icon {
+            width: 16px;
+            text-align: center;
+        }
+
+        .staff-permissions {
+            margin-bottom: 16px;
+        }
+
+        .permissions-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .permission-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .permission-tag {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .staff-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 16px;
+            border-top: 1px solid #f0f0e0;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.active {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status-badge.inactive {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .btn-edit {
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-edit:hover {
+            background-color: #1b5e20;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            color: #666;
+            margin-bottom: 24px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            background-color: #2e7d32;
+            color: white;
+            padding: 20px 24px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .close-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .form-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2e7d32;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        label .required {
+            color: #d32f2f;
+            margin-left: 2px;
+        }
+
+        input, select, textarea {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            font-family: inherit;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #2e7d32;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+        }
+
+        input:disabled, select:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+
+        .photo-upload {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .photo-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .photo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-preview-icon {
+            font-size: 32px;
+            color: #999;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .file-input-label:hover {
+            background-color: #e0e0e0;
+        }
+
+        .info-box {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #1976d2;
+            margin-top: 8px;
+        }
+
+        .info-note {
+            background-color: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #856404;
+            margin-top: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .permissions-section {
+            background-color: #f9f9f9;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .permission-group {
+            margin-bottom: 16px;
+        }
+
+        .permission-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .permission-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .permission-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .permission-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 150px;
+        }
+
+        .permission-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .permission-checkbox label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 400;
+            font-size: 13px;
+        }
+
+        .password-input-group {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+            padding: 4px;
+        }
+
+        .password-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .btn-generate, .btn-auto-password {
+            padding: 6px 12px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-generate:hover, .btn-auto-password:hover {
+            background-color: #e0e0e0;
+        }
+
+        .password-strength {
+            margin-top: 6px;
+            font-size: 12px;
+        }
+
+        .strength-bar {
+            height: 4px;
+            background-color: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s, background-color 0.3s;
+        }
+
+        .strength-weak .strength-fill {
+            width: 33%;
+            background-color: #f44336;
+        }
+
+        .strength-medium .strength-fill {
+            width: 66%;
+            background-color: #ff9800;
+        }
+
+        .strength-strong .strength-fill {
+            width: 100%;
+            background-color: #4caf50;
+        }
+
+        .notification-options {
+            background-color: #f9f9f9;
+            padding: 16px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .notification-checkbox {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .notification-checkbox:last-child {
+            margin-bottom: 0;
+        }
+
+        .notification-checkbox input[type="checkbox"] {
+            margin-top: 3px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .notification-label {
+            flex: 1;
+        }
+
+        .notification-label strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #333;
+        }
+
+        .notification-label small {
+            color: #666;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        /* Status Alert for Edit Modal */
+        .status-alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-alert.active {
+            background-color: #e8f5e9;
+            border: 1px solid #4caf50;
+            color: #2e7d32;
+        }
+
+        .status-alert.inactive {
+            background-color: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+        }
+
+        .status-alert-icon {
+            font-size: 24px;
+        }
+
+        /* Password Reset Section for Edit Modal */
+        .password-reset-section {
+            background-color: #fff3e0;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #ffb74d;
+        }
+
+        .password-reset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .password-reset-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e65100;
+        }
+
+        .btn-reset-password {
+            background-color: #ff9800;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-reset-password:hover {
+            background-color: #f57c00;
+        }
+
+        .reset-info {
+            font-size: 13px;
+            color: #e65100;
+            line-height: 1.5;
+        }
+
+        /* Modal Footer */
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .edit-modal-footer {
+            justify-content: space-between;
+        }
+
+        .footer-left {
+            display: flex;
+            gap: 12px;
+        }
+
+        .footer-right {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-cancel {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-cancel:hover {
+            background-color: #e0e0e0;
+        }
+
+        .btn-deactivate {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #f44336;
+        }
+
+        .btn-deactivate:hover {
+            background-color: #ffcdd2;
+        }
+
+        .btn-activate {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #4caf50;
+        }
+
+        .btn-activate:hover {
+            background-color: #c8e6c9;
+        }
+
+        .btn-delete {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background-color: #d32f2f;
+        }
+
+        .btn-submit {
+            background-color: #2e7d32;
+            color: white;
+        }
+
+        .btn-submit:hover {
+            background-color: #1b5e20;
+        }
+
+        .btn-submit.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            display: none;
+            background-color: #4caf50;
+            color: white;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            text-align: center;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .staff-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filters {
+                flex-direction: column;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .modal {
+                width: 95%;
+                max-height: 95vh;
+            }
+
+            .password-actions {
+                flex-direction: column;
+            }
+
+            .permission-options {
+                flex-direction: column;
+            }
+
+            .modal-footer {
+                flex-direction: column;
+            }
+
+            .footer-left, .footer-right {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        {% include 'admin_sidebar.html' %}
+        <main class="main-content">
+    <!-- Main Staff Management Page -->
+    <div class="header">
+        <h1>👥 Staff Management</h1>
+        <div class="header-actions">
+            <button class="btn-add" onclick="openAddModal()">
+                <span>➕</span> Add New Staff
+            </button>
+        </div>
+    </div>
+
+    <div class="filters">
+        <div class="filter-group">
+            <label>Search</label>
+            <input type="search" id="searchInput" placeholder="Search by name, email..." onkeyup="filterStaff()">
+        </div>
+        <div class="filter-group">
+            <label>Role</label>
+            <select id="roleFilter" onchange="filterStaff()">
+                <option value="">All Roles</option>
+                <option value="Editor">Editor</option>
+                <option value="Content Manager">Content Manager</option>
+                <option value="Teacher">Teacher</option>
+                <option value="Support Staff">Support Staff</option>
+                <option value="Manager">Manager</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Department</label>
+            <select id="departmentFilter" onchange="filterStaff()">
+                <option value="">All Departments</option>
+                <option value="Academic">Academic</option>
+                <option value="Content">Content</option>
+                <option value="Operations">Operations</option>
+                <option value="Support">Student Support</option>
+                <option value="Technology">Technology</option>
+                <option value="Administration">Administration</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Status</label>
+            <select id="statusFilter" onchange="filterStaff()">
+                <option value="">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card" onclick="filterByStatus('')">
+            <div class="stat-label">Total Staff</div>
+            <div class="stat-value" id="totalStaff">12</div>
+        </div>
+        <div class="stat-card" onclick="filterByStatus('Active')">
+            <div class="stat-label">Active</div>
+            <div class="stat-value" style="color: #4caf50;" id="activeStaff">10</div>
+        </div>
+        <div class="stat-card" onclick="filterByStatus('Inactive')">
+            <div class="stat-label">Inactive</div>
+            <div class="stat-value" style="color: #f44336;" id="inactiveStaff">2</div>
+        </div>
+        <div class="stat-card" onclick="filterByRole('Manager')">
+            <div class="stat-label">Managers</div>
+            <div class="stat-value" style="color: #2196f3;" id="managerStaff">3</div>
+        </div>
+    </div>
+
+    <div class="staff-grid" id="staffGrid">
+        <!-- Staff cards will be rendered here -->
+    </div>
+
+    <!-- Add Staff Modal -->
+    <div class="modal-overlay" id="addModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Add New Editor/Staff</h2>
+                <button class="close-btn" onclick="closeAddModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="success-message" id="addSuccessMessage">
+                    ✓ Staff added successfully!
+                </div>
+                <form id="addStaffForm">
+                    <!-- Personal Details -->
+                    <div class="form-section">
+                        <div class="section-title">Personal Details</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Full Name <span class="required">*</span></label>
+                                <input type="text" id="addEditorName" name="editorName" required placeholder="Enter full name">
+                            </div>
+                            <div class="form-group">
+                                <label>Gender <span class="required">*</span></label>
+                                <select id="addGender" name="gender" required>
+                                    <option value="">Select Gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>Profile Photo</label>
+                                <div class="photo-upload">
+                                    <div class="photo-preview" id="addPhotoPreview">
+                                        <span class="photo-preview-icon">👤</span>
+                                    </div>
+                                    <div class="file-input-wrapper">
+                                        <input type="file" id="addProfilePhoto" name="profilePhoto" accept="image/jpeg,image/png,image/jpg" onchange="validateAndPreviewPhoto(event, 'add')">
+                                        <label for="addProfilePhoto" class="file-input-label">Choose Photo</label>
+                                    </div>
+                                </div>
+                                <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">Max file size: 100 KB (JPEG, PNG only)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Information -->
+                    <div class="form-section">
+                        <div class="section-title">Contact Information</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Email Address <span class="required">*</span></label>
+                                <input type="email" id="addEmail" name="email" required placeholder="editor@edusaint.in">
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Number <span class="required">*</span></label>
+                                <input type="tel" id="addPhone" name="phone" required placeholder="+91 XXXXX XXXXX" pattern="[+]?[0-9]{10,15}">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>City</label>
+                                <input type="text" id="addCity" name="city" placeholder="Enter city">
+                            </div>
+                            <div class="form-group">
+                                <label>Department</label>
+                                <select id="addDepartment" name="department">
+                                    <option value="">Select Department</option>
+                                    <option value="Academic">Academic</option>
+                                    <option value="Content">Content</option>
+                                    <option value="Operations">Operations</option>
+                                    <option value="Support">Student Support</option>
+                                    <option value="Technology">Technology</option>
+                                    <option value="Administration">Administration</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Role & Permissions -->
+                    <div class="form-section">
+                        <div class="section-title">Role & Permissions</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Role <span class="required">*</span></label>
+                                <select id="addRole" name="role" required onchange="updateAddPermissions()">
+                                    <option value="">Select Role</option>
+                                    <option value="Editor">Editor</option>
+                                    <option value="Content Manager">Content Manager</option>
+                                    <option value="Teacher">Teacher</option>
+                                    <option value="Support Staff">Support Staff</option>
+                                    <option value="Manager">Manager</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Status <span class="required">*</span></label>
+                                <select id="addStatus" name="status" required>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width" style="margin-top: 16px;">
+                            <label>Permissions <span class="required">*</span></label>
+                            <div class="permissions-section">
+                                <!-- Student Management -->
+                                <div class="permission-group">
+                                    <div class="permission-title">Student Management</div>
+                                    <div class="permission-options">
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_view_students" name="permissions" value="view_students">
+                                            <label for="add_perm_view_students">View Students</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_add_students" name="permissions" value="add_students">
+                                            <label for="add_perm_add_students">Add Students</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_edit_students" name="permissions" value="edit_students">
+                                            <label for="add_perm_edit_students">Edit Students</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_delete_students" name="permissions" value="delete_students">
+                                            <label for="add_perm_delete_students">Delete Students</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Course Management -->
+                                <div class="permission-group">
+                                    <div class="permission-title">Course Management</div>
+                                    <div class="permission-options">
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_view_courses" name="permissions" value="view_courses">
+                                            <label for="add_perm_view_courses">View Courses</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_create_courses" name="permissions" value="create_courses">
+                                            <label for="add_perm_create_courses">Create Courses</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_edit_courses" name="permissions" value="edit_courses">
+                                            <label for="add_perm_edit_courses">Edit Courses</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_delete_courses" name="permissions" value="delete_courses">
+                                            <label for="add_perm_delete_courses">Delete Courses</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Content Management -->
+                                <div class="permission-group">
+                                    <div class="permission-title">Content Management</div>
+                                    <div class="permission-options">
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_upload_content" name="permissions" value="upload_content">
+                                            <label for="add_perm_upload_content">Upload Content</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_edit_content" name="permissions" value="edit_content">
+                                            <label for="add_perm_edit_content">Edit Content</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_publish_content" name="permissions" value="publish_content">
+                                            <label for="add_perm_publish_content">Publish Content</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Analytics & Reports -->
+                                <div class="permission-group">
+                                    <div class="permission-title">Analytics & Reports</div>
+                                    <div class="permission-options">
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_view_analytics" name="permissions" value="view_analytics">
+                                            <label for="add_perm_view_analytics">View Analytics</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_generate_reports" name="permissions" value="generate_reports">
+                                            <label for="add_perm_generate_reports">Generate Reports</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Financial Management -->
+                                <div class="permission-group">
+                                    <div class="permission-title">Financial Management</div>
+                                    <div class="permission-options">
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_view_revenue" name="permissions" value="view_revenue">
+                                            <label for="add_perm_view_revenue">View Revenue</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_manage_discounts" name="permissions" value="manage_discounts">
+                                            <label for="add_perm_manage_discounts">Manage Discounts</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_view_transactions" name="permissions" value="view_transactions">
+                                            <label for="add_perm_view_transactions">View Transactions</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_process_refunds" name="permissions" value="process_refunds">
+                                            <label for="add_perm_process_refunds">Process Refunds</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="add_perm_export_financial" name="permissions" value="export_financial">
+                                            <label for="add_perm_export_financial">Export Financial Data</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="info-note" style="margin-top: 12px;">
+                                ℹ️ Permissions can be customized based on role. Select a role to auto-fill suggested permissions.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Security -->
+                    <div class="form-section">
+                        <div class="section-title">Account Security</div>
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>Create Password <span class="required">*</span></label>
+                                <div class="password-input-group">
+                                    <input type="password" id="addPassword" name="editorPassword" required placeholder="Enter password" oninput="checkPasswordStrength('add')">
+                                    <button type="button" class="password-toggle" onclick="togglePassword('add')">👁️</button>
+                                </div>
+                                <div class="password-actions">
+                                    <button type="button" class="btn-generate" onclick="generatePassword('add')">🔑 Generate Strong Password</button>
+                                    <button type="button" class="btn-auto-password" onclick="autoGeneratePassword('add')">⚡ Auto-Generate</button>
+                                </div>
+                                <div class="password-strength" id="addPasswordStrength">
+                                    <div class="strength-bar">
+                                        <div class="strength-fill" id="addStrengthFill"></div>
+                                    </div>
+                                </div>
+                                <div class="info-box">
+                                    💡 The staff member will receive their login credentials via email and can change the password after first login.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notification Settings -->
+                    <div class="form-section">
+                        <div class="section-title">Send Credentials</div>
+                        <div class="notification-options">
+                            <div class="notification-checkbox">
+                                <input type="checkbox" id="sendEmail" name="sendEmail" checked>
+                                <div class="notification-label">
+                                    <label for="sendEmail">
+                                        <strong>📧 Send Email Notification</strong>
+                                        <small>Staff will receive an email with their login credentials and access instructions.</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="notification-checkbox">
+                                <input type="checkbox" id="sendSms" name="sendSms">
+                                <div class="notification-label">
+                                    <label for="sendSms">
+                                        <strong>📱 Send SMS Notification</strong>
+                                        <small>Staff will receive an SMS with their username and temporary password.</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancel" onclick="closeAddModal()">Cancel</button>
+                <button class="btn btn-submit" onclick="submitAddForm()">Add Staff & Send Credentials</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Staff Modal -->
+    <div class="modal-overlay" id="editModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Edit Staff Member</h2>
+                <button class="close-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="success-message" id="editSuccessMessage">
+                    ✓ Staff member updated successfully!
+                </div>
+
+                <!-- Status Alert -->
+                <div class="status-alert active" id="statusAlert">
+                    <span class="status-alert-icon">✓</span>
+                    <div>
+                        <strong>Active Staff Member</strong>
+                        <div style="font-size: 13px; margin-top: 4px;">This staff member has full access to assigned permissions.</div>
+                    </div>
+                </div>
+
+                <form id="editStaffForm">
+                    <!-- Personal Details -->
+                    <div class="form-section">
+                        <div class="section-title">Personal Details</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Full Name <span class="required">*</span></label>
+                                <input type="text" id="editEditorName" required placeholder="Enter full name">
+                            </div>
+                            <div class="form-group">
+                                <label>Gender <span class="required">*</span></label>
+                                <select id="editGender" required>
+                                    <option value="">Select Gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>Profile Photo</label>
+                                <div class="photo-upload">
+                                    <div class="photo-preview" id="editPhotoPreview">
+                                        <span class="photo-preview-icon">👤</span>
+                                    </div>
+                                    <div class="file-input-wrapper">
+                                        <input type="file" id="editProfilePhoto" accept="image/jpeg,image/png,image/jpg" onchange="validateAndPreviewPhoto(event, 'edit')">
+                                        <label for="editProfilePhoto" class="file-input-label">Change Photo</label>
+                                    </div>
+                                </div>
+                                <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">Max file size: 100 KB (JPEG, PNG only)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Information -->
+                    <div class="form-section">
+                        <div class="section-title">Contact Information</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Email Address <span class="required">*</span></label>
+                                <input type="email" id="editEmail" required placeholder="editor@edusaint.in">
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Number <span class="required">*</span></label>
+                                <input type="tel" id="editPhone" required placeholder="+91 XXXXX XXXXX" pattern="[+]?[0-9]{10,15}">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>City</label>
+                                <input type="text" id="editCity" placeholder="Enter city">
+                            </div>
+                            <div class="form-group">
+                                <label>Department</label>
+                                <select id="editDepartment">
+                                    <option value="">Select Department</option>
+                                    <option value="Academic">Academic</option>
+                                    <option value="Content">Content</option>
+                                    <option value="Operations">Operations</option>
+                                    <option value="Support">Student Support</option>
+                                    <option value="Technology">Technology</option>
+                                    <option value="Administration">Administration</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Role & Permissions -->
+                    <div class="form-section">
+                        <div class="section-title">Role & Permissions</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Role <span class="required">*</span></label>
+                                <select id="editRole" required onchange="updateEditPermissions()">
+                                    <option value="">Select Role</option>
+                                    <option value="Editor">Editor</option>
+                                    <option value="Content Manager">Content Manager</option>
+                                    <option value="Teacher">Teacher</option>
+                                    <option value="Support Staff">Support Staff</option>
+                                    <option value="Manager">Manager</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Join Date</label>
+                                <input type="date" id="editJoinDate" disabled>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width" style="margin-top: 16px;">
+                            <label>Permissions <span class="required">*</span></label>
+                            <div class="permissions-section">
+                                <!-- Student Management -->
+                                <div class="permission-group">
+                                    <div class="permission-title">Student Management</div>
+                                    <div class="permission-options">
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_view_students" name="permissions" value="view_students">
+                                            <label for="edit_perm_view_students">View Students</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_add_students" name="permissions" value="add_students">
+                                            <label for="edit_perm_add_students">Add Students</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_edit_students" name="permissions" value="edit_students">
+                                            <label for="edit_perm_edit_students">Edit Students</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_delete_students" name="permissions" value="delete_students">
+                                            <label for="edit_perm_delete_students">Delete Students</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Course Management -->
+                                <div class="permission-group">
+                                    <div class="permission-title">Course Management</div>
+                                    <div class="permission-options">
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_view_courses" name="permissions" value="view_courses">
+                                            <label for="edit_perm_view_courses">View Courses</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_create_courses" name="permissions" value="create_courses">
+                                            <label for="edit_perm_create_courses">Create Courses</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_edit_courses" name="permissions" value="edit_courses">
+                                            <label for="edit_perm_edit_courses">Edit Courses</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_delete_courses" name="permissions" value="delete_courses">
+                                            <label for="edit_perm_delete_courses">Delete Courses</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Content Management -->
+                                <div class="permission-group">
+                                    <div class="permission-title">Content Management</div>
+                                    <div class="permission-options">
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_upload_content" name="permissions" value="upload_content">
+                                            <label for="edit_perm_upload_content">Upload Content</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_edit_content" name="permissions" value="edit_content">
+                                            <label for="edit_perm_edit_content">Edit Content</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_publish_content" name="permissions" value="publish_content">
+                                            <label for="edit_perm_publish_content">Publish Content</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Analytics & Reports -->
+                                <div class="permission-group">
+                                    <div class="permission-title">Analytics & Reports</div>
+                                    <div class="permission-options">
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_view_analytics" name="permissions" value="view_analytics">
+                                            <label for="edit_perm_view_analytics">View Analytics</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_generate_reports" name="permissions" value="generate_reports">
+                                            <label for="edit_perm_generate_reports">Generate Reports</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Financial Management -->
+                                <div class="permission-group">
+                                    <div class="permission-title">Financial Management</div>
+                                    <div class="permission-options">
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_view_revenue" name="permissions" value="view_revenue">
+                                            <label for="edit_perm_view_revenue">View Revenue</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_manage_discounts" name="permissions" value="manage_discounts">
+                                            <label for="edit_perm_manage_discounts">Manage Discounts</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_view_transactions" name="permissions" value="view_transactions">
+                                            <label for="edit_perm_view_transactions">View Transactions</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_process_refunds" name="permissions" value="process_refunds">
+                                            <label for="edit_perm_process_refunds">Process Refunds</label>
+                                        </div>
+                                        <div class="permission-checkbox">
+                                            <input type="checkbox" id="edit_perm_export_financial" name="permissions" value="export_financial">
+                                            <label for="edit_perm_export_financial">Export Financial Data</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Password Reset -->
+                    <div class="form-section">
+                        <div class="section-title">Password Management</div>
+                        <div class="password-reset-section">
+                            <div class="password-reset-header">
+                                <span class="password-reset-title">🔐 Send Password Reset Link</span>
+                                <button type="button" class="btn-reset-password" onclick="sendPasswordReset()">
+                                    <span>📧</span> Send Reset Link
+                                </button>
+                            </div>
+                            <div class="reset-info">
+                                Staff member will receive a secure link to reset their password. Link expires in 24 hours.
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer edit-modal-footer">
+                <div class="footer-left">
+                    <button class="btn btn-deactivate" id="deactivateBtn" onclick="toggleStaffStatus()">
+                        <span>⏸️</span> Deactivate
+                    </button>
+                    <button class="btn btn-delete" onclick="deleteStaffMember()">
+                        <span>🗑️</span> Delete
+                    </button>
+                </div>
+                <div class="footer-right">
+                    <button class="btn btn-cancel" onclick="closeEditModal()">Cancel</button>
+                    <button class="btn btn-submit" onclick="submitEditForm()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Data
+        let staffMembers = [];
+
+        let currentEditId = null;
+        let currentEditStatus = 'Active';
+
+        // Role-based permission presets
+        const rolePermissions = {
+            'Editor': ['view_students', 'view_courses', 'upload_content', 'edit_content', 'view_analytics'],
+            'Content Manager': ['view_students', 'view_courses', 'create_courses', 'edit_courses', 'upload_content', 'edit_content', 'publish_content', 'view_analytics', 'generate_reports'],
+            'Teacher': ['view_students', 'view_courses', 'upload_content', 'view_analytics'],
+            'Support Staff': ['view_students', 'edit_students', 'view_courses'],
+            'Manager': ['view_students', 'add_students', 'edit_students', 'view_courses', 'create_courses', 'edit_courses', 'upload_content', 'edit_content', 'publish_content', 'view_analytics', 'generate_reports', 'view_revenue', 'manage_discounts', 'view_transactions', 'process_refunds', 'export_financial']
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStaffMembers();
+        });
+
+        const STAFF_API_BASE = "{{ url_for('admin_bp.staff_api_list') }}";
+
+        async function apiFetchJson(url, options = {}) {
+            const res = await fetch(url, {
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {})
+                },
+                ...options
+            });
+
+            let data = null;
+            let text = null;
+            try {
+                data = await res.json();
+            } catch (e) {
+                try {
+                    text = await res.text();
+                } catch (e2) {
+                    text = null;
+                }
+            }
+
+            if (!res.ok) {
+                const msgFromJson = (data && (data.error || data.message)) || null;
+                const snippet = text ? String(text).trim().substring(0, 200) : null;
+                const msg = msgFromJson || snippet || `Request failed (${res.status})`;
+                throw new Error(msg);
+            }
+
+            if (data === null) {
+                const snippet = text ? String(text).trim().substring(0, 200) : 'Non-JSON response';
+                throw new Error(snippet);
+            }
+
+            return data;
+        }
+
+        function showFeedback(message, type = 'success') {
+            const text = String(message || '').trim();
+            if (!text) return;
+
+            let container = document.getElementById('feedbackToastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'feedbackToastContainer';
+                container.style.position = 'fixed';
+                container.style.top = '16px';
+                container.style.right = '16px';
+                container.style.zIndex = '99999';
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.gap = '10px';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            const bg = (type === 'error') ? '#d64545' : (type === 'warning') ? '#d98b2b' : '#1f9d55';
+            toast.textContent = text;
+            toast.style.background = bg;
+            toast.style.color = '#fff';
+            toast.style.padding = '10px 12px';
+            toast.style.borderRadius = '10px';
+            toast.style.boxShadow = '0 10px 22px rgba(0,0,0,0.18)';
+            toast.style.maxWidth = '360px';
+            toast.style.fontSize = '14px';
+            toast.style.lineHeight = '1.3';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-6px)';
+            toast.style.transition = 'opacity 160ms ease, transform 160ms ease';
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+            });
+
+            window.setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-6px)';
+                window.setTimeout(() => toast.remove(), 200);
+            }, 2400);
+        }
+
+        async function apiUpdateStaffWithFallback(staffId, payload) {
+            const url = `${STAFF_API_BASE}/${staffId}`;
+            const body = JSON.stringify(payload || {});
+            try {
+                return await apiFetchJson(url, { method: 'PUT', body });
+            } catch (err) {
+                // Some cloud/proxy environments block PUT; fall back to POST.
+                return await apiFetchJson(url, {
+                    method: 'POST',
+                    body,
+                    headers: { 'X-HTTP-Method-Override': 'PUT' }
+                });
+            }
+        }
+
+        async function loadStaffMembers() {
+            try {
+                const payload = await apiFetchJson(STAFF_API_BASE, { method: 'GET' });
+                staffMembers = (payload && payload.staff) ? payload.staff : [];
+                updateStats();
+                renderStaffGrid(staffMembers);
+            } catch (err) {
+                console.error(err);
+                staffMembers = [];
+                updateStats();
+                renderStaffGrid([]);
+                alert(`⚠️ Failed to load staff: ${err.message}`);
+            }
+        }
+
+        async function uploadStaffAvatar(staffId, file) {
+            const form = new FormData();
+            form.append('avatar', file);
+            const res = await fetch(`${STAFF_API_BASE}/${staffId}/avatar`, {
+                method: 'POST',
+                body: form,
+                credentials: 'same-origin'
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+                const msg = (data && (data.error || data.message)) || `Upload failed (${res.status})`;
+                throw new Error(msg);
+            }
+            return data;
+        }
+
+        // ====================
+        // MAIN PAGE FUNCTIONS
+        // ====================
+
+        function updateStats() {
+            const total = staffMembers.length;
+            const active = staffMembers.filter(s => s.status === 'Active').length;
+            const inactive = staffMembers.filter(s => s.status === 'Inactive').length;
+            const managers = staffMembers.filter(s => s.role === 'Manager').length;
+
+            document.getElementById('totalStaff').textContent = total;
+            document.getElementById('activeStaff').textContent = active;
+            document.getElementById('inactiveStaff').textContent = inactive;
+            document.getElementById('managerStaff').textContent = managers;
+        }
+
+        function renderStaffGrid(staffList) {
+            const grid = document.getElementById('staffGrid');
+            
+            if (staffList.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <div class="empty-title">No staff members found</div>
+                        <div class="empty-text">Try adjusting your filters or add a new staff member</div>
+                        <button class="btn-add" onclick="openAddModal()">
+                            <span>➕</span> Add New Staff
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = staffList.map(staff => `
+                <div class="staff-card">
+                    <div class="staff-header">
+                        <div class="staff-avatar">
+                            ${staff.avatar ? `<img src="${staff.avatar}" alt="${staff.name}">` : getInitials(staff.name)}
+                        </div>
+                        <div class="staff-info">
+                            <div class="staff-name">${staff.name}</div>
+                            <div class="staff-role">${staff.role}</div>
+                            <div class="staff-department">${staff.department || ''}</div>
+                        </div>
+                    </div>
+                    <div class="staff-details">
+                        <div class="detail-row">
+                            <span class="detail-icon">📧</span>
+                            <span>${staff.email}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-icon">📱</span>
+                            <span>${staff.phone}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-icon">📍</span>
+                            <span>${staff.city || ''}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-icon">📅</span>
+                            <span>Joined: ${staff.joinDate ? formatDate(staff.joinDate) : '—'}</span>
+                        </div>
+                    </div>
+                    <div class="staff-permissions">
+                        <div class="permissions-title">Key Permissions</div>
+                        <div class="permission-tags">
+                            ${getPermissionLabels(staff.permissions).slice(0, 3).map(p => `<span class="permission-tag">${p}</span>`).join('')}
+                            ${staff.permissions.length > 3 ? `<span class="permission-tag">+${staff.permissions.length - 3} more</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="staff-status">
+                        <span class="status-badge ${staff.status.toLowerCase()}">
+                            ${staff.status === 'Active' ? '✓' : '⏸️'} ${staff.status}
+                        </span>
+                        <button class="btn-edit" onclick="openEditModal(${staff.id})">
+                            ✏️ Edit
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getInitials(name) {
+            return name.split(' ').map(n => n[0]).join('').toUpperCase();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function getPermissionLabels(permissionValues) {
+            const labels = {
+                'view_students': 'View Students',
+                'add_students': 'Add Students',
+                'edit_students': 'Edit Students',
+                'delete_students': 'Delete Students',
+                'view_courses': 'View Courses',
+                'create_courses': 'Create Courses',
+                'edit_courses': 'Edit Courses',
+                'delete_courses': 'Delete Courses',
+                'upload_content': 'Upload Content',
+                'edit_content': 'Edit Content',
+                'publish_content': 'Publish Content',
+                'view_analytics': 'View Analytics',
+                'generate_reports': 'Generate Reports',
+                'view_revenue': 'View Revenue',
+                'manage_discounts': 'Manage Discounts',
+                'view_transactions': 'View Transactions',
+                'process_refunds': 'Process Refunds',
+                'export_financial': 'Export Financial Data'
+            };
+            return permissionValues.map(p => labels[p] || p);
+        }
+
+        function filterStaff() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value;
+            const departmentFilter = document.getElementById('departmentFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            const filtered = staffMembers.filter(staff => {
+                const matchesSearch = staff.name.toLowerCase().includes(searchTerm) || 
+                                    staff.email.toLowerCase().includes(searchTerm);
+                const matchesRole = !roleFilter || staff.role === roleFilter;
+                const matchesDepartment = !departmentFilter || staff.department === departmentFilter;
+                const matchesStatus = !statusFilter || staff.status === statusFilter;
+
+                return matchesSearch && matchesRole && matchesDepartment && matchesStatus;
+            });
+
+            renderStaffGrid(filtered);
+        }
+
+        function filterByStatus(status) {
+            document.getElementById('statusFilter').value = status;
+            filterStaff();
+        }
+
+        function filterByRole(role) {
+            document.getElementById('roleFilter').value = role;
+            filterStaff();
+        }
+
+        // ====================
+        // ADD MODAL FUNCTIONS
+        // ====================
+
+        function openAddModal() {
+            document.getElementById('addModalOverlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModalOverlay').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            document.getElementById('addStaffForm').reset();
+            document.getElementById('addPhotoPreview').innerHTML = '<span class="photo-preview-icon">👤</span>';
+            document.getElementById('addSuccessMessage').style.display = 'none';
+            document.getElementById('addPasswordStrength').className = 'password-strength';
+            document.getElementById('addStrengthFill').style.width = '0%';
+            clearAllAddPermissions();
+        }
+
+        function validateAndPreviewPhoto(event, modalType) {
+            const file = event.target.files[0];
+            const maxSize = 100 * 1024; // 100 KB
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+            
+            if (!file) return;
+            
+            if (!allowedTypes.includes(file.type)) {
+                alert('⚠️ Invalid file type!\n\nOnly JPEG and PNG images are allowed.');
+                event.target.value = '';
+                return;
+            }
+            
+            if (file.size > maxSize) {
+                const fileSizeKB = (file.size / 1024).toFixed(2);
+                alert(`⚠️ File too large!\n\nYour file is ${fileSizeKB} KB.\nMaximum allowed size is 100 KB.\n\nPlease compress or resize your image.`);
+                event.target.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewId = modalType === 'add' ? 'addPhotoPreview' : 'editPhotoPreview';
+                document.getElementById(previewId).innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateAddPermissions() {
+            const role = document.getElementById('addRole').value;
+            if (!role) return;
+
+            clearAllAddPermissions();
+            
+            const permissions = rolePermissions[role] || [];
+            permissions.forEach(perm => {
+                const checkbox = document.getElementById(`add_perm_${perm}`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+        }
+
+        function clearAllAddPermissions() {
+            const checkboxes = document.querySelectorAll('#addStaffForm input[name="permissions"]');
+            checkboxes.forEach(cb => cb.checked = false);
+        }
+
+        let passwordVisible = false;
+
+        function togglePassword(modalType) {
+            const passwordInput = modalType === 'add' ? document.getElementById('addPassword') : document.getElementById('editPassword');
+            const toggleBtn = passwordInput.parentElement.querySelector('.password-toggle');
+            
+            if (passwordVisible) {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁️';
+                passwordVisible = false;
+            } else {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+                passwordVisible = true;
+            }
+        }
+
+        function generatePassword(modalType) {
+            const length = 12;
+            const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+            let password = '';
+            
+            password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
+            password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
+            password += '0123456789'[Math.floor(Math.random() * 10)];
+            password += '!@#$%^&*'[Math.floor(Math.random() * 8)];
+            
+            for (let i = password.length; i < length; i++) {
+                password += charset[Math.floor(Math.random() * charset.length)];
+            }
+            
+            password = password.split('').sort(() => Math.random() - 0.5).join('');
+            
+            const passwordInput = modalType === 'add' ? document.getElementById('addPassword') : document.getElementById('editPassword');
+            passwordInput.value = password;
+            
+            if (modalType === 'add') {
+                checkPasswordStrength('add');
+                passwordInput.type = 'text';
+                document.querySelector('#addPassword + .password-toggle').textContent = '🙈';
+            }
+            
+            passwordVisible = true;
+        }
+
+        function autoGeneratePassword(modalType) {
+            generatePassword(modalType);
+            alert('Strong password generated! The password is now visible in the field.');
+        }
+
+        function checkPasswordStrength(modalType) {
+            const passwordInput = modalType === 'add' ? document.getElementById('addPassword') : document.getElementById('editPassword');
+            const password = passwordInput.value;
+            const strengthElement = modalType === 'add' ? document.getElementById('addPasswordStrength') : document.getElementById('editPasswordStrength');
+            
+            if (!strengthElement) return;
+            
+            if (password.length === 0) {
+                strengthElement.className = 'password-strength';
+                return;
+            }
+            
+            let strength = 0;
+            
+            if (password.length >= 8) strength++;
+            if (password.length >= 12) strength++;
+            if (/[a-z]/.test(password)) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^a-zA-Z0-9]/.test(password)) strength++;
+            
+            if (strength <= 2) {
+                strengthElement.className = 'password-strength strength-weak';
+            } else if (strength <= 4) {
+                strengthElement.className = 'password-strength strength-medium';
+            } else {
+                strengthElement.className = 'password-strength strength-strong';
+            }
+        }
+
+        function submitAddForm() {
+            const form = document.getElementById('addStaffForm');
+            const submitBtn = document.querySelector('#addModalOverlay .btn-submit');
+            
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            // Check if at least one permission is selected
+            const permissions = document.querySelectorAll('#addStaffForm input[name="permissions"]:checked');
+            if (permissions.length === 0) {
+                alert('⚠️ Please select at least one permission');
+                return;
+            }
+
+            const password = document.getElementById('addPassword').value;
+            if (password.length < 6) {
+                alert('⚠️ Password must be at least 6 characters long');
+                return;
+            }
+
+            // Add loading state
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+            submitBtn.innerHTML = '<span class="spinner"></span> Adding Staff...';
+
+            const sendEmail = document.getElementById('sendEmail').checked;
+            const sendSms = document.getElementById('sendSms').checked;
+            const avatarFile = (document.getElementById('addProfilePhoto').files || [])[0];
+
+            const payload = {
+                name: document.getElementById('addEditorName').value,
+                gender: document.getElementById('addGender').value,
+                email: document.getElementById('addEmail').value,
+                phone: document.getElementById('addPhone').value,
+                city: document.getElementById('addCity').value || '',
+                department: document.getElementById('addDepartment').value,
+                role: document.getElementById('addRole').value,
+                status: document.getElementById('addStatus').value,
+                joinDate: new Date().toISOString().split('T')[0],
+                permissions: Array.from(permissions).map(p => p.value),
+                sendEmail,
+                sendSms,
+                password
+            };
+
+            (async () => {
+                try {
+                    const created = await apiFetchJson(STAFF_API_BASE, { method: 'POST', body: JSON.stringify(payload) });
+                    const createdId = created && created.staff ? created.staff.id : null;
+                    if (createdId && avatarFile) {
+                        await uploadStaffAvatar(createdId, avatarFile);
+                    }
+                    await loadStaffMembers();
+
+                    let notificationMsg = '';
+                    if (sendEmail && sendSms) notificationMsg = ' Email and SMS notifications sent!';
+                    else if (sendEmail) notificationMsg = ' Email notification sent!';
+                    else if (sendSms) notificationMsg = ' SMS notification sent!';
+
+                    const successMsg = document.getElementById('addSuccessMessage');
+                    successMsg.textContent = `✓ Staff added successfully!${notificationMsg}`;
+                    successMsg.style.display = 'block';
+
+                    showFeedback(`Staff added successfully${notificationMsg ? '!' : ''}${notificationMsg}`, 'success');
+
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('loading');
+                    submitBtn.textContent = 'Add Staff & Send Credentials';
+
+                    setTimeout(() => {
+                        closeAddModal();
+                    }, 1200);
+                } catch (err) {
+                    console.error(err);
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('loading');
+                    submitBtn.textContent = 'Add Staff & Send Credentials';
+                    alert(`⚠️ Failed to add staff: ${err.message}`);
+                }
+            })();
+        }
+
+        // =====================
+        // EDIT MODAL FUNCTIONS
+        // =====================
+
+        function openEditModal(staffId) {
+            currentEditId = staffId;
+            const staff = staffMembers.find(s => s.id === staffId);
+            if (!staff) return;
+
+            document.getElementById('editModalOverlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+            loadStaffData(staff);
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModalOverlay').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            document.getElementById('editSuccessMessage').style.display = 'none';
+            currentEditId = null;
+        }
+
+        function loadStaffData(staff) {
+            document.getElementById('editEditorName').value = staff.name;
+            document.getElementById('editGender').value = staff.gender;
+            document.getElementById('editEmail').value = staff.email;
+            document.getElementById('editPhone').value = staff.phone;
+            document.getElementById('editCity').value = staff.city;
+            document.getElementById('editDepartment').value = staff.department;
+            document.getElementById('editRole').value = staff.role;
+            document.getElementById('editJoinDate').value = staff.joinDate;
+
+            currentEditStatus = staff.status;
+            updateStatusUI();
+
+            // Load permissions
+            clearAllEditPermissions();
+            staff.permissions.forEach(perm => {
+                const checkbox = document.getElementById(`edit_perm_${perm}`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+
+            if (staff.avatar) {
+                document.getElementById('editPhotoPreview').innerHTML = `<img src="${staff.avatar}" alt="Profile">`;
+            }
+        }
+
+        function updateStatusUI() {
+            const statusAlert = document.getElementById('statusAlert');
+            const deactivateBtn = document.getElementById('deactivateBtn');
+
+            if (currentEditStatus === 'Active') {
+                statusAlert.className = 'status-alert active';
+                statusAlert.innerHTML = `
+                    <span class="status-alert-icon">✓</span>
+                    <div>
+                        <strong>Active Staff Member</strong>
+                        <div style="font-size: 13px; margin-top: 4px;">This staff member has full access to assigned permissions.</div>
+                    </div>
+                `;
+                deactivateBtn.className = 'btn btn-deactivate';
+                deactivateBtn.innerHTML = '<span>⏸️</span> Deactivate';
+            } else {
+                statusAlert.className = 'status-alert inactive';
+                statusAlert.innerHTML = `
+                    <span class="status-alert-icon">⚠️</span>
+                    <div>
+                        <strong>Inactive Staff Member</strong>
+                        <div style="font-size: 13px; margin-top: 4px;">This staff member cannot access the system. Activate to restore access.</div>
+                    </div>
+                `;
+                deactivateBtn.className = 'btn btn-activate';
+                deactivateBtn.innerHTML = '<span>▶️</span> Activate';
+            }
+        }
+
+        function toggleStaffStatus() {
+            const staff = staffMembers.find(s => s.id === currentEditId);
+            if (!staff) return;
+
+            const action = currentEditStatus === 'Active' ? 'deactivate' : 'activate';
+            const message = currentEditStatus === 'Active' 
+                ? 'Are you sure you want to deactivate this staff member?\n\nThey will lose access to the system immediately.'
+                : 'Are you sure you want to activate this staff member?\n\nThey will regain access to the system.';
+
+            if (confirm(message)) {
+                const nextStatus = currentEditStatus === 'Active' ? 'Inactive' : 'Active';
+                (async () => {
+                    try {
+                        await apiUpdateStaffWithFallback(currentEditId, { status: nextStatus });
+                        currentEditStatus = nextStatus;
+                        await loadStaffMembers();
+                        updateStatusUI();
+                        alert(`✅ Staff member ${action}d successfully!`);
+                    } catch (err) {
+                        console.error(err);
+                        alert(`⚠️ Failed to update status: ${err.message}`);
+                    }
+                })();
+            }
+        }
+
+        function deleteStaffMember() {
+            if (!currentEditId) return;
+
+            if (confirm('⚠️ Are you sure you want to DELETE this staff member?\n\nThis action cannot be undone. All their data will be permanently removed.')) {
+                if (confirm('⚠️ FINAL CONFIRMATION\n\nThis will permanently delete the staff member. Are you absolutely sure?')) {
+                    (async () => {
+                        try {
+                            try {
+                                await apiFetchJson(`${STAFF_API_BASE}/${currentEditId}`, { method: 'DELETE' });
+                            } catch (err) {
+                                // Some environments block DELETE; fall back to POST
+                                await apiFetchJson(`${STAFF_API_BASE}/${currentEditId}/delete`, { method: 'POST' });
+                            }
+                            alert('🗑️ Staff member deleted successfully!');
+                            closeEditModal();
+                            await loadStaffMembers();
+                        } catch (err) {
+                            console.error(err);
+                            alert(`⚠️ Failed to delete staff: ${err.message}`);
+                        }
+                    })();
+                }
+            }
+        }
+
+        function updateEditPermissions() {
+            const role = document.getElementById('editRole').value;
+            if (!role) return;
+
+            clearAllEditPermissions();
+            
+            const permissions = rolePermissions[role] || [];
+            permissions.forEach(perm => {
+                const checkbox = document.getElementById(`edit_perm_${perm}`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+        }
+
+        function clearAllEditPermissions() {
+            const checkboxes = document.querySelectorAll('#editStaffForm input[name="permissions"]');
+            checkboxes.forEach(cb => cb.checked = false);
+        }
+
+        function sendPasswordReset() {
+            const staff = staffMembers.find(s => s.id === currentEditId);
+            if (!staff) return;
+
+            if (confirm(`Send password reset link to ${staff.email}?`)) {
+                alert('✅ Password reset link sent successfully!\n\nThe staff member will receive an email with instructions.');
+            }
+        }
+
+        function submitEditForm() {
+            const form = document.getElementById('editStaffForm');
+            const submitBtn = document.querySelector('#editModalOverlay .btn-submit');
+            
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const permissions = document.querySelectorAll('#editStaffForm input[name="permissions"]:checked');
+            if (permissions.length === 0) {
+                alert('⚠️ Please select at least one permission');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+            submitBtn.innerHTML = '<span class="spinner"></span> Saving...';
+
+            const payload = {
+                name: document.getElementById('editEditorName').value,
+                gender: document.getElementById('editGender').value,
+                email: document.getElementById('editEmail').value,
+                phone: document.getElementById('editPhone').value,
+                city: document.getElementById('editCity').value || '',
+                department: document.getElementById('editDepartment').value,
+                role: document.getElementById('editRole').value,
+                status: currentEditStatus,
+                permissions: Array.from(permissions).map(p => p.value)
+            };
+
+            const avatarFile = (document.getElementById('editProfilePhoto').files || [])[0];
+
+            (async () => {
+                try {
+                    await apiUpdateStaffWithFallback(currentEditId, payload);
+                    if (avatarFile) {
+                        await uploadStaffAvatar(currentEditId, avatarFile);
+                    }
+                    await loadStaffMembers();
+
+                    const successMsg = document.getElementById('editSuccessMessage');
+                    successMsg.textContent = '✓ Staff member updated successfully!';
+                    successMsg.style.display = 'block';
+
+                    showFeedback('Staff member updated successfully', 'success');
+
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('loading');
+                    submitBtn.textContent = 'Save Changes';
+
+                    setTimeout(() => {
+                        closeEditModal();
+                    }, 1400);
+                } catch (err) {
+                    console.error(err);
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('loading');
+                    submitBtn.textContent = 'Save Changes';
+                    alert(`⚠️ Failed to save changes: ${err.message}`);
+                }
+            })();
+        }
+
+        // =====================
+        // EVENT LISTENERS
+        // =====================
+
+        // Close modals when clicking outside
+        document.getElementById('addModalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAddModal();
+            }
+        });
+
+        document.getElementById('editModalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEditModal();
+            }
+        });
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (document.getElementById('addModalOverlay').classList.contains('active')) {
+                    closeAddModal();
+                }
+                if (document.getElementById('editModalOverlay').classList.contains('active')) {
+                    closeEditModal();
+                }
+            }
+        });
+    </script>
+        </main>
+    </div>
+</body>
+</html>

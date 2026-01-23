@@ -126,6 +126,50 @@ class Student(db.Model):  # type: ignore[name-defined]
     mobile = db.Column(db.String(10), nullable=True)
 
 
+class Staff(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "staff"
+
+    id = db.Column(db.Integer, primary_key=True)
+    # Optional link to a user account if you later unify auth under `users`
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+
+    # Personal / Contact details
+    name = db.Column(db.String(255), nullable=False)
+    gender = db.Column(db.Enum("male", "female", "other", name="staff_gender"), nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    phone = db.Column(db.String(20), nullable=False)
+    city = db.Column(db.String(120), nullable=True)
+    department = db.Column(db.String(100), nullable=True, index=True)
+
+    # Role / Access
+    role = db.Column(db.String(100), nullable=False, index=True)
+    status = db.Column(db.Enum("active", "inactive", name="staff_status"), default="active", nullable=False, index=True)
+    permissions = db.Column(JSON_COL, nullable=True)
+
+    # Profile
+    avatar = db.Column(db.String(1024), nullable=True)
+    join_date = db.Column(db.Date, nullable=True)
+
+    # Account
+    password_hash = db.Column(db.String(255), nullable=True)
+    send_email = db.Column(db.Boolean, default=True, nullable=False)
+    send_sms = db.Column(db.Boolean, default=False, nullable=False)
+    last_login_at = db.Column(db.DateTime, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = db.relationship("User")
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
+
+
 class Notification(db.Model):  # type: ignore[name-defined]
     __tablename__ = 'notifications'
     id = db.Column(db.Integer, primary_key=True)

@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 import uuid
 import json
 import os
+from pathlib import Path
 from types import SimpleNamespace
 from datetime import datetime
 import traceback
@@ -230,10 +231,25 @@ def admin_dashboard():
     # Fetch recently added students ordered by join date (students.date)
     recent_students = []
     scheduled_notifications_count = 0
+    total_students_count = 0
+    total_staff_count = 0
     try:
         recent_students = Student.query.order_by(Student.date.desc()).limit(10).all()
     except Exception:
         recent_students = []
+
+    # Count total students
+    try:
+        total_students_count = Student.query.count()
+    except Exception:
+        total_students_count = 0
+
+    # Count total staff
+    try:
+        from app.models import Staff
+        total_staff_count = Staff.query.count()
+    except Exception:
+        total_staff_count = 0
 
     # Count scheduled notifications
     try:
@@ -243,7 +259,15 @@ def admin_dashboard():
         scheduled_notifications_count = 0
 
     try:
-        return render_template('dashboard.html', user=user, active='dashboard', recent_students=recent_students, scheduled_notifications_count=scheduled_notifications_count)
+        return render_template(
+            'dashboard.html',
+            user=user,
+            active='dashboard',
+            recent_students=recent_students,
+            scheduled_notifications_count=scheduled_notifications_count,
+            total_students_count=total_students_count,
+            total_staff_count=total_staff_count,
+        )
     except Exception:
         project_root = os.path.abspath(os.path.join(current_app.root_path, '..'))
         candidate = os.path.join(project_root, 'templates', 'dashboard.html')
@@ -251,7 +275,15 @@ def admin_dashboard():
             try:
                 with open(candidate, 'r', encoding='utf8') as fh:
                     content = fh.read()
-                return render_template_string(content, user=user, active='dashboard', recent_students=recent_students, scheduled_notifications_count=scheduled_notifications_count)
+                return render_template_string(
+                    content,
+                    user=user,
+                    active='dashboard',
+                    recent_students=recent_students,
+                    scheduled_notifications_count=scheduled_notifications_count,
+                    total_students_count=total_students_count,
+                    total_staff_count=total_staff_count,
+                )
             except Exception:
                 current_app.logger.exception('Failed to render project-level dashboard.html')
         # final fallback
@@ -289,6 +321,343 @@ def students_page():
 
     # Render the student management template
     return render_template('student.html', user=user, active='students')
+
+
+@admin_bp.route('/staff', methods=['GET'])
+def staff_management_page():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    return render_template('staff_management.html', user=user, active='staff')
+
+
+def _staff_status_to_db(value: str | None) -> str:
+    v = (value or '').strip().lower()
+    if v in {'active', 'inactive'}:
+        return v
+    if v == 'inactive':
+        return 'inactive'
+    # UI uses "Active"/"Inactive"; default to active
+    return 'active'
+
+
+def _staff_status_to_ui(value: str | None) -> str:
+    v = (value or 'active').strip().lower()
+    return 'Inactive' if v == 'inactive' else 'Active'
+
+
+def _staff_to_dict(staff):
+    avatar_url = None
+    try:
+        img_path = (staff.avatar or '').strip()
+        if img_path:
+            img_path = img_path.lstrip('/')
+            first_segment = img_path.split('/')[0]
+            if first_segment.lower() != 'avatars':
+                fname = os.path.basename(img_path)
+                img_path = f"avatars/{fname}"
+            avatar_url = url_for('uploaded_file', filename=img_path)
+    except Exception:
+        avatar_url = None
+    return {
+        'id': staff.id,
+        'name': staff.name,
+        'gender': staff.gender,
+        'role': staff.role,
+        'department': staff.department or '',
+        'email': staff.email,
+        'phone': staff.phone,
+        'city': staff.city or '',
+        'joinDate': staff.join_date.isoformat() if getattr(staff, 'join_date', None) else None,
+        'status': _staff_status_to_ui(getattr(staff, 'status', None)),
+        # front-end expects a usable URL
+        'avatar': avatar_url,
+        'permissions': staff.permissions or [],
+        'sendEmail': bool(getattr(staff, 'send_email', True)),
+        'sendSms': bool(getattr(staff, 'send_sms', False)),
+        'lastLoginAt': staff.last_login_at.isoformat() if getattr(staff, 'last_login_at', None) else None,
+        'createdAt': staff.created_at.isoformat() if getattr(staff, 'created_at', None) else None,
+        'updatedAt': staff.updated_at.isoformat() if getattr(staff, 'updated_at', None) else None,
+    }
+
+
+@admin_bp.route('/staff/api/<int:staff_id>/avatar', methods=['POST'])
+def staff_api_upload_avatar(staff_id: int):
+    """Upload avatar image for a staff member.
+
+    Expects multipart/form-data with 'avatar' file field.
+    Stores file under uploads/avatars and persists staff.avatar as '/avatars/<filename>'.
+    """
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+    if 'avatar' not in request.files:
+        return jsonify({'success': False, 'error': 'No avatar file provided'}), 400
+
+    file = request.files['avatar']
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+    allowed_extensions = {'jpg', 'jpeg', 'png'}
+    filename = secure_filename(file.filename)
+    file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    if file_ext not in allowed_extensions:
+        return jsonify({'success': False, 'error': f"Invalid file type. Allowed: {', '.join(sorted(allowed_extensions))}"}), 400
+
+    # Match UI guidance (100KB)
+    try:
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+        if file_size > 100 * 1024:
+            return jsonify({'success': False, 'error': 'File too large. Maximum size: 100KB'}), 400
+    except Exception:
+        # If size check fails, continue (best-effort)
+        pass
+
+    from app.extensions import db
+    try:
+        from app.models import Staff
+        staff = Staff.query.get(staff_id)
+        if not staff:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+
+        upload_base = current_app.config.get('UPLOAD_PATH', 'uploads')
+        if not Path(upload_base).is_absolute():
+            project_root = Path(current_app.root_path).parent
+            upload_base = project_root / upload_base
+
+        avatars_dir = Path(upload_base) / 'avatars'
+        avatars_dir.mkdir(parents=True, exist_ok=True)
+
+        new_filename = f"staff_{staff.id}_avatar.{file_ext}"
+        file_path = avatars_dir / new_filename
+
+        # Delete old avatar file if present
+        try:
+            if staff.avatar:
+                old_rel = staff.avatar.lstrip('/')
+                # normalize to avatars/<fname>
+                if not old_rel.lower().startswith('avatars/'):
+                    old_rel = f"avatars/{os.path.basename(old_rel)}"
+                old_file_path = Path(upload_base) / old_rel
+                if old_file_path.exists() and old_file_path != file_path:
+                    old_file_path.unlink()
+        except Exception:
+            current_app.logger.warning('Failed to delete old staff avatar', exc_info=True)
+
+        file.save(str(file_path))
+
+        staff.avatar = f"/avatars/{new_filename}"
+        db.session.commit()
+
+        return jsonify({'success': True, 'staff': _staff_to_dict(staff)}), 200
+    except Exception as e:
+        current_app.logger.exception('Failed to upload staff avatar')
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        # Include detail to speed up debugging in dev
+        return jsonify({'success': False, 'error': 'Upload failed', 'detail': str(e)}), 500
+
+
+@admin_bp.route('/staff/api', methods=['GET'])
+def staff_api_list():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    try:
+        from app.models import Staff
+        rows = Staff.query.order_by(Staff.created_at.desc()).all()
+        return jsonify({'success': True, 'staff': [_staff_to_dict(s) for s in rows]}), 200
+    except Exception:
+        current_app.logger.exception('Failed to list staff')
+        return jsonify({'success': False, 'error': 'Failed to list staff'}), 500
+
+
+@admin_bp.route('/staff/api', methods=['POST'])
+def staff_api_create():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    from app.extensions import db
+    try:
+        from app.models import Staff
+        from datetime import date
+
+        data = request.get_json(silent=True) or {}
+        name = (data.get('name') or '').strip()
+        gender = (data.get('gender') or '').strip().lower()
+        email = (data.get('email') or '').strip().lower()
+        phone = (data.get('phone') or '').strip()
+        role = (data.get('role') or '').strip()
+        department = (data.get('department') or '').strip() or None
+        city = (data.get('city') or '').strip() or None
+        status = _staff_status_to_db(data.get('status'))
+        permissions = data.get('permissions') or []
+        send_email = bool(data.get('sendEmail', True))
+        send_sms = bool(data.get('sendSms', False))
+        join_date = None
+        join_date_str = (data.get('joinDate') or '').strip()
+        if join_date_str:
+            try:
+                join_date = date.fromisoformat(join_date_str)
+            except Exception:
+                join_date = None
+        if join_date is None:
+            join_date = date.today()
+
+        password = data.get('password')
+
+        if not name:
+            return jsonify({'success': False, 'error': 'Name is required'}), 400
+        if gender not in {'male', 'female', 'other'}:
+            return jsonify({'success': False, 'error': 'Gender is required'}), 400
+        if not email:
+            return jsonify({'success': False, 'error': 'Email is required'}), 400
+        if not phone:
+            return jsonify({'success': False, 'error': 'Phone is required'}), 400
+        if not role:
+            return jsonify({'success': False, 'error': 'Role is required'}), 400
+        if not isinstance(permissions, list) or len(permissions) == 0:
+            return jsonify({'success': False, 'error': 'At least one permission is required'}), 400
+
+        staff = Staff(
+            name=name,
+            gender=gender,
+            email=email,
+            phone=phone,
+            city=city,
+            department=department,
+            role=role,
+            status=status,
+            permissions=permissions,
+            join_date=join_date,
+            send_email=send_email,
+            send_sms=send_sms,
+        )
+
+        if password:
+            staff.set_password(password)
+
+        db.session.add(staff)
+        db.session.commit()
+        return jsonify({'success': True, 'staff': _staff_to_dict(staff)}), 201
+    except Exception:
+        current_app.logger.exception('Failed to create staff')
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return jsonify({'success': False, 'error': 'Failed to create staff'}), 500
+
+
+@admin_bp.route('/staff/api/<int:staff_id>', methods=['PUT', 'POST'])
+def staff_api_update(staff_id: int):
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    from app.extensions import db
+    try:
+        from app.models import Staff
+        from datetime import date
+
+        staff = Staff.query.get(staff_id)
+        if not staff:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+
+        data = request.get_json(silent=True) or {}
+
+        if 'name' in data:
+            staff.name = (data.get('name') or '').strip() or staff.name
+        if 'gender' in data:
+            g = (data.get('gender') or '').strip().lower()
+            if g in {'male', 'female', 'other'}:
+                staff.gender = g
+        if 'email' in data:
+            e = (data.get('email') or '').strip().lower()
+            if e:
+                staff.email = e
+        if 'phone' in data:
+            p = (data.get('phone') or '').strip()
+            if p:
+                staff.phone = p
+        if 'city' in data:
+            staff.city = (data.get('city') or '').strip() or None
+        if 'department' in data:
+            staff.department = (data.get('department') or '').strip() or None
+        if 'role' in data:
+            r = (data.get('role') or '').strip()
+            if r:
+                staff.role = r
+        if 'status' in data:
+            staff.status = _staff_status_to_db(data.get('status'))
+        if 'permissions' in data:
+            perms = data.get('permissions') or []
+            if isinstance(perms, list) and len(perms) > 0:
+                staff.permissions = perms
+        if 'sendEmail' in data:
+            staff.send_email = bool(data.get('sendEmail'))
+        if 'sendSms' in data:
+            staff.send_sms = bool(data.get('sendSms'))
+        if 'joinDate' in data:
+            jd = (data.get('joinDate') or '').strip()
+            if jd:
+                try:
+                    staff.join_date = date.fromisoformat(jd)
+                except Exception:
+                    pass
+        if 'password' in data and data.get('password'):
+            staff.set_password(data.get('password'))
+
+        db.session.commit()
+        return jsonify({'success': True, 'staff': _staff_to_dict(staff)}), 200
+    except Exception:
+        current_app.logger.exception('Failed to update staff')
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return jsonify({'success': False, 'error': 'Failed to update staff'}), 500
+
+
+@admin_bp.route('/staff/api/<int:staff_id>', methods=['DELETE'])
+def staff_api_delete(staff_id: int):
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    from app.extensions import db
+    try:
+        from app.models import Staff
+        staff = Staff.query.get(staff_id)
+        if not staff:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+        db.session.delete(staff)
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception:
+        current_app.logger.exception('Failed to delete staff')
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return jsonify({'success': False, 'error': 'Failed to delete staff'}), 500
+
+
+@admin_bp.route('/staff/api/<int:staff_id>/delete', methods=['POST'])
+def staff_api_delete_fallback(staff_id: int):
+    """Fallback delete endpoint for environments where DELETE is blocked upstream."""
+    return staff_api_delete(staff_id)
 
 
 @admin_bp.route('/analytics', methods=['GET'])
