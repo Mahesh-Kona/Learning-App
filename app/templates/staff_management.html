@@ -1567,7 +1567,9 @@
 
         async function apiFetchJson(url, options = {}) {
             const res = await fetch(url, {
-                credentials: 'same-origin',
+                // In some cloud deployments the admin UI and API can be on different origins.
+                // Use include so session cookies are sent when allowed.
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     ...(options.headers || {})
@@ -1652,14 +1654,12 @@
             const url = `${STAFF_API_BASE}/${staffId}`;
             const body = JSON.stringify(payload || {});
             try {
+                // Prefer PUT when allowed.
                 return await apiFetchJson(url, { method: 'PUT', body });
             } catch (err) {
-                // Some cloud/proxy environments block PUT; fall back to POST.
-                return await apiFetchJson(url, {
-                    method: 'POST',
-                    body,
-                    headers: { 'X-HTTP-Method-Override': 'PUT' }
-                });
+                // Some cloud/proxy environments block PUT or strip/deny method-override headers.
+                // Backend already accepts POST for updates, so keep it simple.
+                return await apiFetchJson(url, { method: 'POST', body });
             }
         }
 
@@ -1684,7 +1684,7 @@
             const res = await fetch(`${STAFF_API_BASE}/${staffId}/avatar`, {
                 method: 'POST',
                 body: form,
-                credentials: 'same-origin'
+                credentials: 'include'
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) {
