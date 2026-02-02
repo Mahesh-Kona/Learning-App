@@ -310,6 +310,12 @@ def get_student(student_id):
         "lastLogin": "",
         "status": "active"
     }
+                send_email = bool(data.get('sendEmail', False))
+                send_sms = bool(data.get('sendSms', False))
+                notifications = {
+                    'email': {'requested': bool(send_email), 'sent': False},
+                    'sms': {'requested': bool(send_sms), 'sent': False},
+                }
     """
     student = Student.query.get(student_id)
     if not student:
@@ -358,6 +364,8 @@ def create_student():
         "syllabus": "CBSE",          # optional board/syllabus
         "password": "...",           # optional raw password (stored in students table only)
         "status": "active"|"inactive",  # optional status, defaults to "active"
+        "sendEmail": true|false,     # optional, default true
+        "sendSms": true|false,       # optional, default false (not implemented)
         "second_language": "...",    # optional
         "third_language": "..."      # optional
     }
@@ -380,6 +388,9 @@ def create_student():
         return {"success": False, "error": "Name and email are required", "code": 400}, 400
     
     try:
+        send_email = bool(data.get('sendEmail', True))
+        send_sms = bool(data.get('sendSms', False))
+
         # Optional mobile validation (10 digits)
         mobile_in = data.get('mobile')
         mobile_val = None
@@ -436,12 +447,52 @@ def create_student():
         
         db.session.add(new_student)
         db.session.commit()
+
+        notifications = {
+            'email': {'requested': bool(send_email), 'sent': False},
+            'sms': {'requested': bool(send_sms), 'sent': False},
+        }
+
+        # Send credentials email (best-effort). Only possible when password is provided.
+        if send_email:
+            pw_in = data.get('password')
+            if pw_in is not None and str(pw_in).strip() != '':
+                try:
+                    from app.utils.emailer import send_student_credentials_email
+
+                    login_url = (current_app.config.get('APP_PUBLIC_LOGIN_URL') or '').strip()
+                    if not login_url:
+                        # Fallback to backend origin; replace with your frontend login URL via APP_PUBLIC_LOGIN_URL
+                        login_url = (request.host_url or '').rstrip('/')
+
+                    ok, err = send_student_credentials_email(
+                        to_email=email,
+                        student_name=name,
+                        password=str(pw_in),
+                        login_url=login_url,
+                    )
+                    notifications['email']['sent'] = bool(ok)
+                    if err:
+                        notifications['email']['error'] = err
+                except Exception as e:
+                    current_app.logger.exception('Failed to send credentials email')
+                    notifications['email']['sent'] = False
+                    notifications['email']['error'] = str(e)
+            else:
+                notifications['email']['sent'] = False
+                notifications['email']['error'] = 'Password missing; cannot send credentials'
+
+        # SMS sending is not implemented in this backend yet.
+        if send_sms:
+            notifications['sms']['sent'] = False
+            notifications['sms']['error'] = 'SMS delivery not implemented'
+
         # Regenerate students JSON
         try:
             generate_students_json()
         except Exception:
             current_app.logger.exception('Failed to regenerate students.json after create')
-        return {"success": True, "id": new_student.id}, 201
+        return {"success": True, "id": new_student.id, "notifications": notifications}, 201
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Failed to create student')
@@ -585,6 +636,13 @@ def update_student(student_id):
     try:
         original_email = student.email
 
+        send_email = bool(data.get('sendEmail', False))
+        send_sms = bool(data.get('sendSms', False))
+        notifications = {
+            'email': {'requested': bool(send_email), 'sent': False},
+            'sms': {'requested': bool(send_sms), 'sent': False},
+        }
+
         # Update fields if provided
         if 'name' in data:
             student.name = data['name']
@@ -664,12 +722,40 @@ def update_student(student_id):
             student.syllabus = data['board']
         
         db.session.commit()
+
+        # Best-effort: send new password via email if requested.
+        if send_email and ('password' in data) and (data.get('password') is not None) and str(data.get('password')).strip() != '':
+            try:
+                from app.utils.emailer import send_student_new_password_email
+
+                login_url = (current_app.config.get('APP_PUBLIC_LOGIN_URL') or '').strip()
+                if not login_url:
+                    login_url = (request.host_url or '').rstrip('/')
+
+                ok, err = send_student_new_password_email(
+                    to_email=(student.email or '').strip(),
+                    student_name=(student.name or ''),
+                    password=str(data.get('password')),
+                    login_url=login_url,
+                )
+                notifications['email']['sent'] = bool(ok)
+                if err:
+                    notifications['email']['error'] = err
+            except Exception as e:
+                current_app.logger.exception('Failed to send new password email')
+                notifications['email']['sent'] = False
+                notifications['email']['error'] = str(e)
+
+        if send_sms:
+            notifications['sms']['sent'] = False
+            notifications['sms']['error'] = 'SMS delivery not implemented'
+
         # Regenerate students JSON
         try:
             generate_students_json()
         except Exception:
             current_app.logger.exception('Failed to regenerate students.json after update')
-        return {"success": True, "id": student.id}, 200
+        return {"success": True, "id": student.id, "notifications": notifications}, 200
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Failed to update student')
@@ -699,6 +785,13 @@ def update_student_fallback_post(student_id):
 
     try:
         original_email = student.email
+
+        send_email = bool(data.get('sendEmail', False))
+        send_sms = bool(data.get('sendSms', False))
+        notifications = {
+            'email': {'requested': bool(send_email), 'sent': False},
+            'sms': {'requested': bool(send_sms), 'sent': False},
+        }
         if 'name' in data:
             student.name = data['name']
         if 'email' in data:
@@ -766,11 +859,38 @@ def update_student_fallback_post(student_id):
             student.syllabus = data['board']
 
         db.session.commit()
+
+        if send_email and ('password' in data) and (data.get('password') is not None) and str(data.get('password')).strip() != '':
+            try:
+                from app.utils.emailer import send_student_new_password_email
+
+                login_url = (current_app.config.get('APP_PUBLIC_LOGIN_URL') or '').strip()
+                if not login_url:
+                    login_url = (request.host_url or '').rstrip('/')
+
+                ok, err = send_student_new_password_email(
+                    to_email=(student.email or '').strip(),
+                    student_name=(student.name or ''),
+                    password=str(data.get('password')),
+                    login_url=login_url,
+                )
+                notifications['email']['sent'] = bool(ok)
+                if err:
+                    notifications['email']['error'] = err
+            except Exception as e:
+                current_app.logger.exception('Failed to send new password email (POST fallback)')
+                notifications['email']['sent'] = False
+                notifications['email']['error'] = str(e)
+
+        if send_sms:
+            notifications['sms']['sent'] = False
+            notifications['sms']['error'] = 'SMS delivery not implemented'
+
         try:
             generate_students_json()
         except Exception:
             current_app.logger.exception('Failed to regenerate students.json after update (POST fallback)')
-        return {"success": True, "id": student.id}, 200
+        return {"success": True, "id": student.id, "notifications": notifications}, 200
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Failed to update student (POST fallback)')

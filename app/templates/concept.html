@@ -1473,18 +1473,34 @@ pushAllBtn.onclick = async () => {
         display_order: nextOrder
       };
 
-      const res = await fetch('/api/v1/cards', {
+      const doCreate = async (tkn) => fetch('/api/v1/cards', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
+          'Authorization': 'Bearer ' + tkn
         },
         credentials: 'include',
         body: JSON.stringify(payload)
       });
 
+      let res = await doCreate(token);
+      if (res.status === 401 || res.status === 422) {
+        const newToken = typeof refreshAccessToken === 'function' ? await refreshAccessToken() : null;
+        if (newToken && typeof isAdminToken === 'function' && isAdminToken(newToken)) {
+          token = newToken;
+          localStorage.setItem('admin_jwt_token', token);
+          res = await doCreate(token);
+        }
+      }
+
       if (!res.ok) {
-        const msg = await res.text().catch(() => '');
+        let msg = await res.text().catch(() => '');
+        try {
+          const err = await res.clone().json().catch(() => null);
+          if (err && (err.msg || err.error)) {
+            msg = err.msg || err.error;
+          }
+        } catch {}
         alert('Failed to save concept card: ' + msg);
         return;
       }

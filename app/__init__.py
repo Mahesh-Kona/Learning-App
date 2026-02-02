@@ -19,6 +19,37 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+
+    # JWT error handlers (keep payload shape consistent across the API)
+    def _jwt_error(message: str, *, code: int, error: str):
+        return jsonify({
+            "success": False,
+            "error": error,
+            "msg": message,
+            "code": code,
+        }), code
+
+    @jwt.expired_token_loader
+    def _expired_token_callback(jwt_header, jwt_payload):
+        return _jwt_error("Token has expired", code=401, error="token_expired")
+
+    @jwt.invalid_token_loader
+    def _invalid_token_callback(message):
+        # e.g. "Signature verification failed"
+        return _jwt_error(message or "Invalid token", code=422, error="invalid_token")
+
+    @jwt.unauthorized_loader
+    def _missing_token_callback(message):
+        # e.g. "Missing Authorization Header"
+        return _jwt_error(message or "Authorization required", code=401, error="authorization_required")
+
+    @jwt.needs_fresh_token_loader
+    def _needs_fresh_token_callback(jwt_header, jwt_payload):
+        return _jwt_error("Fresh token required", code=401, error="fresh_token_required")
+
+    @jwt.revoked_token_loader
+    def _revoked_token_callback(jwt_header, jwt_payload):
+        return _jwt_error("Token has been revoked", code=401, error="token_revoked")
     cors.init_app(
         app,
         resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", "*")}},
@@ -206,7 +237,15 @@ def create_app():
                 'SQLALCHEMY_DATABASE_URI': app.config.get('SQLALCHEMY_DATABASE_URI'),
                 'UPLOAD_PATH': app.config.get('UPLOAD_PATH'),
                 'MAX_CONTENT_LENGTH': app.config.get('MAX_CONTENT_LENGTH'),
-                'FORCE_MYSQL': app.config.get('FORCE_MYSQL')
+                'FORCE_MYSQL': app.config.get('FORCE_MYSQL'),
+
+                # Email (non-sensitive diagnostics)
+                'SMTP_HOST_set': bool(app.config.get('SMTP_HOST')),
+                'SMTP_PORT': app.config.get('SMTP_PORT'),
+                'SMTP_USE_SSL': bool(app.config.get('SMTP_USE_SSL')),
+                'SMTP_USE_TLS': bool(app.config.get('SMTP_USE_TLS')),
+                'SMTP_FROM_set': bool(app.config.get('SMTP_FROM')),
+                'APP_PUBLIC_LOGIN_URL_set': bool(app.config.get('APP_PUBLIC_LOGIN_URL')),
             })
         except Exception:
             app.logger.exception('Failed to return debug config')

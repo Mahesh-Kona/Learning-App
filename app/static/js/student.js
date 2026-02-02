@@ -81,7 +81,7 @@ let editSelectedCourses = [];
 
 // Course modal context: controls whether Add Course updates addSelectedCourses or editSelectedCourses
 let courseModalContext = 'add';
-
+  const newPassword = document.getElementById('editNewPassword')?.value.trim() || '';
 // Edit password UI state
 let editPasswordVisible = false;
 
@@ -1137,9 +1137,13 @@ function sendEditPasswordReset() {
   console.log('Password Reset Request:', resetData);
 
   let notificationMsg = '';
-  if (sendEmail && sendSms) notificationMsg = 'Password reset link sent via Email and SMS!';
-  else if (sendEmail) notificationMsg = 'Password reset link sent via Email!';
-  else notificationMsg = 'Password reset link sent via SMS!';
+    if (sendEmail && sendSms) {
+      notificationMsg = 'Password reset link sent via Email and SMS!';
+    } else if (sendEmail) {
+      notificationMsg = 'Password reset link sent via Email!';
+    } else {
+      notificationMsg = 'Password reset link sent via SMS!';
+    }
 
   alert(`✅ ${notificationMsg}\n\nThe link will expire in 24 hours.`);
 }
@@ -1258,7 +1262,11 @@ async function sendEditNewPassword() {
     return;
   }
 
-  const payload = { password: newPassword };
+  const payload = {
+    password: newPassword,
+    sendEmail,
+    sendSms
+  };
 
   const doPut = async (bearer) => {
     const res = await fetch(`${API_BASE}/api/v1/students/${editingRichStudentId}`, {
@@ -1318,24 +1326,31 @@ async function sendEditNewPassword() {
     return;
   }
 
-  // Safe logging (mask password)
-  const passwordData = {
-    studentEmail: document.getElementById('editEmail')?.value || '',
-    studentPhone: document.getElementById('editPhone')?.value || '',
-    newPassword: '[PROTECTED]',
-    sendEmail,
-    sendSms,
-    createdBy: 'Admin',
-    createdAt: new Date().toISOString()
-  };
-  console.log('New Password Request:', passwordData);
+  // Use backend notifications (best-effort delivery).
+  const delivery = (parsed.json && parsed.json.notifications) ? parsed.json.notifications : {};
+  const email = delivery.email || {};
+  const sms = delivery.sms || {};
 
   let notificationMsg = '';
-  if (sendEmail && sendSms) notificationMsg = 'New password sent via Email and SMS!';
-  else if (sendEmail) notificationMsg = 'New password sent via Email!';
-  else notificationMsg = 'New password sent via SMS!';
+  if (sendEmail || sendSms) {
+    const parts = [];
+    if (sendEmail) {
+      if (email.sent) parts.push('Email sent');
+      else {
+        const err = email.error ? ` (${String(email.error).substring(0, 120)})` : '';
+        parts.push(`Email failed${err}`);
+      }
+    }
+    if (sendSms) parts.push(sms.sent ? 'SMS sent' : 'SMS not implemented');
+    notificationMsg = `New password delivery: ${parts.join(', ')}.`;
+  } else {
+    notificationMsg = 'New password updated.';
+  }
 
-  alert(`✅ ${notificationMsg}\n\nStudent can now login with the new password.`);
+  // Toast acknowledgement (same style as Add Student)
+  const toastType = (sendEmail && !email.sent) ? 'warning' : 'success';
+  showFeedback(notificationMsg, toastType);
+  showFeedback('Student can now login with the new password.', 'success');
 
   // Clear after sending
   const newPwEl = document.getElementById('editNewPassword');
@@ -1376,6 +1391,8 @@ async function submitAddStudentForm() {
   const classVal = document.getElementById('studentClass')?.value || '';
   const boardVal = document.getElementById('board')?.value || '';
   const passwordVal = passwordInput?.value || '';
+  const sendEmailChecked = !!document.getElementById('sendEmail')?.checked;
+  const sendSmsChecked = !!document.getElementById('sendSms')?.checked;
   // Store only course names in DB (no class suffix).
   const coursesString = coursesArrayToDbString(addSelectedCourses, classVal);
   const today = new Date().toISOString().slice(0, 10);
@@ -1390,7 +1407,10 @@ async function submitAddStudentForm() {
     class: classVal,
     syllabus: boardVal,
     password: passwordVal,
-    status: 'active'
+    status: 'active',
+    // Credential delivery preferences
+    sendEmail: sendEmailChecked,
+    sendSms: sendSmsChecked
   };
 
   try {
@@ -1459,18 +1479,58 @@ async function submitAddStudentForm() {
       }
 
       if (addStudentSuccessMessage) {
+        const delivery = parsed.json.notifications || {};
+        const email = delivery.email || {};
+        const sms = delivery.sms || {};
+
         let notificationMsg = '';
-        const sendEmail = document.getElementById('sendEmail');
-        const sendSms = document.getElementById('sendSms');
-        const emailChecked = !!(sendEmail && sendEmail.checked);
-        const smsChecked = !!(sendSms && sendSms.checked);
-        if (emailChecked && smsChecked) notificationMsg = ' Email and SMS notifications queued.';
-        else if (emailChecked) notificationMsg = ' Email notification queued.';
-        else if (smsChecked) notificationMsg = ' SMS notification queued.';
+        if (sendEmailChecked || sendSmsChecked) {
+          const parts = [];
+          if (sendEmailChecked) {
+            if (email.sent) parts.push('Email sent');
+            else {
+              const err = email.error ? ` (${String(email.error).substring(0, 120)})` : '';
+              parts.push(`Email failed${err}`);
+            }
+          }
+          if (sendSmsChecked) parts.push(sms.sent ? 'SMS sent' : 'SMS not implemented');
+          notificationMsg = ` Credentials: ${parts.join(', ')}.`;
+        }
+
         addStudentSuccessMessage.textContent = `✓ Student added successfully!${notificationMsg}`;
         addStudentSuccessMessage.style.display = 'block';
       }
-      showFeedback('Student added successfully', 'success');
+
+      // Acknowledge delivery result (email/SMS) via toast so it stays visible
+      try {
+        const delivery = parsed.json.notifications || {};
+        const email = delivery.email || {};
+        const sms = delivery.sms || {};
+        let toastMsg = 'Student added successfully.';
+        let toastType = 'success';
+
+        const parts = [];
+        if (sendEmailChecked) {
+          if (email.sent) {
+            parts.push('Email sent');
+          } else {
+            const err = email.error ? `: ${String(email.error).substring(0, 120)}` : '';
+            parts.push(`Email failed${err}`);
+            toastType = 'warning';
+          }
+        }
+        if (sendSmsChecked) {
+          parts.push(sms.sent ? 'SMS sent' : 'SMS not implemented');
+          if (!sms.sent) toastType = toastType === 'success' ? 'warning' : toastType;
+        }
+        if (parts.length) {
+          toastMsg = `Student added. ${parts.join(', ')}.`;
+        }
+
+        showFeedback(toastMsg, toastType);
+      } catch (e) {
+        showFeedback('Student added successfully', 'success');
+      }
       await fetchAndRenderStudents();
       setTimeout(() => {
         closeAddStudentModal();
@@ -1527,6 +1587,10 @@ async function submitEditStudentForm() {
     return;
   }
 
+  // Delivery preferences (only used when password is changed via Save Changes)
+  const pwSendEmail = !!document.getElementById('editSendNewPwEmail')?.checked;
+  const pwSendSms = !!document.getElementById('editSendNewPwSms')?.checked;
+
   if (shouldUpdatePassword) {
     const confirmMsg = 'You entered a new password. Save Changes will update the student\'s password too. Continue?';
     if (!confirm(confirmMsg)) {
@@ -1550,6 +1614,8 @@ async function submitEditStudentForm() {
 
   if (shouldUpdatePassword) {
     payload.password = editNewPasswordVal;
+    payload.sendEmail = pwSendEmail;
+    payload.sendSms = pwSendSms;
   }
 
   try {
@@ -1637,6 +1703,26 @@ async function submitEditStudentForm() {
       }
 
       showFeedback('Student updated successfully', 'success');
+
+      // If password was updated and delivery was requested, surface backend delivery status.
+      if (shouldUpdatePassword && (pwSendEmail || pwSendSms)) {
+        const delivery = parsed.json.notifications || {};
+        const email = delivery.email || {};
+        const sms = delivery.sms || {};
+        const parts = [];
+        if (pwSendEmail) {
+          if (email.sent) parts.push('Email sent');
+          else {
+            const err = email.error ? ` (${String(email.error).substring(0, 120)})` : '';
+            parts.push(`Email failed${err}`);
+          }
+        }
+        if (pwSendSms) parts.push(sms.sent ? 'SMS sent' : 'SMS not implemented');
+        if (parts.length) {
+          const toastType = (pwSendEmail && !email.sent) ? 'warning' : 'success';
+          showFeedback(`Password delivery: ${parts.join(', ')}.`, toastType);
+        }
+      }
 
       // Clear password field after successful save (avoid leaving it visible in DOM)
       if (shouldUpdatePassword) {

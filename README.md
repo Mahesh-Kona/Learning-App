@@ -29,6 +29,16 @@ Login:
 curl -X POST http://localhost:5000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"test@example.com","password":"secret"}'
 ```
 
+Email (credentials / notifications)
+----------------------------------
+
+When creating a student from the admin UI, if **Send email notification** is checked, the backend will attempt to send a credentials email.
+
+- Copy `.env.example` to `.env` and set your email settings.
+- Supported env vars: either `SMTP_*` or `MAIL_*` (Flask-Mail style). For example: `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_USE_SSL`, `MAIL_USE_TLS`.
+- For port `465`, use `MAIL_USE_SSL=True` and `MAIL_USE_TLS=False`.
+- Optionally set `APP_PUBLIC_LOGIN_URL` to your frontend login URL (so the email contains the correct link).
+
 What this repo provides (implemented so far)
 -------------------------------------------
 - Environment loading via `.env` (python-dotenv)

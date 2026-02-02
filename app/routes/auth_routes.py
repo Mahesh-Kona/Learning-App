@@ -1,7 +1,13 @@
 from flask import Blueprint, request, jsonify, current_app
 from app.extensions import db, limiter
 from app.models import User, Student, Leaderboard
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+    jwt_required,
+    get_jwt_identity,
+    get_jwt,
+)
 from datetime import datetime
 from sqlalchemy import func
 from app.utils.dynamic_json import generate_students_json

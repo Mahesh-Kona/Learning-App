@@ -2042,16 +2042,27 @@
                     }
                     await loadStaffMembers();
 
+                    const notifications = (created && created.notifications) ? created.notifications : null;
+                    const emailSent = !!(notifications && notifications.email && notifications.email.sent);
+                    const emailErr = (notifications && notifications.email && notifications.email.error) ? notifications.email.error : null;
+                    const smsSent = !!(notifications && notifications.sms && notifications.sms.sent);
+                    const smsErr = (notifications && notifications.sms && notifications.sms.error) ? notifications.sms.error : null;
+
                     let notificationMsg = '';
-                    if (sendEmail && sendSms) notificationMsg = ' Email and SMS notifications sent!';
-                    else if (sendEmail) notificationMsg = ' Email notification sent!';
-                    else if (sendSms) notificationMsg = ' SMS notification sent!';
+                    if (sendEmail) {
+                        if (emailSent) notificationMsg += ' Email sent!';
+                        else notificationMsg += ` Email failed${emailErr ? ': ' + emailErr : ''}`;
+                    }
+                    if (sendSms) {
+                        if (smsSent) notificationMsg += ' SMS sent!';
+                        else notificationMsg += ` SMS failed${smsErr ? ': ' + smsErr : ''}`;
+                    }
 
                     const successMsg = document.getElementById('addSuccessMessage');
-                    successMsg.textContent = `✓ Staff added successfully!${notificationMsg}`;
+                    successMsg.textContent = `✓ Staff added successfully!${notificationMsg ? ' ' + notificationMsg.trim() : ''}`;
                     successMsg.style.display = 'block';
 
-                    showFeedback(`Staff added successfully${notificationMsg ? '!' : ''}${notificationMsg}`, 'success');
+                    showFeedback(`Staff added successfully${notificationMsg ? '!' : ''}${notificationMsg ? ' ' + notificationMsg.trim() : ''}`, 'success');
 
                     submitBtn.disabled = false;
                     submitBtn.classList.remove('loading');

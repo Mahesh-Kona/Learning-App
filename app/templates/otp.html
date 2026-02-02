@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify OTP | EduSaint</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --green: #2f855a;
+      --green-dark: #276749;
+      --text-dark: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --white: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: #eef3ef;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 1100px;
+      min-height: 620px;
+      background: var(--white);
+      display: flex;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.12);
+    }
+
+    /* LEFT PANEL */
+    .left {
+      flex: 1;
+      background: var(--green);
+      color: #fff;
+      padding: 80px 60px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      font-size: 34px;
+      font-weight: 700;
+      margin-bottom: 30px;
+    }
+
+    .logo span { margin-left: 10px; }
+
+    .left h2 {
+      font-size: 34px;
+      margin-bottom: 20px;
+    }
+
+    .left p {
+      font-size: 16px;
+      line-height: 1.7;
+      max-width: 420px;
+      margin-bottom: 40px;
+      opacity: 0.95;
+    }
+
+    .features li {
+      list-style: none;
+      margin-bottom: 18px;
+      font-size: 16px;
+    }
+
+    /* RIGHT PANEL */
+    .right {
+      flex: 1;
+      background: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--white);
+      padding: 36px;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      font-size: 26px;
+      margin-bottom: 10px;
+      color: var(--green);
+    }
+
+    .card p {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    label {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .otp-box {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .otp-box input {
+      width: 100%;
+      height: 52px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 600;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .otp-box input:focus {
+      outline: none;
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(47,133,90,0.2);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: var(--green-dark);
+    }
+
+    .back {
+      margin-top: 18px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .back a {
+      color: var(--green);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    @media (max-width: 900px) {
+      .wrapper {
+        flex-direction: column;
+      }
+      .left {
+        padding: 50px 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- LEFT PANEL -->
+  <div class="left">
+    <div class="logo">🎓 <span>EduSaint</span></div>
+
+    <h2>Verify OTP</h2>
+    <p>We’ve sent a verification OTP to your registered email address.</p>
+
+    <ul class="features">
+      <li>📧 Email Verified</li>
+      <li>🔐 Secure Authentication</li>
+      <li>🔄 Reset Password Securely</li>
+    </ul>
+  </div>
+
+  <!-- RIGHT OTP CARD -->
+  <div class="right">
+    <div class="card">
+      <h2>Enter OTP</h2>
+      <p>Please enter the 4-digit OTP sent to your email.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div style="margin-bottom: 14px;">
+            {% for category, message in messages %}
+              <div style="padding:10px 12px; border-radius:10px; margin-bottom:8px; border:1px solid #e5e7eb; background:#fff; color:#111;">
+                <strong style="text-transform:capitalize;">{{ category }}</strong>: {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" action="{{ url_for('admin_bp.otp_post') }}">
+        <label>OTP Code</label>
+        <div class="otp-box">
+          <input class="otp-input" name="otp1" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="one-time-code" required />
+          <input class="otp-input" name="otp2" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="one-time-code" required />
+          <input class="otp-input" name="otp3" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="one-time-code" required />
+          <input class="otp-input" name="otp4" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="one-time-code" required />
+        </div>
+
+        <button type="submit" class="btn">Verify OTP</button>
+      </form>
+
+      <div class="back">
+        <a href="{{ url_for('admin_bp.admin_login_get') }}">← Back to Login</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
+
+<script>
+  // OTP UX: auto-advance, backspace to previous, and paste support
+  document.addEventListener('DOMContentLoaded', () => {
+    const inputs = Array.from(document.querySelectorAll('.otp-box .otp-input'));
+    if (!inputs.length) return;
+
+    const focusIndex = (idx) => {
+      const el = inputs[idx];
+      if (!el) return;
+      el.focus();
+      try { el.select(); } catch (e) {}
+    };
+
+    inputs.forEach((input, idx) => {
+      input.addEventListener('input', (e) => {
+        // Keep only the last digit typed
+        const raw = String(input.value || '');
+        const digit = raw.replace(/\D/g, '').slice(-1);
+        input.value = digit;
+        if (digit && idx < inputs.length - 1) {
+          focusIndex(idx + 1);
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && idx > 0) {
+          focusIndex(idx - 1);
+        }
+        // Optional: allow arrow navigation
+        if (e.key === 'ArrowLeft' && idx > 0) {
+          e.preventDefault();
+          focusIndex(idx - 1);
+        }
+        if (e.key === 'ArrowRight' && idx < inputs.length - 1) {
+          e.preventDefault();
+          focusIndex(idx + 1);
+        }
+      });
+
+      input.addEventListener('paste', (e) => {
+        const text = (e.clipboardData || window.clipboardData).getData('text') || '';
+        const digits = text.replace(/\D/g, '').slice(0, inputs.length);
+        if (!digits) return;
+        e.preventDefault();
+        digits.split('').forEach((d, i) => {
+          if (inputs[i]) inputs[i].value = d;
+        });
+        focusIndex(Math.min(digits.length, inputs.length - 1));
+      });
+
+      input.addEventListener('focus', () => {
+        try { input.select(); } catch (e) {}
+      });
+    });
+
+    // Start cursor at first box
+    focusIndex(0);
+  });
+</script>
+</html>

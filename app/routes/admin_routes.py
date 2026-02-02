@@ -4,15 +4,20 @@ from app.models import User
 from app.models import Course, Lesson, Topic, Asset, Student
 from sqlalchemy import func
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash
 import uuid
 import json
 import os
+import secrets
+import time
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 from datetime import datetime
 import traceback
 from flask import jsonify
 from app.utils.category_store import read_categories, write_category, remove_category
+from app.utils.emailer import send_email
 from app.utils.dynamic_json import (
     generate_courses_json,
     generate_course_lessons_json,
@@ -32,6 +37,206 @@ def admin_login_get():
     return render_template('index.html')
 
 
+@admin_bp.route('/forgot-password', methods=['GET'])
+def forgot_password_get():
+    return render_template('forgot_password.html')
+
+
+@admin_bp.route('/forgot-password', methods=['POST'])
+def forgot_password_post():
+    """Send an OTP to admin/teacher email for password reset."""
+    email_raw = (request.form.get('email') or '').strip()
+    if not email_raw:
+        flash('Please enter your email address.', 'error')
+        return redirect(url_for('admin_bp.forgot_password_get'))
+
+    email_norm = email_raw.lower()
+
+    # Only allow admin/teacher accounts to reset via this UI flow
+    user = None
+    try:
+        user = User.query.filter(func.lower(User.email) == email_norm).first()
+    except Exception:
+        # Fallback for DBs that behave differently
+        try:
+            user = User.query.filter(User.email.ilike(email_norm)).first()
+        except Exception:
+            user = None
+
+    if not user or user.role not in ('admin', 'teacher'):
+        flash('No admin/teacher account found for this email.', 'error')
+        return redirect(url_for('admin_bp.forgot_password_get'))
+
+    otp = f"{secrets.randbelow(10000):04d}"
+    now = int(time.time())
+    expires_at = now + 10 * 60  # 10 minutes
+
+    session['pwreset'] = {
+        'type': 'user',
+        'user_id': int(user.id),
+        'email': email_norm,
+        'otp_hash': generate_password_hash(otp),
+        'expires_at': expires_at,
+        'verified': False,
+        'verified_at': None,
+        'sent_at': now,
+    }
+
+    subject = 'EduSaint Password Reset OTP'
+    body = (
+        'Hi,\n\n'
+        'Use the OTP below to reset your EduSaint password:\n\n'
+        f'OTP: {otp}\n\n'
+        'This OTP expires in 10 minutes.\n\n'
+        'If you did not request this, please ignore this email.\n\n'
+        'Regards,\n'
+        'EduSaint\n'
+    )
+
+    # Don't block the request on SMTP/network. Send in a background thread so the
+    # user lands on the OTP page immediately.
+    app_obj = current_app._get_current_object()
+
+    def _send_pwreset_email() -> None:
+        try:
+            with app_obj.app_context():
+                sent_ok, err = send_email(to_email=user.email, subject=subject, body=body)
+                if not sent_ok:
+                    # In dev environments SMTP may not be configured; log OTP so the flow can still be tested.
+                    current_app.logger.warning(
+                        'Password reset OTP for %s is %s (email send failed: %s)',
+                        email_norm,
+                        otp,
+                        err,
+                    )
+        except Exception:
+            # Never let email issues break the reset flow.
+            try:
+                with app_obj.app_context():
+                    current_app.logger.exception('Failed to send password reset OTP email')
+            except Exception:
+                pass
+
+    threading.Thread(target=_send_pwreset_email, daemon=True).start()
+    flash('OTP is being sent to your email. Please check your inbox (and spam).', 'success')
+
+    return redirect(url_for('admin_bp.otp_get'))
+
+
+@admin_bp.route('/otp', methods=['GET'])
+def otp_get():
+    pwreset = session.get('pwreset') or {}
+    if not pwreset:
+        flash('Please request an OTP first.', 'error')
+        return redirect(url_for('admin_bp.forgot_password_get'))
+    return render_template('otp.html')
+
+
+@admin_bp.route('/otp', methods=['POST'])
+def otp_post():
+    """Verify OTP from the user. If valid, allow password reset."""
+    pwreset = session.get('pwreset') or {}
+    if not pwreset:
+        flash('Please request an OTP first.', 'error')
+        return redirect(url_for('admin_bp.forgot_password_get'))
+
+    expires_at = int(pwreset.get('expires_at') or 0)
+    now = int(time.time())
+    if expires_at <= now:
+        session.pop('pwreset', None)
+        flash('OTP expired. Please request a new OTP.', 'error')
+        return redirect(url_for('admin_bp.forgot_password_get'))
+
+    d1 = (request.form.get('otp1') or '').strip()
+    d2 = (request.form.get('otp2') or '').strip()
+    d3 = (request.form.get('otp3') or '').strip()
+    d4 = (request.form.get('otp4') or '').strip()
+    otp = f"{d1}{d2}{d3}{d4}"
+
+    if len(otp) != 4 or not otp.isdigit():
+        flash('Please enter the 4-digit OTP.', 'error')
+        return redirect(url_for('admin_bp.otp_get'))
+
+    try:
+        from werkzeug.security import check_password_hash
+        ok = check_password_hash(str(pwreset.get('otp_hash') or ''), otp)
+    except Exception:
+        ok = False
+
+    if not ok:
+        flash('Invalid OTP. Please try again.', 'error')
+        return redirect(url_for('admin_bp.otp_get'))
+
+    pwreset['verified'] = True
+    pwreset['verified_at'] = now
+    session['pwreset'] = pwreset
+
+    flash('OTP verified. You can now reset your password.', 'success')
+    return redirect(url_for('admin_bp.reset_password_get'))
+
+
+@admin_bp.route('/reset-password', methods=['GET'])
+def reset_password_get():
+    pwreset = session.get('pwreset') or {}
+    if not pwreset:
+        flash('Please request an OTP first.', 'error')
+        return redirect(url_for('admin_bp.forgot_password_get'))
+    if not pwreset.get('verified'):
+        flash('Please verify OTP before resetting password.', 'error')
+        return redirect(url_for('admin_bp.otp_get'))
+    return render_template('reset.html')
+
+
+@admin_bp.route('/reset-password', methods=['POST'])
+def reset_password_post():
+    """Update password for the verified reset session."""
+    pwreset = session.get('pwreset') or {}
+    if not pwreset or not pwreset.get('verified'):
+        flash('Please verify OTP before resetting password.', 'error')
+        return redirect(url_for('admin_bp.forgot_password_get'))
+
+    expires_at = int(pwreset.get('expires_at') or 0)
+    now = int(time.time())
+    if expires_at <= now:
+        session.pop('pwreset', None)
+        flash('Reset session expired. Please request a new OTP.', 'error')
+        return redirect(url_for('admin_bp.forgot_password_get'))
+
+    new_password = (request.form.get('new_password') or '').strip()
+    confirm_password = (request.form.get('confirm_password') or '').strip()
+    if not new_password or not confirm_password:
+        flash('Please enter and confirm your new password.', 'error')
+        return redirect(url_for('admin_bp.reset_password_get'))
+    if new_password != confirm_password:
+        flash('Passwords do not match.', 'error')
+        return redirect(url_for('admin_bp.reset_password_get'))
+    if len(new_password) < 6:
+        flash('Password must be at least 6 characters.', 'error')
+        return redirect(url_for('admin_bp.reset_password_get'))
+
+    if pwreset.get('type') == 'user':
+        user_id = pwreset.get('user_id')
+        user = User.query.get(int(user_id)) if user_id is not None else None
+        if not user:
+            session.pop('pwreset', None)
+            flash('Account not found. Please try again.', 'error')
+            return redirect(url_for('admin_bp.forgot_password_get'))
+        if user.role not in ('admin', 'teacher'):
+            session.pop('pwreset', None)
+            flash('This account is not eligible for this reset flow.', 'error')
+            return redirect(url_for('admin_bp.forgot_password_get'))
+        user.set_password(new_password)
+        db.session.commit()
+    else:
+        session.pop('pwreset', None)
+        flash('Unsupported reset target.', 'error')
+        return redirect(url_for('admin_bp.forgot_password_get'))
+
+    session.pop('pwreset', None)
+    flash('Password updated. Please login with your new password.', 'success')
+    return redirect(url_for('admin_bp.admin_login_get'))
+
+
 @admin_bp.route('/login', methods=['POST'])
 def admin_login_post():
     # Simple session-based admin login for the admin UI
@@ -41,8 +246,21 @@ def admin_login_post():
         flash('Missing credentials', 'error')
         return redirect(url_for('admin_bp.admin_login_get'))
 
+    # The admin dashboard is only accessible when selecting the Admin role.
+    selected_role = request.form.get('role') or (request.get_json(silent=True) or {}).get('role')
+    if selected_role != 'admin':
+        msg = 'Please select Admin to access the admin dashboard'
+        # detect XHR callers so we can return JSON for AJAX logins
+        is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        if is_xhr:
+            return {"success": False, "error": msg}, 401
+        flash(msg, 'error')
+        return redirect(url_for('admin_bp.admin_login_get'))
+
     # detect XHR callers so we can return JSON for AJAX logins
     is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    email = str(email).strip().lower()
 
     # Development fallback: allow a quick dev admin login so the dashboard can be reached
     # Use credentials admin/admin OR enable DEV_FORCE_ADMIN=1 in environment to allow access.
@@ -90,7 +308,7 @@ def admin_login_post():
 
     # Otherwise, attempt to authenticate against the DB.
     try:
-        user = User.query.filter_by(email=email).first()
+        user = User.query.filter(func.lower(User.email) == email).first()
     except Exception as e:
         # If DB access fails, provide a clear flash message and offer dev fallback instructions
         current_app.logger.exception('Database error during admin login')
@@ -101,14 +319,7 @@ def admin_login_post():
         return redirect(url_for('admin_bp.admin_login_get'))
 
     # If standard DB user exists and is admin, use that.
-    selected_role = request.form.get('role') or (request.get_json(silent=True) or {}).get('role')
     if user and user.check_password(password) and user.role == 'admin':
-        if selected_role != 'admin':
-            msg = 'Invalid admin credentials'
-            if is_xhr:
-                return {"success": False, "error": msg}, 401
-            flash(msg, 'error')
-            return redirect(url_for('admin_bp.admin_login_get'))
         # honor remember flag for regular users as well
         remember_raw = None
         try:
@@ -145,6 +356,77 @@ def admin_login_post():
             return payload, 200
         flash('Welcome, admin!', 'success')
         return redirect(url_for('admin_bp.admin_dashboard'))
+
+    # Fallback: allow Staff accounts to access the admin dashboard when they selected Admin.
+    # Staff credentials live in the `staff` table (not the `users` table), but the admin UI
+    # expects a `users` row with role=admin for downstream checks.
+    try:
+        from app.models import Staff
+
+        staff = Staff.query.filter(func.lower(Staff.email) == email).first()
+        if staff and staff.status == 'active' and staff.check_password(password):
+            # Link or create an admin User record for this staff account.
+            admin_user = User.query.filter(func.lower(User.email) == email).first()
+            if admin_user is None:
+                admin_user = User(email=email, role='admin')
+                admin_user.set_password(password)
+                db.session.add(admin_user)
+                db.session.flush()
+            elif admin_user.role != 'admin':
+                # Avoid implicitly escalating an existing non-admin user.
+                admin_user = None
+
+            if admin_user is not None:
+                # Keep a link for future joins/debugging.
+                try:
+                    staff.user_id = admin_user.id
+                    staff.last_login_at = datetime.utcnow()
+                except Exception:
+                    pass
+
+                # Honor remember flag here as well.
+                remember_raw = None
+                try:
+                    remember_raw = request.form.get('remember')
+                except Exception:
+                    remember_raw = None
+                if not remember_raw:
+                    try:
+                        data = request.get_json(silent=True) or {}
+                        remember_raw = data.get('remember')
+                    except Exception:
+                        remember_raw = None
+
+                remember = False
+                if isinstance(remember_raw, str):
+                    remember = remember_raw.lower() in ('1', 'true', 'on', 'yes')
+                elif isinstance(remember_raw, (int, bool)):
+                    remember = bool(remember_raw)
+
+                session.permanent = bool(remember)
+                session['admin_user_id'] = admin_user.id
+                session['admin_role'] = 'admin'
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+
+                if is_xhr:
+                    expires = None
+                    try:
+                        if session.permanent:
+                            lifetime = current_app.permanent_session_lifetime
+                            expires = (datetime.utcnow() + lifetime).isoformat() if lifetime else None
+                    except Exception:
+                        expires = None
+                    payload = {"success": True, "redirect": url_for('admin_bp.admin_dashboard')}
+                    if expires:
+                        payload['expires'] = expires
+                    return payload, 200
+                flash('Welcome!', 'success')
+                return redirect(url_for('admin_bp.admin_dashboard'))
+    except Exception:
+        current_app.logger.exception('Staff login fallback failed')
 
     # otherwise invalid
     msg = 'Invalid admin credentials'
@@ -216,7 +498,7 @@ def admin_dashboard():
     if not uid:
         return redirect(url_for('admin_bp.admin_login_get'))
 
-    # Support dev admin sentinel value — create a lightweight user-like object for templates
+    # Support dev admin sentinel value â€” create a lightweight user-like object for templates
     if uid == 'dev_admin':
         user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
     else:
@@ -230,6 +512,8 @@ def admin_dashboard():
     # admin_dashboard_missing fallback.
     # Fetch recently added students ordered by join date (students.date)
     recent_students = []
+    recent_courses = []
+    recent_staff = []
     scheduled_notifications_count = 0
     total_students_count = 0
     total_staff_count = 0
@@ -237,6 +521,20 @@ def admin_dashboard():
         recent_students = Student.query.order_by(Student.date.desc()).limit(10).all()
     except Exception:
         recent_students = []
+
+    # Fetch recently created courses
+    try:
+        from app.models import Course
+        recent_courses = Course.query.order_by(Course.created_at.desc()).limit(10).all()
+    except Exception:
+        recent_courses = []
+
+    # Fetch recently added staff
+    try:
+        from app.models import Staff as StaffModel
+        recent_staff = StaffModel.query.order_by(StaffModel.created_at.desc()).limit(10).all()
+    except Exception:
+        recent_staff = []
 
     # Count total students
     try:
@@ -258,12 +556,112 @@ def admin_dashboard():
     except Exception:
         scheduled_notifications_count = 0
 
+    # Build a unified recent_activity list (max 5 items) with human-friendly time labels
+    recent_activity = []
+
+    def _humanize_ago(ts, now):
+        if not ts:
+            return None
+        try:
+            delta = now - ts
+        except Exception:
+            return None
+
+        seconds = int(delta.total_seconds())
+        if seconds < 0:
+            return 'just now'
+        if seconds < 60:
+            return 'just now'
+
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes} min{'s' if minutes != 1 else ''} ago"
+
+        hours = seconds // 3600
+        if hours < 24:
+            return f"{hours} hour{'s' if hours != 1 else ''} ago"
+
+        days = delta.days
+        if days < 7:
+            return f"{days} day{'s' if days != 1 else ''} ago"
+
+        # Older than a week: fall back to a calendar date
+        try:
+            return ts.strftime('%d %b %Y')
+        except Exception:
+            return None
+
+    now = datetime.utcnow()
+
+    # Student activities
+    for s in recent_students or []:
+        ts = getattr(s, 'date', None) or getattr(s, 'created_at', None)
+        if not ts:
+            continue
+        label = _humanize_ago(ts, now)
+        if not label:
+            continue
+        recent_activity.append({
+            'kind': 'student',
+            'timestamp': ts,
+            'ago': label,
+            'name': getattr(s, 'name', None) or 'Unknown student',
+            'class_name': getattr(s, 'class_', None) or getattr(s, 'syllabus', None) or 'N/A',
+        })
+
+    # Course activities
+    for c in recent_courses or []:
+        ts = getattr(c, 'created_at', None)
+        if not ts:
+            continue
+        label = _humanize_ago(ts, now)
+        if not label:
+            continue
+        recent_activity.append({
+            'kind': 'course',
+            'timestamp': ts,
+            'ago': label,
+            'title': getattr(c, 'title', None) or 'Untitled course',
+            'class_name': getattr(c, 'class_name', None),
+        })
+
+    # Staff activities
+    for st in recent_staff or []:
+        ts = getattr(st, 'created_at', None)
+        if not ts and getattr(st, 'join_date', None):
+            try:
+                ts = datetime.combine(st.join_date, datetime.min.time())
+            except Exception:
+                ts = None
+        if not ts:
+            continue
+        label = _humanize_ago(ts, now)
+        if not label:
+            continue
+        recent_activity.append({
+            'kind': 'staff',
+            'timestamp': ts,
+            'ago': label,
+            'name': getattr(st, 'name', None) or 'Unknown staff',
+            'role': getattr(st, 'role', None),
+        })
+
+    # Sort by most recent and keep only top 5 items
+    try:
+        recent_activity.sort(key=lambda a: a.get('timestamp') or datetime.min, reverse=True)
+    except Exception:
+        pass
+    recent_activity = recent_activity[:5]
+
     try:
         return render_template(
             'dashboard.html',
             user=user,
             active='dashboard',
             recent_students=recent_students,
+            recent_courses=recent_courses,
+            recent_staff=recent_staff,
+            recent_activity=recent_activity,
             scheduled_notifications_count=scheduled_notifications_count,
             total_students_count=total_students_count,
             total_staff_count=total_staff_count,
@@ -280,6 +678,7 @@ def admin_dashboard():
                     user=user,
                     active='dashboard',
                     recent_students=recent_students,
+                    recent_activity=recent_activity,
                     scheduled_notifications_count=scheduled_notifications_count,
                     total_students_count=total_students_count,
                     total_staff_count=total_staff_count,
@@ -532,6 +931,11 @@ def staff_api_create():
         if not isinstance(permissions, list) or len(permissions) == 0:
             return jsonify({'success': False, 'error': 'At least one permission is required'}), 400
 
+        notifications = {
+            'email': {'requested': bool(send_email), 'sent': False},
+            'sms': {'requested': bool(send_sms), 'sent': False},
+        }
+
         staff = Staff(
             name=name,
             gender=gender,
@@ -552,7 +956,28 @@ def staff_api_create():
 
         db.session.add(staff)
         db.session.commit()
-        return jsonify({'success': True, 'staff': _staff_to_dict(staff)}), 201
+
+        # Send credentials email if requested
+        if send_email and password and email:
+            try:
+                from app.utils.emailer import send_staff_credentials_email
+
+                login_url = url_for('admin_bp.admin_login_get', _external=True)
+                sent, err = send_staff_credentials_email(
+                    to_email=email,
+                    staff_name=name,
+                    password=str(password),
+                    login_url=login_url,
+                )
+                notifications['email']['sent'] = bool(sent)
+                if err:
+                    notifications['email']['error'] = err
+            except Exception as e:
+                current_app.logger.exception('Failed to send staff credentials email')
+                notifications['email']['sent'] = False
+                notifications['email']['error'] = str(e)
+
+        return jsonify({'success': True, 'staff': _staff_to_dict(staff), 'notifications': notifications}), 201
     except Exception:
         current_app.logger.exception('Failed to create staff')
         try:
@@ -1055,7 +1480,7 @@ def get_courses():
             courses.append({
                 'id': c.id,
                 'name': c.title or '',
-                'icon': '📚',
+                'icon': 'ðŸ“š',
                 'description': c.description or '',
                 'subjectType': getattr(c, 'category', '') or '',
                 'difficulty': getattr(c, 'difficulty', '') or '',
@@ -2160,7 +2585,7 @@ def course_content_page():
                                 'estimated_time': (data.get('estimated_time') if isinstance(data, dict) else None),
                                 'difficulty': (data.get('difficulty') if isinstance(data, dict) else None) or 'medium',
                                 'order': (data.get('order') if isinstance(data, dict) else None),
-                                'icon': (data.get('icon') if isinstance(data, dict) else None) or '💡',
+                                'icon': (data.get('icon') if isinstance(data, dict) else None) or 'ðŸ’¡',
                                 'cards_count': topic_cards_count,
                             })
 
@@ -2525,6 +2950,8 @@ def delete_lesson_post():
 @admin_bp.route('/logout')
 def admin_logout():
     session.pop('admin_user_id', None)
+    session.pop('admin_role', None)
+    session.pop('admin_user_kind', None)
     flash('Logged out', 'info')
     # redirect to the site root (home endpoint)
     return redirect(url_for('home'))

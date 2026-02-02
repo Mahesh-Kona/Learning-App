@@ -23,6 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (selectedRole.dataset.role !== 'admin') {
+      showAlert('Please select Admin to access the admin dashboard.');
+      return;
+    }
+
   // prepare form data
   const formData = new URLSearchParams();
   formData.append('email', document.getElementById('email').value);

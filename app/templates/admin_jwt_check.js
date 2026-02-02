@@ -1,20 +1,65 @@
-// Utility to decode JWT and check admin role
-function isAdminToken(token) {
-  if (!token) return false;
+function decodeJwtPayload(token) {
+  if (!token) return null;
   try {
     const payload = token.split('.')[1];
-    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-    return decoded.role === 'admin';
+    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
   } catch {
-    return false;
+    return null;
   }
 }
+
+function isTokenExpired(token, leewaySeconds = 30) {
+  const decoded = decodeJwtPayload(token);
+  if (!decoded || !decoded.exp) return false;
+  const now = Math.floor(Date.now() / 1000);
+  return now >= (Number(decoded.exp) - Number(leewaySeconds));
+}
+
+// Utility to decode JWT and check admin role
+function isAdminToken(token) {
+  const decoded = decodeJwtPayload(token);
+  return !!decoded && decoded.role === 'admin';
+}
+
+// Refresh access token using refresh token (stored in localStorage)
+async function refreshAccessToken() {
+  const refresh = localStorage.getItem('refresh_token');
+  if (!refresh) return null;
+
+  try {
+    const res = await fetch('/api/v1/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Authorization': 'Bearer ' + refresh
+      }
+    });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    if (!data || !data.success || !data.access_token) return null;
+    localStorage.setItem('access_token', data.access_token);
+    return data.access_token;
+  } catch {
+    return null;
+  }
+}
+
+window.refreshAccessToken = refreshAccessToken;
 
 // Try to obtain an admin JWT using existing admin session
 async function getAdminToken() {
   let token = localStorage.getItem('admin_jwt_token') || localStorage.getItem('access_token');
-  if (isAdminToken(token)) {
+  if (isAdminToken(token) && !isTokenExpired(token)) {
     return token;
+  }
+
+  if (isAdminToken(token) && isTokenExpired(token)) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed && isAdminToken(refreshed) && !isTokenExpired(refreshed)) {
+      localStorage.setItem('admin_jwt_token', refreshed);
+      localStorage.setItem('access_token', refreshed);
+      return refreshed;
+    }
   }
 
   try {

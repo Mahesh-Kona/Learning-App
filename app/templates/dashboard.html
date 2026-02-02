@@ -125,50 +125,48 @@
 							<a href="#" class="view-all">View All</a>
 						</div>
 						<ul class="activity-list">
-							<li class="activity-item">
-								<div class="activity-icon blue">
-									<i class="fas fa-user-plus"></i>
-								</div>
-								<div class="activity-content">
-									<div class="activity-title">New student registration</div>
-									<div class="activity-time">
-										Rahul Sharma joined Class 10 Science • 10 mins ago
+							{% if recent_activity and recent_activity|length > 0 %}
+								{% for item in recent_activity %}
+								<li class="activity-item">
+									<div class="activity-icon {% if item.kind == 'student' %}blue{% elif item.kind == 'course' %}orange{% else %}purple{% endif %}">
+										{% if item.kind == 'student' %}
+										<i class="fas fa-user-plus"></i>
+										{% elif item.kind == 'course' %}
+										<i class="fas fa-book-open"></i>
+										{% else %}
+										<i class="fas fa-user-tie"></i>
+										{% endif %}
 									</div>
-								</div>
-							</li>
-							<li class="activity-item">
-								<div class="activity-icon green">
-									<i class="fas fa-book"></i>
-								</div>
-								<div class="activity-content">
-									<div class="activity-title">New course published</div>
-									<div class="activity-time">
-										Mathematics Class 10 CBSE • 2 hours ago
+									<div class="activity-content">
+										<div class="activity-title">
+											{% if item.kind == 'student' %}
+											New student registration
+											{% elif item.kind == 'course' %}
+											New course created
+											{% else %}
+											New staff added
+											{% endif %}
+										</div>
+										<div class="activity-time">
+											{% if item.kind == 'student' %}
+											{{ item.name }} joined class {{ item.class_name }} - {{ item.ago }}
+											{% elif item.kind == 'course' %}
+											{{ item.title }}{% if item.class_name %} for class {{ item.class_name }}{% endif %} - {{ item.ago }}
+											{% else %}
+											{{ item.name }}{% if item.role %} ({{ item.role }}){% endif %} - {{ item.ago }}
+											{% endif %}
+										</div>
 									</div>
-								</div>
-							</li>
-							<li class="activity-item">
-								<div class="activity-icon orange">
-									<i class="fas fa-tasks"></i>
-								</div>
-								<div class="activity-content">
-									<div class="activity-title">Assignment submitted</div>
-									<div class="activity-time">
-										45 students submitted Physics assignment • 5 hours ago
+								</li>
+								{% endfor %}
+							{% else %}
+								<li class="activity-item">
+									<div class="activity-content">
+										<div class="activity-title">No recent activity</div>
+										<div class="activity-time">New activity (students, courses, staff) will appear here.</div>
 									</div>
-								</div>
-							</li>
-							<li class="activity-item">
-								<div class="activity-icon purple">
-									<i class="fas fa-chart-line"></i>
-								</div>
-								<div class="activity-content">
-									<div class="activity-title">Performance report generated</div>
-									<div class="activity-time">
-										Class 12 Monthly Test Analysis • 1 day ago
-									</div>
-								</div>
-							</li>
+								</li>
+							{% endif %}
 						</ul>
 					</div>
 

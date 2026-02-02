@@ -113,3 +113,18 @@ class Config:
     SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'None')
     SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'True').lower() in ('true', '1')
     SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN', None)
+
+    # Email (SMTP) - used for sending credentials and reset links
+    # Supports both SMTP_* (preferred) and MAIL_* (Flask-Mail style) env vars.
+    SMTP_HOST = os.getenv('SMTP_HOST') or os.getenv('MAIL_SERVER', '')
+    SMTP_PORT = int(os.getenv('SMTP_PORT') or os.getenv('MAIL_PORT') or '0')
+    SMTP_USERNAME = os.getenv('SMTP_USERNAME') or os.getenv('MAIL_USERNAME', '')
+    SMTP_PASSWORD = os.getenv('SMTP_PASSWORD') or os.getenv('MAIL_PASSWORD', '')
+    # STARTTLS (e.g. 587)
+    SMTP_USE_TLS = (os.getenv('SMTP_USE_TLS') or os.getenv('MAIL_USE_TLS') or '0').lower() in ('true', '1', 'yes')
+    # SMTPS / SSL (e.g. 465)
+    SMTP_USE_SSL = (os.getenv('SMTP_USE_SSL') or os.getenv('MAIL_USE_SSL') or '0').lower() in ('true', '1', 'yes')
+    SMTP_FROM = os.getenv('SMTP_FROM') or os.getenv('MAIL_DEFAULT_SENDER') or os.getenv('MAIL_USERNAME') or ''
+
+    # Optional: public login URL to include in credential emails
+    APP_PUBLIC_LOGIN_URL = os.getenv('APP_PUBLIC_LOGIN_URL', '')
