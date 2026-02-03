@@ -2,15 +2,81 @@
   "students": [
     {
       "id": 1,
-      "name": "u1",
-      "email": "u1@example.com",
-      "enrollmentDate": "2026-02-02",
-      "courses": "",
+      "name": "Sachin",
+      "email": "sachin.patro@edusaint.in",
+      "enrollmentDate": "2025-12-04",
+      "courses": "Science,Mathematics",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 2,
+      "name": "Aayushman",
+      "email": "aayush@gmail.com",
+      "enrollmentDate": "2025-12-02",
+      "courses": "Mathematics, JS Flow Course",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 3,
+      "name": "Parth Goel",
+      "email": "parth@gmail.com",
+      "enrollmentDate": "2025-12-01",
+      "courses": "Social Science,Computer Science",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 5,
+      "name": "Subhash Roy",
+      "email": "subhash@gmail.com",
+      "enrollmentDate": "2025-12-08",
+      "courses": "Social Science,Science",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 6,
+      "name": "Narasimha",
+      "email": "narasimha@gmail.com",
+      "enrollmentDate": "2025-12-09",
+      "courses": "Science,Mathematics",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 23,
+      "name": "xyzx",
+      "email": "xyzx@gmail.com",
+      "enrollmentDate": "2025-12-19",
+      "courses": "Mathematics",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 25,
+      "name": "AKULA SAMPURNA",
+      "email": "n210160@rguktn.ac.in",
+      "enrollmentDate": "2026-01-21",
+      "courses": "New test course 15 dec",
       "progress": 0,
       "xp": 0,
       "lastLogin": "",
       "status": "active"
     }
   ],
-  "total": 1
+  "total": 7
 }

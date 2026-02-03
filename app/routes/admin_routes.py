@@ -2585,7 +2585,8 @@ def course_content_page():
                                 'estimated_time': (data.get('estimated_time') if isinstance(data, dict) else None),
                                 'difficulty': (data.get('difficulty') if isinstance(data, dict) else None) or 'medium',
                                 'order': (data.get('order') if isinstance(data, dict) else None),
-                                'icon': (data.get('icon') if isinstance(data, dict) else None) or 'ðŸ’¡',
+                                # Use a proper light-bulb emoji as the default icon
+                                'icon': (data.get('icon') if isinstance(data, dict) else None) or '💡',
                                 'cards_count': topic_cards_count,
                             })
 

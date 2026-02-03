@@ -66,6 +66,8 @@ const editStudentFormEl = document.getElementById('editStudentForm');
 const editSelectedCoursesList = document.getElementById('editSelectedCoursesList');
 const editCourseCountEl = document.getElementById('editCourseCount');
 const editPhotoPreviewEl = document.getElementById('editPhotoPreview');
+const studentClassSelect = document.getElementById('studentClass');
+const editStudentClassSelect = document.getElementById('editStudentClass');
 let editingStudentId = null;
 
 // Fetch and store JWT token for API calls
@@ -88,6 +90,9 @@ let editPasswordVisible = false;
 // Cache of courses per class_id loaded from backend
 // Shape: { [classId: string]: Array<{ id, title, class_name, category, ... }> }
 const classCoursesCache = {};
+// Cache of available classes/grades loaded from backend
+// Shape: Array<{ id: string, name: string, courses_count: number }>
+let classesCache = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   // Fetch JWT token first, then load data (only on pages that have the relevant sections)
@@ -99,6 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
       fetchAndRenderLeaderboard();
     }
     attachEventListeners();
+
+    // Populate class/grade dropdowns from the classes API
+    initClassSelects();
 
     // If coming from a page with ?open_add=1, auto-open Add Student modal
     try {
@@ -138,6 +146,111 @@ async function fetchJWTToken() {
   } catch (err) {
     console.error('Failed to fetch JWT token:', err);
   }
+}
+
+async function fetchClasses() {
+  if (Array.isArray(classesCache)) return classesCache;
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/classes`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    classesCache = (data.classes || []).slice();
+
+    // Sort classes in descending order (e.g., 12, 11, 10, ...)
+    classesCache.sort((a, b) => {
+      const aId = parseInt(a.id, 10);
+      const bId = parseInt(b.id, 10);
+      if (!Number.isNaN(aId) && !Number.isNaN(bId)) {
+        return bId - aId;
+      }
+      return String(b.id).localeCompare(String(a.id));
+    });
+  } catch (err) {
+    console.error('Failed to load classes list:', err);
+    classesCache = [];
+  }
+  return classesCache;
+}
+
+async function populateClassSelect(selectEl, currentValue) {
+  if (!selectEl) return;
+
+  // Show loading state while fetching
+  selectEl.innerHTML = '<option value="">Loading classes...</option>';
+
+  const classes = await fetchClasses();
+
+  if (!classes.length) {
+    selectEl.innerHTML = '<option value="">No classes available</option>';
+    if (currentValue) {
+      const extra = document.createElement('option');
+      extra.value = String(currentValue).trim();
+      extra.textContent = String(currentValue).trim();
+      selectEl.appendChild(extra);
+      selectEl.value = String(currentValue).trim();
+    }
+    return;
+  }
+
+  const currentVal = String(currentValue || '').trim();
+  selectEl.innerHTML = '<option value="">Select Class</option>';
+  classes.forEach(cls => {
+    const opt = document.createElement('option');
+    opt.value = String(cls.id);
+    const labelBase = cls.name || String(cls.id);
+    opt.textContent = `Class ${labelBase}`;
+    selectEl.appendChild(opt);
+  });
+
+  if (currentVal) {
+    const exists = Array.from(selectEl.options).some(o => o.value === currentVal);
+    if (!exists) {
+      const extra = document.createElement('option');
+      extra.value = currentVal;
+      extra.textContent = currentVal;
+      selectEl.appendChild(extra);
+    }
+    selectEl.value = currentVal;
+  }
+}
+
+function initClassSelects() {
+  if (studentClassSelect) {
+    // For Add Student form, no pre-selected value
+    populateClassSelect(studentClassSelect, '');
+  }
+
+  if (editStudentClassSelect) {
+    // Edit form will pass the current class when opening the modal;
+    // this ensures options exist even if user opens Edit before classes load.
+    populateClassSelect(editStudentClassSelect, editStudentClassSelect.value || '');
+  }
+
+  if (courseLevelSelect) {
+    populateCourseLevelSelect();
+  }
+}
+
+async function populateCourseLevelSelect() {
+  if (!courseLevelSelect) return;
+
+  courseLevelSelect.innerHTML = '<option value="">Loading classes...</option>';
+
+  const classes = await fetchClasses();
+
+  if (!classes.length) {
+    courseLevelSelect.innerHTML = '<option value="">No classes available</option>';
+    return;
+  }
+
+  courseLevelSelect.innerHTML = '<option value="">Select Class</option>';
+  classes.forEach(cls => {
+    const opt = document.createElement('option');
+    opt.value = String(cls.id);
+    const labelBase = cls.name || String(cls.id);
+    opt.textContent = `Class ${labelBase}`;
+    courseLevelSelect.appendChild(opt);
+  });
 }
 
 /**
@@ -762,7 +875,11 @@ function openEditStudentModal(student) {
   if (nameEl) nameEl.value = student.name || '';
   if (emailEl) emailEl.value = student.email || '';
   if (phoneEl) phoneEl.value = student.mobile || '';
-  if (classEl) classEl.value = String(student.class || '').trim();
+  const studentClassVal = String(student.class || '').trim();
+  if (classEl) {
+    // Ensure class dropdown is populated from API and select the student's class
+    populateClassSelect(classEl, studentClassVal);
+  }
   if (boardEl) boardEl.value = String(student.syllabus || '').trim();
   if (enrollEl) enrollEl.value = (student.enrollmentDate || '').slice(0, 10);
   if (statusEl) statusEl.value = (String(student.status || 'active').toLowerCase() === 'inactive') ? 'inactive' : 'active';
@@ -908,6 +1025,10 @@ function openCourseModal(context) {
   if (!courseModalOverlay || !courseModal) return;
   courseModalOverlay.classList.add('active');
   courseModal.classList.add('active');
+  if (courseLevelSelect && (!courseLevelSelect.options || courseLevelSelect.options.length <= 1)) {
+    // Ensure classes are loaded for the course-level selector
+    populateCourseLevelSelect();
+  }
   if (courseLevelSelect) courseLevelSelect.value = '';
   if (subjectNameSelect) {
     subjectNameSelect.disabled = true;

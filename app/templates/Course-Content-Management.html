@@ -2166,6 +2166,10 @@ function renderInitialLessons() {
     const topics = Array.isArray(lesson.topics) ? lesson.topics : [];
 
     const topicsCount = topics.length;
+    const cardsCount = topics.reduce((sum, topic) => {
+      const count = typeof topic.cards_count === 'number' ? topic.cards_count : (topic.cards_count || 0);
+      return sum + (isNaN(count) ? 0 : count);
+    }, 0);
 
     // Build topics HTML
     let topicsInnerHTML = '';
@@ -2184,7 +2188,8 @@ function renderInitialLessons() {
         const topicId = topic.id;
         const topicTitle = topic.title || 'Untitled Topic';
         const topicDesc = topic.description || 'No description';
-        const topicIcon = topic.icon || '💡';
+        const rawIcon = topic.icon || '';
+        const topicIcon = (rawIcon === 'ðŸ’¡' || !rawIcon) ? '💡' : rawIcon;
         const topicDifficulty = topic.difficulty || 'medium';
         const topicTime = topic.estimated_time || '';
         const topicOrder = topic.order || '';
@@ -2234,7 +2239,7 @@ function renderInitialLessons() {
               <div class="lesson-meta">
                 <span><span>⏱️</span> ${duration} min</span>
                 <span><span>📋</span> ${topicsCount} Topics</span>
-                <span><span>🎴</span> 0 Cards</span>
+                <span><span>🎴</span> ${cardsCount} Cards</span>
               </div>
             </div>
           </div>
