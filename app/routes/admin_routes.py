@@ -931,6 +931,14 @@ def staff_api_create():
         if not isinstance(permissions, list) or len(permissions) == 0:
             return jsonify({'success': False, 'error': 'At least one permission is required'}), 400
 
+        # Enforce global email uniqueness across Staff, Student, and User tables.
+        from app.models import Student as StudentModel, User as UserModel
+        existing_staff = Staff.query.filter(func.lower(Staff.email) == email).first()
+        existing_student = StudentModel.query.filter(func.lower(StudentModel.email) == email).first()
+        existing_user = UserModel.query.filter(func.lower(UserModel.email) == email).first()
+        if existing_staff or existing_student or existing_user:
+            return jsonify({'success': False, 'error': 'email already exists'}), 400
+
         notifications = {
             'email': {'requested': bool(send_email), 'sent': False},
             'sms': {'requested': bool(send_sms), 'sent': False},
@@ -1011,7 +1019,14 @@ def staff_api_update(staff_id: int):
                 staff.gender = g
         if 'email' in data:
             e = (data.get('email') or '').strip().lower()
-            if e:
+            if e and e != (staff.email or '').strip().lower():
+                # Enforce global email uniqueness when changing email
+                from app.models import Student as StudentModel, User as UserModel
+                existing_staff = Staff.query.filter(func.lower(Staff.email) == e, Staff.id != staff.id).first()
+                existing_student = StudentModel.query.filter(func.lower(StudentModel.email) == e).first()
+                existing_user = UserModel.query.filter(func.lower(UserModel.email) == e).first()
+                if existing_staff or existing_student or existing_user:
+                    return jsonify({'success': False, 'error': 'email already exists'}), 400
                 staff.email = e
         if 'phone' in data:
             p = (data.get('phone') or '').strip()

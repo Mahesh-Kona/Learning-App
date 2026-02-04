@@ -1,7 +1,7 @@
 from flask import request, current_app, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from werkzeug.utils import secure_filename
-from ..models import Progress, User, Leaderboard, Student
+from ..models import Progress, User, Leaderboard, Student, Staff
 from ..extensions import db, limiter
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
@@ -382,7 +382,7 @@ def create_student():
         return {"success": False, "error": "JSON payload required", "code": 400}, 400
     
     name = data.get('name', '').strip()
-    email = data.get('email', '').strip()
+    email = data.get('email', '').strip().lower()
     
     if not name or not email:
         return {"success": False, "error": "Name and email are required", "code": 400}, 400
@@ -390,6 +390,14 @@ def create_student():
     try:
         send_email = bool(data.get('sendEmail', True))
         send_sms = bool(data.get('sendSms', False))
+
+        # Reject duplicate email if it is already used by any student, staff or user.
+        # This keeps emails globally unique across all account types.
+        existing_student = Student.query.filter(Student.email.ilike(email)).first()
+        existing_staff = Staff.query.filter(Staff.email.ilike(email)).first()
+        existing_user = User.query.filter(User.email.ilike(email)).first()
+        if existing_student or existing_staff or existing_user:
+            return {"success": False, "error": "email already exists", "code": 400}, 400
 
         # Optional mobile validation (10 digits)
         mobile_in = data.get('mobile')
@@ -634,7 +642,7 @@ def update_student(student_id):
         return {"success": False, "error": "Student not found", "code": 404}, 404
     
     try:
-        original_email = student.email
+        original_email = (student.email or '').strip().lower()
 
         send_email = bool(data.get('sendEmail', False))
         send_sms = bool(data.get('sendSms', False))
@@ -647,7 +655,15 @@ def update_student(student_id):
         if 'name' in data:
             student.name = data['name']
         if 'email' in data:
-            student.email = data['email']
+            new_email_val = (data['email'] or '').strip().lower()
+            if new_email_val and new_email_val != original_email:
+                # Ensure the new email is not used by any other student/staff/user
+                existing_student = Student.query.filter(Student.email.ilike(new_email_val), Student.id != student.id).first()
+                existing_staff = Staff.query.filter(Staff.email.ilike(new_email_val)).first()
+                existing_user = User.query.filter(User.email.ilike(new_email_val)).first()
+                if existing_student or existing_staff or existing_user:
+                    return {"success": False, "error": "email already exists", "code": 400}, 400
+                student.email = new_email_val
         # Prefer courses; fallback to legacy subjects
         if 'courses' in data:
             student.courses = data['courses']
@@ -688,7 +704,7 @@ def update_student(student_id):
 
         # Sync to User auth table when password/email are changed so /api/v1/auth/login works.
         if ('password' in data) or ('email' in data):
-            new_email = (student.email or '').strip()
+            new_email = (student.email or '').strip().lower()
             pw = data.get('password') if 'password' in data else None
 
             # Find user by original email first, then by new email.
@@ -784,7 +800,7 @@ def update_student_fallback_post(student_id):
         return {"success": False, "error": "Student not found", "code": 404}, 404
 
     try:
-        original_email = student.email
+        original_email = (student.email or '').strip().lower()
 
         send_email = bool(data.get('sendEmail', False))
         send_sms = bool(data.get('sendSms', False))
@@ -795,7 +811,14 @@ def update_student_fallback_post(student_id):
         if 'name' in data:
             student.name = data['name']
         if 'email' in data:
-            student.email = data['email']
+            new_email_val = (data['email'] or '').strip().lower()
+            if new_email_val and new_email_val != original_email:
+                existing_student = Student.query.filter(Student.email.ilike(new_email_val), Student.id != student.id).first()
+                existing_staff = Staff.query.filter(Staff.email.ilike(new_email_val)).first()
+                existing_user = User.query.filter(User.email.ilike(new_email_val)).first()
+                if existing_student or existing_staff or existing_user:
+                    return {"success": False, "error": "email already exists", "code": 400}, 400
+                student.email = new_email_val
         if 'courses' in data:
             student.courses = data['courses']
         elif 'subjects' in data:
@@ -830,7 +853,7 @@ def update_student_fallback_post(student_id):
                 student.password = str(pw)
 
         if ('password' in data) or ('email' in data):
-            new_email = (student.email or '').strip()
+            new_email = (student.email or '').strip().lower()
             pw = data.get('password') if 'password' in data else None
 
             user = None

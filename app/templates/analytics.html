@@ -1,102 +1,370 @@
-{% extends 'admin_base.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Course Completion Analytics - Admin</title>
 
-{% block title %}Analytics - EduSaint{% endblock %}
+<!-- Shared Admin Styles -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}" />
 
-{% block content %}
-  <header class="header">
-    <div>
-      <h1>Analytics</h1>
-      <p class="sub">Student course completion analytics dashboard.</p>
-    </div>
-  </header>
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#f8fafc;
+}
 
-  <section class="dashboard-content">
-    <div class="panel" style="padding: 1.5rem;">
-      <!-- This layout mirrors student_analytics_page_edu_saint.jsx as static HTML -->
-      <div class="analytics-root" style="display: flex; flex-direction: column; gap: 1.5rem;">
+.container{
+  max-width:1100px;
+  margin:auto;
+  padding:20px;
+}
 
-        <!-- Stats Row -->
-        <div class="stats-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-          <div class="card">
-            <div class="card-body">
-              <p class="label">Current Streak</p>
-              <p class="value">🔥 0 days</p>
-            </div>
-          </div>
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:15px;
+}
 
-          <div class="card">
-            <div class="card-body">
-              <p class="label">Best Day / Month</p>
-              <p class="value">🏆 —</p>
-              <p class="muted">0 courses</p>
-            </div>
-          </div>
+.card{
+  background:white;
+  padding:16px;
+  border-radius:16px;
+  box-shadow:0 2px 6px rgba(0,0,0,.05);
+}
 
-          <div class="card">
-            <div class="card-body">
-              <p class="label">Total Completed</p>
-              <p class="value">0</p>
-            </div>
-          </div>
-        </div>
+.big{
+  font-size:24px;
+  font-weight:bold;
+}
 
-        <!-- Trend Graph Placeholder -->
-        <div class="card">
-          <div class="card-body">
-            <p class="label">Completion Trend</p>
-            <div style="height: 180px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc; border-radius: 8px; color: #777; font-size: 0.9rem;">
-              Chart placeholder (was Recharts LineChart in JSX)
-            </div>
-          </div>
-        </div>
+.chart-box,.table-box{
+  background:white;
+  padding:20px;
+  border-radius:16px;
+  margin-top:20px;
+}
 
-        <!-- Table + Controls -->
-        <div class="card">
-          <div class="card-body">
-            <div class="table-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem;">
-              <h2 style="font-size: 1rem; font-weight: 600;">Courses Completed</h2>
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:10px;
+}
 
-              <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                <select style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;">
-                  <option>Per Day</option>
-                  <option>Per Month</option>
-                </select>
+.controls div{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
 
-                <select style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;">
-                  <option>2025</option>
-                  <option>2024</option>
-                </select>
+input,select,button{
+  padding:8px 12px;
+  border-radius:8px;
+  border:1px solid #ccc;
+}
 
-                <input
-                  type="text"
-                  placeholder="Search date / month"
-                  style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;"
-                />
+button{
+  background:#16a34a;
+  color:white;
+  cursor:pointer;
+}
 
-                <button type="button" style="padding: 0.4rem 0.8rem; border-radius: 6px; border: none; background: #16a34a; color: #fff; font-size: 0.8rem; cursor: pointer;">
-                  Export Excel
-                </button>
-              </div>
-            </div>
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
 
-            <table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; font-size: 0.9rem;">
-              <thead style="background: #f1f5f9;">
-                <tr>
-                  <th style="text-align: left; padding: 0.5rem 0.75rem; cursor: pointer;">Date / Month</th>
-                  <th style="text-align: left; padding: 0.5rem 0.75rem; cursor: pointer;">Courses Completed</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style="border-top: 1px solid #e2e8f0;">
-                  <td style="padding: 0.5rem 0.75rem;">—</td>
-                  <td style="padding: 0.5rem 0.75rem; font-weight: 500;">0</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+th,td{
+  padding:10px;
+  border:1px solid #e5e7eb;
+}
 
+th{
+  background:#f1f5f9;
+  cursor:pointer;
+}
+
+.pagination{
+  margin-top:10px;
+  display:flex;
+  gap:10px;
+}
+
+.pagination button{
+  background:#2563eb;
+}
+</style>
+</head>
+
+<body>
+
+<div class="dashboard">
+  {% set active = 'analytics' %}
+  {% include 'admin_sidebar.html' %}
+
+  <main class="main-content">
+
+    <div class="header">
+      <div class="header-left">
+        <h1>Course Completion Analytics</h1>
+        <p>View trends of course completions across days and months.</p>
       </div>
     </div>
-  </section>
-{% endblock %}
+
+<div class="container">
+
+<!-- Stats -->
+<div class="cards">
+
+  <div class="card" id="streakCard">
+    <p>Current Streak</p>
+    <p class="big" id="streak">🔥 0 days</p>
+  </div>
+
+  <div class="card">
+    <p id="bestLabel">Best Day</p>
+    <p class="big" id="bestDate">—</p>
+    <p id="bestCount"></p>
+  </div>
+
+  <div class="card">
+    <p>Total Completed</p>
+    <p class="big" id="totalCompleted">0</p>
+  </div>
+
+</div>
+
+<!-- Chart -->
+<div class="chart-box">
+  <h3>Completion Trend</h3>
+  <canvas id="chart" height="150"></canvas>
+</div>
+
+<!-- Table -->
+<div class="table-box">
+
+  <div class="controls">
+
+    <h3>Courses Completed</h3>
+
+    <div>
+      <select id="viewSelect">
+        <option value="day">Per Day</option>
+        <option value="month">Per Month</option>
+      </select>
+
+      <select id="yearSelect">
+        <option value="2025">2025</option>
+        <option value="2024">2024</option>
+      </select>
+
+      <input id="searchInput" placeholder="Search">
+
+      <button onclick="exportCSV()">Export Excel</button>
+    </div>
+
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortTable('date')" id="dateHeader">Date</th>
+        <th onclick="sortTable('completed')">Courses Completed</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <div class="pagination">
+    <button onclick="prevPage()">Prev</button>
+    <button onclick="nextPage()">Next</button>
+  </div>
+
+</div>
+
+</div>
+
+  </main>
+
+</div>
+
+<script>
+
+const PAGE_SIZE=7;
+let page=1;
+let sortKey="date";
+let sortOrder="asc";
+let search="";
+let view="day";
+
+/* Sample Data (replace with API later) */
+
+let dayData=[
+ {date:"2025-01-01",completed:1},
+ {date:"2025-01-02",completed:3},
+ {date:"2025-01-03",completed:2},
+ {date:"2025-01-04",completed:4},
+ {date:"2025-01-05",completed:0},
+ {date:"2025-01-06",completed:3},
+ {date:"2025-01-07",completed:5},
+ {date:"2025-01-08",completed:2},
+ {date:"2025-01-09",completed:1},
+ {date:"2025-01-10",completed:4},
+];
+
+let monthData=[
+ {date:"Jan",completed:20},
+ {date:"Feb",completed:18},
+ {date:"Mar",completed:25},
+ {date:"Apr",completed:30},
+ {date:"May",completed:28}
+];
+
+function getData(){
+  return view==="day"?dayData:monthData;
+}
+
+document.getElementById("viewSelect").addEventListener("change",e=>{
+  view=e.target.value;
+  page=1;
+  render();
+});
+
+document.getElementById("searchInput").addEventListener("input",e=>{
+  search=e.target.value;
+  page=1;
+  render();
+});
+
+function getProcessed(){
+  let d=[...getData()];
+
+  d=d.filter(r=>r.date.toLowerCase().includes(search.toLowerCase()));
+
+  d.sort((a,b)=>{
+    let A=a[sortKey];
+    let B=b[sortKey];
+
+    if(typeof A==="number"){
+      return sortOrder==="asc"?A-B:B-A;
+    }
+    return sortOrder==="asc"?A.localeCompare(B):B.localeCompare(A);
+  });
+
+  return d;
+}
+
+function renderStats(){
+
+  const data=getData();
+
+  let total=data.reduce((s,r)=>s+r.completed,0);
+  document.getElementById("totalCompleted").textContent=total;
+
+  document.getElementById("bestLabel").textContent=
+    "Best "+(view==="day"?"Day":"Month");
+
+  let best=data.reduce((a,b)=>b.completed>a.completed?b:a);
+
+  document.getElementById("bestDate").textContent="🏆 "+best.date;
+  document.getElementById("bestCount").textContent=best.completed+" courses";
+
+  if(view==="day"){
+    let sorted=[...data].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    let streak=0;
+    for(let r of sorted){
+      if(r.completed>0) streak++;
+      else break;
+    }
+    document.getElementById("streak").textContent="🔥 "+streak+" days";
+    document.getElementById("streakCard").style.display="block";
+  }else{
+    document.getElementById("streakCard").style.display="none";
+  }
+}
+
+function renderTable(){
+  const body=document.getElementById("tableBody");
+  body.innerHTML="";
+
+  let processed=getProcessed();
+  let paginated=processed.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
+
+  paginated.forEach(r=>{
+    body.innerHTML+=`
+      <tr>
+        <td>${r.date}</td>
+        <td><b>${r.completed}</b></td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("dateHeader").textContent=
+    view==="day"?"Date":"Month";
+}
+
+function sortTable(key){
+  if(sortKey===key){
+    sortOrder=sortOrder==="asc"?"desc":"asc";
+  }else{
+    sortKey=key;
+    sortOrder="asc";
+  }
+  render();
+}
+
+function nextPage(){page++;render();}
+function prevPage(){if(page>1)page--;render();}
+
+function drawChart(){
+  const canvas=document.getElementById("chart");
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const data=getProcessed();
+  if(data.length<2) return;
+
+  const max=Math.max(...data.map(d=>d.completed));
+  const step=canvas.width/(data.length-1);
+
+  ctx.beginPath();
+  data.forEach((d,i)=>{
+    let x=i*step;
+    let y=canvas.height-(d.completed/max)*canvas.height;
+    if(i===0)ctx.moveTo(x,y);
+    else ctx.lineTo(x,y);
+  });
+
+  ctx.strokeStyle="#2563eb";
+  ctx.lineWidth=3;
+  ctx.stroke();
+}
+
+function exportCSV(){
+  let rows=["Date,Courses Completed"];
+
+  getProcessed().forEach(r=>{
+    rows.push(`${r.date},${r.completed}`);
+  });
+
+  let blob=new Blob([rows.join("\n")],{type:"text/csv"});
+  let a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="course_completion.csv";
+  a.click();
+}
+
+function render(){
+  renderStats();
+  renderTable();
+  drawChart();
+}
+
+render();
+
+</script>
+</body>
+</html>

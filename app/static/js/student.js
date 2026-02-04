@@ -1659,11 +1659,20 @@ async function submitAddStudentForm() {
       return;
     }
 
-    const statusPart = `HTTP ${res.status}`;
-    const apiError = (parsed.json && (parsed.json.error || parsed.json.message)) || null;
-    const textSnippet = parsed.text ? parsed.text.substring(0, 200) : null;
-    const details = apiError || textSnippet || 'Unknown error';
-    alert(`Failed to add: ${statusPart} - ${details}`);
+    const apiError = (parsed.json && (parsed.json.error || parsed.json.message)) || '';
+    if (apiError && apiError.toLowerCase().includes('email already exists')) {
+      alert('This email is already in use. Please enter a different email for the student.');
+      const emailInput = document.getElementById('email');
+      if (emailInput) {
+        emailInput.focus();
+        emailInput.select();
+      }
+    } else {
+      const statusPart = `HTTP ${res.status}`;
+      const textSnippet = parsed.text ? parsed.text.substring(0, 200) : null;
+      const details = apiError || textSnippet || 'Unknown error';
+      alert(`Failed to add: ${statusPart} - ${details}`);
+    }
   } catch (err) {
     console.error('Add via rich form failed:', err);
     alert('Failed to add student');
@@ -1866,11 +1875,20 @@ async function submitEditStudentForm() {
       return;
     }
 
-    const statusPart = `HTTP ${res.status}`;
-    const apiError = (parsed.json && (parsed.json.error || parsed.json.message)) || null;
-    const textSnippet = parsed.text ? parsed.text.substring(0, 200) : null;
-    const details = apiError || textSnippet || 'Unknown error';
-    alert(`Failed to update: ${statusPart} - ${details}`);
+    const apiError = (parsed.json && (parsed.json.error || parsed.json.message)) || '';
+    if (apiError && apiError.toLowerCase().includes('email already exists')) {
+      alert('This email is already in use. Please enter a different email for the student.');
+      const emailInput = document.getElementById('editEmail');
+      if (emailInput) {
+        emailInput.focus();
+        emailInput.select();
+      }
+    } else {
+      const statusPart = `HTTP ${res.status}`;
+      const textSnippet = parsed.text ? parsed.text.substring(0, 200) : null;
+      const details = apiError || textSnippet || 'Unknown error';
+      alert(`Failed to update: ${statusPart} - ${details}`);
+    }
   } catch (err) {
     console.error('Edit failed:', err);
     alert('Failed to update student');

@@ -2076,7 +2076,17 @@
                     submitBtn.disabled = false;
                     submitBtn.classList.remove('loading');
                     submitBtn.textContent = 'Add Staff & Send Credentials';
-                    alert(`⚠️ Failed to add staff: ${err.message}`);
+                    const msg = String(err && err.message ? err.message : '').toLowerCase();
+                    if (msg.includes('email already exists')) {
+                        alert('This email is already in use. Please enter a different email for this staff member.');
+                        const emailInput = document.getElementById('addEmail');
+                        if (emailInput) {
+                            emailInput.focus();
+                            emailInput.select();
+                        }
+                    } else {
+                        alert(`⚠️ Failed to add staff: ${err.message}`);
+                    }
                 }
             })();
         }
@@ -2297,7 +2307,17 @@
                     submitBtn.disabled = false;
                     submitBtn.classList.remove('loading');
                     submitBtn.textContent = 'Save Changes';
-                    alert(`⚠️ Failed to save changes: ${err.message}`);
+                    const msg = String(err && err.message ? err.message : '').toLowerCase();
+                    if (msg.includes('email already exists')) {
+                        alert('This email is already in use. Please enter a different email for this staff member.');
+                        const emailInput = document.getElementById('editEmail');
+                        if (emailInput) {
+                            emailInput.focus();
+                            emailInput.select();
+                        }
+                    } else {
+                        alert(`⚠️ Failed to save changes: ${err.message}`);
+                    }
                 }
             })();
         }
