@@ -933,10 +933,31 @@ def delete_student(student_id):
     student = Student.query.get(student_id)
     if not student:
         return {"success": False, "error": "Student not found", "code": 404}, 404
-    
+
     try:
+        # Best-effort: also remove the associated auth User so the
+        # student's credentials can no longer be used to log in.
+        student_email = (student.email or '').strip().lower()
+        user = None
+        if student_email:
+            try:
+                user = User.query.filter(func.lower(User.email) == student_email).first()
+            except Exception:
+                # Fallback for DBs without func.lower support
+                user = User.query.filter(User.email.ilike(student_email)).first()
+
+        if user and user.role == 'student':
+            # Remove any progress rows tied to this user to avoid
+            # foreign-key issues and stale leaderboard data.
+            try:
+                Progress.query.filter_by(user_id=user.id).delete(synchronize_session=False)
+            except Exception:
+                current_app.logger.exception('Failed to delete Progress rows for user %s during student delete', user.id)
+            db.session.delete(user)
+
         db.session.delete(student)
         db.session.commit()
+
         # Regenerate students JSON
         try:
             generate_students_json()
@@ -966,6 +987,22 @@ def delete_student_fallback_post(student_id):
         return {"success": False, "error": "Student not found", "code": 404}, 404
 
     try:
+        # Mirror the DELETE logic: remove linked auth user + progress.
+        student_email = (student.email or '').strip().lower()
+        user = None
+        if student_email:
+            try:
+                user = User.query.filter(func.lower(User.email) == student_email).first()
+            except Exception:
+                user = User.query.filter(User.email.ilike(student_email)).first()
+
+        if user and user.role == 'student':
+            try:
+                Progress.query.filter_by(user_id=user.id).delete(synchronize_session=False)
+            except Exception:
+                current_app.logger.exception('Failed to delete Progress rows for user %s during student delete (POST fallback)', user.id)
+            db.session.delete(user)
+
         db.session.delete(student)
         db.session.commit()
         try:
