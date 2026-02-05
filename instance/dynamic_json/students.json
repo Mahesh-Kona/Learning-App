@@ -34,17 +34,6 @@
       "status": "active"
     },
     {
-      "id": 5,
-      "name": "Subhash Roy",
-      "email": "subhash@gmail.com",
-      "enrollmentDate": "2025-12-08",
-      "courses": "Social Science,Science",
-      "progress": 0,
-      "xp": 0,
-      "lastLogin": "",
-      "status": "active"
-    },
-    {
       "id": 6,
       "name": "Narasimha",
       "email": "narasimha@gmail.com",
@@ -56,16 +45,16 @@
       "status": "active"
     },
     {
-      "id": 25,
-      "name": "AKULA SAMPURNA",
-      "email": "n210160@rguktn.ac.in",
-      "enrollmentDate": "2026-01-21",
-      "courses": "New test course 15 dec",
+      "id": 31,
+      "name": "Kona Naga Mahesh",
+      "email": "nagamaheshkona94@gmail.com",
+      "enrollmentDate": "2026-02-05",
+      "courses": "JS Flow Course",
       "progress": 0,
       "xp": 0,
       "lastLogin": "",
       "status": "active"
     }
   ],
-  "total": 6
+  "total": 5
 }

@@ -1219,6 +1219,113 @@ function detectAdvancedBlanks(force = false) {
   updatePreview();
 }
 
+// Build a backend-friendly FIB "content" string using [[...]] markers
+// from the current FIB editor state. This mirrors the original
+// fill_the_blanks backend, while allowing the quiz UI to use
+// ______ and [BLANK] markers for authoring.
+function buildFibActivityContent() {
+  const mode = state.fib.mode;
+
+  if (mode === 'simple') {
+    const qText = fibSimpleText.value || '';
+    // Determine answers in the same way as gatherQuestionFromEditor
+    let answers = [];
+    if (fibMultipleAnswers.checked) {
+      answers = (fibMultipleAnswersInput.value || '')
+        .split(',')
+        .map(a => a.trim())
+        .filter(Boolean);
+    } else {
+      const ans = (fibSimpleAnswer.value || '').trim();
+      if (ans) answers = [ans];
+    }
+    if (!answers.length) return qText;
+
+    // Encode multiple acceptable answers inside the [[...]] marker
+    const marker = `[[${answers.join(' | ')}]]`;
+    // Replace the first blank with our marker; if none, append
+    if (qText.includes('______')) {
+      return qText.replace('______', marker);
+    }
+    return `${qText} ${marker}`.trim();
+  }
+
+  if (mode === 'advanced') {
+    const para = fibParagraph.value || '';
+    if (!para) return '';
+
+    let idx = 0;
+    // Replace each [BLANK] with an [[...]] marker using the
+    // corresponding correctAnswers list from state.fib.blanks
+    return para.replace(/\[BLANK\]/gi, () => {
+      const blk = state.fib.blanks[idx++] || { correctAnswers: [] };
+      const answers = (blk.correctAnswers || []).filter(Boolean);
+      if (!answers.length) return '[[BLANK]]';
+      return `[[${answers.join(' | ')}]]`;
+    });
+  }
+
+  return '';
+}
+
+// Call backend /api/v1/activity/preview for the current FIB content
+async function previewFibViaBackend() {
+  const content = buildFibActivityContent();
+  if (!content) return;
+  try {
+    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!token) return;
+    const res = await fetch('/api/v1/activity/preview', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      credentials: 'include',
+      body: JSON.stringify({ content })
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || data.success === false) {
+      return;
+    }
+    // Optionally, we could update the preview with data.preview/data.blanks,
+    // but for now we just ensure the backend is in sync.
+  } catch (e) {
+    console.error('FIB preview backend call failed:', e);
+  }
+}
+
+// Persist the current FIB activity via /api/v1/activity/save
+async function saveFibActivityViaBackend() {
+  const content = buildFibActivityContent();
+  if (!content) return;
+  try {
+    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    if (!token) return;
+    const payload = {
+      title: (questionText.value || '').trim() || 'Fill in the blanks',
+      activity_type: 'fib',
+      instructions: '',
+      content
+    };
+    const res = await fetch('/api/v1/activity/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || data.success === false) {
+      console.warn('Failed to save FIB activity via backend');
+    }
+  } catch (e) {
+    console.error('FIB save backend call failed:', e);
+  }
+}
+
 function renderAdvancedBlanks() {
   fibBlanksContainer.innerHTML = '';
 
@@ -1759,6 +1866,10 @@ function gatherQuestionFromEditor() {
 function addQuestion() {
   const q = gatherQuestionFromEditor();
   if (!q) return;
+  if (q.type === 'fib') {
+    // Best-effort: also persist FIB activity in the dedicated backend
+    saveFibActivityViaBackend();
+  }
   state.questions.push(q);
   renderQuestionsList();
   resetEditor();
@@ -1771,6 +1882,10 @@ function updateQuestion() {
   if (state.selectedQuestionIndex < 0) return;
   const q = gatherQuestionFromEditor();
   if (!q) return;
+   if (q.type === 'fib') {
+    // Best-effort: also persist FIB activity in the dedicated backend
+    saveFibActivityViaBackend();
+  }
   q.id = state.questions[state.selectedQuestionIndex].id;
   state.questions[state.selectedQuestionIndex] = q;
   renderQuestionsList();
@@ -2300,6 +2415,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   fibParagraph.addEventListener('input', function () {
     detectAdvancedBlanks();
+    previewFibViaBackend();
     scheduleAutoSave();
   });
 
@@ -2309,11 +2425,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   fibSimpleText.addEventListener('input', () => {
     updatePreview();
+    previewFibViaBackend();
     scheduleAutoSave();
   });
 
   fibSimpleAnswer.addEventListener('input', () => {
     updatePreview();
+    previewFibViaBackend();
     scheduleAutoSave();
   });
 

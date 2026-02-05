@@ -1,0 +1,10 @@
+{
+  "title": "Fill in the blanks",
+  "activity_type": "fib",
+  "instructions": "",
+  "content": "test [[jagan]]",
+  "blanks": [
+    "jagan"
+  ],
+  "media": null
+}

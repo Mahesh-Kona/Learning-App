@@ -1,17 +1,6 @@
 {
   "courses": [
     {
-      "id": 30,
-      "title": "dsvdf",
-      "description": "v d",
-      "category": "science",
-      "thumbnail_url": null,
-      "difficulty": "beginner",
-      "duration_weeks": 12,
-      "total_lessons": 0,
-      "published": false
-    },
-    {
       "id": 15,
       "title": "E2E Test Course",
       "description": "created by automated test",
@@ -21,17 +10,6 @@
       "duration_weeks": 24,
       "total_lessons": 3,
       "published": true
-    },
-    {
-      "id": 29,
-      "title": "E2E Test Course",
-      "description": "created by automated test",
-      "category": "TestCat",
-      "thumbnail_url": "/uploads/test.png",
-      "difficulty": null,
-      "duration_weeks": null,
-      "total_lessons": 0,
-      "published": false
     },
     {
       "id": 6,
@@ -96,6 +74,17 @@
       "thumbnail_url": "/uploads/86e9861e3da349d4b83a79e6948403c8_plain.png",
       "difficulty": "intermediate",
       "duration_weeks": 8,
+      "total_lessons": 0,
+      "published": true
+    },
+    {
+      "id": 30,
+      "title": "test course for cls 1",
+      "description": "test course for cls 1",
+      "category": "Physics",
+      "thumbnail_url": null,
+      "difficulty": "beginner",
+      "duration_weeks": 22,
       "total_lessons": 0,
       "published": true
     }

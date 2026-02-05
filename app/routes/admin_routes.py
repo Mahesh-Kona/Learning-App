@@ -962,6 +962,25 @@ def staff_api_create():
         if password:
             staff.set_password(password)
 
+        # Also create a corresponding User row so that staff credentials
+        # exist in the `users` table immediately (not only after first
+        # login via the fallback in admin_login).
+        #
+        # We mirror the existing fallback behaviour by creating the user
+        # with role='admin' and the same password, and linking it via
+        # staff.user_id.
+        admin_user = None
+        if password and email:
+            admin_user = UserModel(email=email, role='admin')
+            admin_user.set_password(str(password))
+            db.session.add(admin_user)
+            # Flush to obtain an ID before assigning to staff
+            db.session.flush()
+            try:
+                staff.user_id = admin_user.id
+            except Exception:
+                pass
+
         db.session.add(staff)
         db.session.commit()
 
@@ -1078,11 +1097,33 @@ def staff_api_delete(staff_id: int):
         return jsonify({'success': False, 'error': 'Not authenticated'}), 401
     from app.extensions import db
     try:
-        from app.models import Staff
+        from app.models import Staff, User
         staff = Staff.query.get(staff_id)
         if not staff:
             return jsonify({'success': False, 'error': 'Not found'}), 404
+
+        # If this staff member has an associated User account (created
+        # for admin dashboard access), delete that user as well when it
+        # is not referenced by any other staff records. This ensures
+        # their login credentials are fully removed.
+        user_to_delete = None
+        if staff.user_id:
+            user = User.query.get(staff.user_id)
+            if user:
+                # Only delete if no other staff rows reference this user.
+                try:
+                    other_staff_count = Staff.query.filter(
+                        Staff.user_id == user.id,
+                        Staff.id != staff.id,
+                    ).count()
+                except Exception:
+                    other_staff_count = 1  # be safe and keep the user
+                if other_staff_count == 0:
+                    user_to_delete = user
+
         db.session.delete(staff)
+        if user_to_delete is not None:
+            db.session.delete(user_to_delete)
         db.session.commit()
         return jsonify({'success': True}), 200
     except Exception:
@@ -1438,6 +1479,8 @@ def all_courses_page():
                 # expose duration_weeks to the template as duration
                 'duration': c.duration_weeks,
                 'level': c.difficulty or '',
+                # include class name/grade so the UI can filter by class
+                'class_name': (c.class_name or '').strip() if hasattr(c, 'class_name') and c.class_name else '',
                 'lessons': lessons_count
             })
     except Exception:

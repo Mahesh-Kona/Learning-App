@@ -542,6 +542,21 @@
                     <input type="text" id="searchInput" placeholder="🔍 Search courses..." onkeyup="searchCourses()">
                 </div>
                 <div class="filter-group">
+                    <select id="classFilter" onchange="filterCourses()">
+                        <option value="">All Classes</option>
+                        <option value="1">Class 1</option>
+                        <option value="2">Class 2</option>
+                        <option value="3">Class 3</option>
+                        <option value="4">Class 4</option>
+                        <option value="5">Class 5</option>
+                        <option value="6">Class 6</option>
+                        <option value="7">Class 7</option>
+                        <option value="8">Class 8</option>
+                        <option value="9">Class 9</option>
+                        <option value="10">Class 10</option>
+                        <option value="11">Class 11</option>
+                        <option value="12">Class 12</option>
+                    </select>
                     <select id="levelFilter" onchange="filterCourses()">
                         <option value="">All Levels</option>
                         <option value="beginner">Beginner</option>
@@ -919,13 +934,15 @@
         function searchCourses() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const level = document.getElementById('levelFilter').value;
+            const classValue = document.getElementById('classFilter') ? document.getElementById('classFilter').value : '';
             
             let filtered = courses.filter(course => {
                 const matchesSearch = course.name.toLowerCase().includes(searchTerm) ||
                                      course.code.toLowerCase().includes(searchTerm) ||
                                      (course.description && course.description.toLowerCase().includes(searchTerm));
                 const matchesLevel = !level || course.level === level;
-                return matchesSearch && matchesLevel;
+                const matchesClass = !classValue || (course.class_name && String(course.class_name) === String(classValue));
+                return matchesSearch && matchesLevel && matchesClass;
             });
 
             renderCourses(filtered);

@@ -471,7 +471,7 @@ def create_student():
                     login_url = (current_app.config.get('APP_PUBLIC_LOGIN_URL') or '').strip()
                     if not login_url:
                         # Fallback to backend origin; replace with your frontend login URL via APP_PUBLIC_LOGIN_URL
-                        login_url = (request.host_url or '').rstrip('/')
+                        login_url = (request.host_url or '').rstrip('/')[0:]
 
                     ok, err = send_student_credentials_email(
                         to_email=email,
@@ -946,7 +946,7 @@ def delete_student(student_id):
                 # Fallback for DBs without func.lower support
                 user = User.query.filter(User.email.ilike(student_email)).first()
 
-        if user and user.role == 'student':
+        if user:
             # Remove any progress rows tied to this user to avoid
             # foreign-key issues and stale leaderboard data.
             try:
@@ -996,7 +996,7 @@ def delete_student_fallback_post(student_id):
             except Exception:
                 user = User.query.filter(User.email.ilike(student_email)).first()
 
-        if user and user.role == 'student':
+        if user:
             try:
                 Progress.query.filter_by(user_id=user.id).delete(synchronize_session=False)
             except Exception:

@@ -226,3 +226,37 @@ class Card(db.Model):  # type: ignore[name-defined]
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'published': self.published
         }
+
+
+class Activity(db.Model):  # type: ignore[name-defined]
+    """Simple activity model for fill-in-the-blanks content.
+
+    This is used by the quiz builder's fill-in-the-blanks backend
+    to store a single authoring activity (title, instructions, content,
+    extracted blanks, and optional media filename).
+    """
+    __tablename__ = 'activities'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=True)
+    type = db.Column(db.String(50), nullable=True)
+    instructions = db.Column(db.Text, nullable=True)
+    content = db.Column(db.Text, nullable=True)
+    blanks = db.Column(db.Text, nullable=True)  # JSON-encoded list of blanks
+    media = db.Column(db.String(255), nullable=True)
+
+    def to_dict(self):
+        from json import loads
+        try:
+            blanks_list = loads(self.blanks) if self.blanks else []
+        except Exception:
+            blanks_list = []
+        return {
+            "id": self.id,
+            "title": self.title,
+            "activity_type": self.type,
+            "instructions": self.instructions,
+            "content": self.content,
+            "blanks": blanks_list,
+            "media": self.media,
+        }
