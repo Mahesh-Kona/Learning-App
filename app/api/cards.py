@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt
 from flask_jwt_extended import verify_jwt_in_request
 from ..models import Card, Topic, Lesson, User
 from ..extensions import db, limiter
+from ..utils.image_utils import compress_images_in_json
 from . import bp
 
 
@@ -131,13 +132,17 @@ def create_card():
             created_by_val = None
 
     try:
+        data_json = data.get('data_json', {})
+        if card_type in ['concept', 'quiz']:
+            data_json = compress_images_in_json(data_json)
+
         # Business rule: all cards are published upon creation
         pub_norm = True
 
         new_card = Card(
             card_type=card_type,
             title=title,
-            data_json=data.get('data_json', {}),
+            data_json=data_json,
             topic_id=topic_id,
             lesson_id=lesson_id,
             display_order=data.get('display_order', 0),
@@ -343,7 +348,10 @@ def update_card(card_id):
         if 'title' in data:
             card.title = data['title']
         if 'data_json' in data:
-            card.data_json = data['data_json']
+            payload = data['data_json']
+            if card.card_type in ['concept', 'quiz']:
+                payload = compress_images_in_json(payload)
+            card.data_json = payload
         if 'display_order' in data:
             card.display_order = data['display_order']
         if 'published' in data:

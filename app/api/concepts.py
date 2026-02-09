@@ -1,6 +1,7 @@
 from flask import request, jsonify
 from app.extensions import db
 from app.models import Card
+from app.utils.image_utils import compress_images_in_json
 from . import bp
 
 
@@ -25,10 +26,13 @@ def save_concept():
     if not title:
         return jsonify({'success': False, 'error': 'title is required'}), 400
 
+    blocks = data.get('blocks', [])
+    blocks = compress_images_in_json(blocks)
+
     concept = Card(
         title=title,
         card_type='concept',
-        data_json=data.get('blocks', []),
+        data_json=blocks,
         published=False
     )
     db.session.add(concept)
