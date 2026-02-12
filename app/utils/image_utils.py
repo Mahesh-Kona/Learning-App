@@ -5,7 +5,7 @@ from typing import Any
 from PIL import Image
 
 
-def _compress_base64_image_string(value: str, scale_factor: float = 0.5) -> str:
+def _compress_base64_image_string(value: str, scale_factor: float = 0.8) -> str:
     if not value or not isinstance(value, str):
         return value
 
