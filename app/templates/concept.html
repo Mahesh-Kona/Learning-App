@@ -866,7 +866,11 @@ function updateStats() {
   wordCountEl.textContent = wordCount;
   
   // Image count
-  const imageCount = blocksContainer.querySelectorAll('img').length;
+  // Count image blocks (including selected placeholders), not just uploaded <img> tags
+  const imageBlocks = blocksContainer.querySelectorAll('.block');
+  const imageCount = Array.from(imageBlocks).filter(b => {
+    return b.dataset.type === 'image' || b.dataset.type === 'image-main';
+  }).length;
   imageCountEl.textContent = imageCount;
   
   // Concept count - FROM savedConceptsLocal (preserved functionality)
@@ -1036,7 +1040,7 @@ function addBlock(type){
   block.draggable=true;
   block.dataset.type=type;
 
-  const closeBtn='<button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty()">×</button>';
+  const closeBtn='<button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();updateStats()">×</button>';
 
   if(type==='text'){
     block.innerHTML=`<div class="header"><span>Text</span>${closeBtn}</div>

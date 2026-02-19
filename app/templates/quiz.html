@@ -1911,6 +1911,9 @@ function duplicateQuestion() {
 
 function renderQuestionsList() {
   questionsContainer.innerHTML = '';
+  // Keep the visible question count in sync any time we re-render
+  updateQuestionCount();
+
   if (state.questions.length === 0) {
     const h = document.createElement('div');
     h.className = 'hint';
@@ -2183,6 +2186,7 @@ async function loadQuizCardForEdit(cid) {
       mediaType: q.media ? q.media.type : null
     }));
     renderQuestionsList();
+    updateQuestionCount();
     if (state.questions.length) {
       loadQuestionToEditor(0);
       showAlert('Quiz loaded successfully!', 'success', 3000);
