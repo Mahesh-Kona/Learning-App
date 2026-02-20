@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Concept Editor Block</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Inter, Arial, sans-serif; }
+
+  body {
+    background: #fff;
+    padding: 0;
+  }
+
+  /* ── Toolbar ── */
+  .format-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 10px 10px 0 0;
+  }
+
+  .format-toolbar button {
+    padding: 4px 9px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid #d0d5dd;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .format-toolbar button:hover { background: #4361ee; color: #fff; border-color: #4361ee; }
+  .format-toolbar button.active { background: #4361ee; color: #fff; border-color: #4361ee; }
+
+  .sep { width: 1px; background: #ddd; margin: 2px 4px; align-self: stretch; }
+
+  /* ── Editor area ── */
+  .editor-area {
+    min-height: 130px;
+    padding: 12px 14px;
+    font-size: 15px;
+    line-height: 1.65;
+    outline: none;
+    background: #fff;
+    white-space: pre-wrap;
+    border: none;
+  }
+
+  .editor-area:focus { background: #fafbff; }
+
+  .editor-area[placeholder]:empty:before {
+    content: attr(placeholder);
+    color: #aaa;
+  }
+
+  /* ── Preview styles (shown inside this frame) ── */
+  .editor-area b { font-weight: bold; }
+  .editor-area u { text-decoration: underline; }
+  .editor-area mark { background: #fff59d; padding: 2px 3px; border-radius: 3px; }
+
+  .quote  { border-left: 4px solid #4361ee; padding-left: 10px; font-style: italic; margin: 6px 0; display: block; }
+  .take   { background: #e0f2fe; padding: 6px 10px; border-radius: 6px; margin: 5px 0; display: block; }
+  .imp    { background: #ffe4e6; padding: 6px 10px; border-radius: 6px; margin: 5px 0; display: block; }
+  .mem    { background: #ede9fe; padding: 6px 10px; border-radius: 6px; margin: 5px 0; display: block; }
+  .ex     { background: #dcfce7; padding: 6px 10px; border-radius: 6px; margin: 5px 0; display: block; }
+  .def    { background: #fef9c3; padding: 6px 10px; border-radius: 6px; margin: 5px 0; display: block; }
+  .diff   { background: #f1f5f9; padding: 6px 10px; border-radius: 6px; margin: 5px 0; display: block; }
+  .editor-area h2 { font-size: 1.35em; font-weight: bold; margin: 8px 0 4px; }
+  .editor-area h3 { font-size: 1.15em; font-weight: bold; margin: 6px 0 3px; }
+
+  /* ── Bottom bar ── */
+  .bottom-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    border-radius: 0 0 10px 10px;
+    flex-wrap: wrap;
+  }
+
+  .bottom-bar button {
+    padding: 5px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid #d0d5dd;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .bottom-bar button:hover { background: #4361ee; color: #fff; border-color: #4361ee; }
+
+  .status-bar {
+    font-size: 11px;
+    color: #888;
+    font-style: italic;
+    margin-left: auto;
+  }
+
+  /* ── Preview / Raw panels ── */
+  .panel {
+    display: none;
+    padding: 12px 14px;
+    border-top: 1px dashed #d0d5dd;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  .panel.raw {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    background: #fafafa;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* Wrapper with border */
+  .editor-wrap {
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .editor-area { flex: 1; }
+</style>
+</head>
+<body>
+
+<div class="editor-wrap">
+
+  <!-- Toolbar -->
+  <div class="format-toolbar" id="toolbar">
+    <button data-tag="b"><b>B</b></button>
+    <button data-tag="i"><i>I</i></button>
+    <button data-tag="u"><u>U</u></button>
+    <button data-tag="hl">HL</button>
+    <span class="sep"></span>
+    <button data-tag="h">H</button>
+    <button data-tag="sh">SH</button>
+    <span class="sep"></span>
+    <button data-tag="li">• List</button>
+    <button data-tag="nli">1. List</button>
+    <span class="sep"></span>
+    <button data-tag="q">Quote</button>
+    <button data-tag="def">Def</button>
+    <span class="sep"></span>
+    <button data-tag="take">Take</button>
+    <button data-tag="imp">Imp</button>
+    <button data-tag="mem">Mem</button>
+    <button data-tag="ex">Ex</button>
+    <button data-tag="diff">Diff</button>
+  </div>
+
+  <!-- Editable area -->
+  <div id="editor"
+       class="editor-area"
+       contenteditable="true"
+       placeholder="Type your content here…"></div>
+
+  <!-- Preview / Raw panels -->
+  <div id="previewPanel" class="panel preview-panel"></div>
+  <div id="rawPanel"     class="panel raw"></div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <button id="previewBtn" onclick="togglePreview()">Show Preview</button>
+    <button id="rawBtn"     onclick="toggleRaw()">Show Raw Tags</button>
+    <button onclick="clearContent()">Clear</button>
+    <span class="status-bar" id="statusBar">Single click: Apply to selection &nbsp;|&nbsp; Double click: Typing mode</span>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+const editor    = document.getElementById('editor');
+const statusBar = document.getElementById('statusBar');
+const previewPanel = document.getElementById('previewPanel');
+const rawPanel     = document.getElementById('rawPanel');
+const previewBtn   = document.getElementById('previewBtn');
+const rawBtn       = document.getElementById('rawBtn');
+
+let activeTags = {};
+let previewOpen = false;
+let rawOpen     = false;
+
+// Auto-resize the parent iframe so the full editor/preview is visible
+function autoResizeIframe() {
+  try {
+    if (window.frameElement) {
+      const minHeight = 220;
+      const h = document.body.scrollHeight || minHeight;
+      window.frameElement.style.height = Math.max(minHeight, h) + 'px';
+    }
+  } catch (e) {
+    // Ignore resize errors
+  }
+}
+
+window.addEventListener('load', autoResizeIframe);
+
+// Notify parent window (if any) that content changed so it can update stats
+function notifyParentChanged() {
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'EDITOR_CHANGED' }, '*');
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+// ─────────────────────────────────────────────
+//  PUBLIC API  (accessible by parent via iframe.contentWindow)
+// ─────────────────────────────────────────────
+
+/** Returns the raw tagged text content */
+window.getContent = function () {
+  return editor.innerText;
+};
+
+/** Loads raw tagged text into the editor */
+window.setContent = function (text) {
+  editor.innerText = text || '';
+  // close panels if open
+  previewPanel.style.display = 'none';
+  rawPanel.style.display = 'none';
+  previewOpen = rawOpen = false;
+  previewBtn.textContent = 'Show Preview';
+  rawBtn.textContent = 'Show Raw Tags';
+  autoResizeIframe();
+  notifyParentChanged();
+};
+
+/** Clears the editor */
+window.clearContent = clearContent;
+
+// ─────────────────────────────────────────────
+//  TOOLBAR INIT
+// ─────────────────────────────────────────────
+document.querySelectorAll('.format-toolbar button[data-tag]').forEach(btn => {
+  const tag = btn.getAttribute('data-tag');
+  activeTags[tag] = false;
+
+  let clickTimer = null;
+
+  btn.addEventListener('click', e => {
+    clearTimeout(clickTimer);
+    clickTimer = setTimeout(() => {
+      wrapSelection(tag);
+    }, 200);
+  });
+
+  btn.addEventListener('dblclick', e => {
+    e.preventDefault();
+    clearTimeout(clickTimer);
+
+    activeTags[tag] = !activeTags[tag];
+    btn.classList.toggle('active', activeTags[tag]);
+
+    const activeList = Object.keys(activeTags).filter(t => activeTags[t]);
+    if (activeList.length) {
+      statusBar.textContent = 'Typing mode ON for: ' + activeList.join(', ');
+      statusBar.style.color = '#4361ee';
+      statusBar.style.fontWeight = 'bold';
+    } else {
+      statusBar.textContent = 'Single click: Apply to selection | Double click: Typing mode';
+      statusBar.style.color = '#888';
+      statusBar.style.fontWeight = 'normal';
+    }
+  });
+});
+
+// ─────────────────────────────────────────────
+//  TYPING MODE  (beforeinput)
+// ─────────────────────────────────────────────
+editor.addEventListener('beforeinput', e => {
+  if (e.inputType !== 'insertText' && e.inputType !== 'insertCompositionText') return;
+  if (e.data === '\n') return;
+  if (activeTags['li'] || activeTags['nli']) return;
+
+  const tags = Object.keys(activeTags).filter(t => activeTags[t]);
+  if (!tags.length) return;
+
+  e.preventDefault();
+
+  let wrapped = e.data || '';
+  [...tags].reverse().forEach(t => { wrapped = `[[${t}]]${wrapped}[[/${t}]]`; });
+
+  insertText(wrapped);
+  autoResizeIframe();
+  notifyParentChanged();
+});
+
+// ─────────────────────────────────────────────
+//  ENTER in list typing mode
+// ─────────────────────────────────────────────
+editor.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (activeTags['li']) {
+    e.preventDefault();
+    insertText('\n[[li]][[/li]]');
+    moveCursorInsideTag('li');
+  } else if (activeTags['nli']) {
+    e.preventDefault();
+    insertText('\n[[nli]][[/nli]]');
+    moveCursorInsideTag('nli');
+  }
+  autoResizeIframe();
+  notifyParentChanged();
+});
+
+// ─────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────
+function wrapSelection(tag) {
+  editor.focus();
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+
+  const range = sel.getRangeAt(0);
+  const txt   = range.toString();
+  const wrapped = txt ? `[[${tag}]]${txt}[[/${tag}]]` : `[[${tag}]][[/${tag}]]`;
+
+  range.deleteContents();
+  const node = document.createTextNode(wrapped);
+  range.insertNode(node);
+
+  if (!txt) {
+    // place cursor between open/close
+    const pos = wrapped.indexOf(`[[/${tag}]]`);
+    range.setStart(node, pos);
+    range.collapse(true);
+  } else {
+    range.setStartAfter(node);
+    range.collapse(true);
+  }
+  sel.removeAllRanges();
+  sel.addRange(range);
+  autoResizeIframe();
+  notifyParentChanged();
+}
+
+function insertText(text) {
+  const sel   = window.getSelection();
+  if (!sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  const node = document.createTextNode(text);
+  range.insertNode(node);
+  range.setStartAfter(node);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  autoResizeIframe();
+  notifyParentChanged();
+}
+
+function moveCursorInsideTag(tag) {
+  const sel   = window.getSelection();
+  const range = sel.getRangeAt(0);
+  const node  = range.startContainer;
+  if (node.nodeType !== Node.TEXT_NODE) return;
+  const pos = node.textContent.lastIndexOf(`[[${tag}]]`) + `[[${tag}]]`.length;
+  range.setStart(node, pos);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  autoResizeIframe();
+  notifyParentChanged();
+}
+
+// ─────────────────────────────────────────────
+//  TAG → HTML RENDERER  (shared by preview & parent pages)
+// ─────────────────────────────────────────────
+window.renderTagsToHTML = function (text) {
+  let html = text
+    .replace(/\[\[b\]\]([\s\S]*?)\[\[\/b\]\]/g,     '<b>$1</b>')
+    .replace(/\[\[i\]\]([\s\S]*?)\[\[\/i\]\]/g,     '<i>$1</i>')
+    .replace(/\[\[u\]\]([\s\S]*?)\[\[\/u\]\]/g,     '<u>$1</u>')
+    .replace(/\[\[hl\]\]([\s\S]*?)\[\[\/hl\]\]/g,   '<mark>$1</mark>')
+    .replace(/\[\[h\]\]([\s\S]*?)\[\[\/h\]\]/g,     '<h2>$1</h2>')
+    .replace(/\[\[sh\]\]([\s\S]*?)\[\[\/sh\]\]/g,   '<h3>$1</h3>')
+    .replace(/\[\[q\]\]([\s\S]*?)\[\[\/q\]\]/g,     '<span class="quote">$1</span>')
+    .replace(/\[\[def\]\]([\s\S]*?)\[\[\/def\]\]/g, '<span class="def">$1</span>')
+    .replace(/\[\[take\]\]([\s\S]*?)\[\[\/take\]\]/g,'<span class="take">$1</span>')
+    .replace(/\[\[imp\]\]([\s\S]*?)\[\[\/imp\]\]/g, '<span class="imp">$1</span>')
+    .replace(/\[\[mem\]\]([\s\S]*?)\[\[\/mem\]\]/g, '<span class="mem">$1</span>')
+    .replace(/\[\[ex\]\]([\s\S]*?)\[\[\/ex\]\]/g,   '<span class="ex">$1</span>')
+    .replace(/\[\[diff\]\]([\s\S]*?)\[\[\/diff\]\]/g,'<span class="diff">$1</span>');
+
+  // Lists with sequential numbering
+  const lines = html.split('\n');
+  let numIdx = 1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes('[[li]]')) {
+      lines[i] = '• ' + lines[i].replace(/\[\[li\]\]/g,'').replace(/\[\[\/li\]\]/g,'');
+    } else if (lines[i].includes('[[nli]]')) {
+      lines[i] = (numIdx++) + '. ' + lines[i].replace(/\[\[nli\]\]/g,'').replace(/\[\[\/nli\]\]/g,'');
+    } else {
+      numIdx = 1;
+    }
+  }
+
+  return lines.join('<br>');
+};
+
+// ─────────────────────────────────────────────
+//  BOTTOM BAR ACTIONS
+// ─────────────────────────────────────────────
+function togglePreview() {
+  if (rawOpen) toggleRaw();           // close raw first
+
+  previewOpen = !previewOpen;
+  if (previewOpen) {
+    previewPanel.innerHTML = window.renderTagsToHTML(editor.innerText);
+    previewPanel.style.display = 'block';
+    previewBtn.textContent = 'Hide Preview';
+  } else {
+    previewPanel.style.display = 'none';
+    previewBtn.textContent = 'Show Preview';
+  }
+  autoResizeIframe();
+  notifyParentChanged();
+}
+
+function toggleRaw() {
+  if (previewOpen) togglePreview();   // close preview first
+
+  rawOpen = !rawOpen;
+  if (rawOpen) {
+    rawPanel.textContent = editor.innerText;
+    rawPanel.style.display = 'block';
+    rawBtn.textContent = 'Hide Raw Tags';
+  } else {
+    rawPanel.style.display = 'none';
+    rawBtn.textContent = 'Show Raw Tags';
+  }
+  autoResizeIframe();
+  notifyParentChanged();
+}
+
+function clearContent() {
+  if (editor.innerText.trim() && !confirm('Clear this editor? Content will be lost.')) return;
+  editor.innerText = '';
+
+  // Reset active tags
+  Object.keys(activeTags).forEach(t => { activeTags[t] = false; });
+  document.querySelectorAll('.format-toolbar button').forEach(b => b.classList.remove('active'));
+  statusBar.textContent = 'Single click: Apply to selection | Double click: Typing mode';
+  statusBar.style.color = '#888';
+  statusBar.style.fontWeight = 'normal';
+
+  // Close panels
+  previewPanel.style.display = rawPanel.style.display = 'none';
+  previewOpen = rawOpen = false;
+  previewBtn.textContent = 'Show Preview';
+  rawBtn.textContent = 'Show Raw Tags';
+  autoResizeIframe();
+  notifyParentChanged();
+}
+
+// ─────────────────────────────────────────────
+//  POSTMESSAGE API  (alternate: works cross-origin too)
+// ─────────────────────────────────────────────
+window.addEventListener('message', e => {
+  const { type, content, id } = e.data || {};
+  if (type === 'SET_CONTENT') {
+    window.setContent(content);
+  }
+  if (type === 'GET_CONTENT') {
+    e.source.postMessage({ type: 'CONTENT', content: window.getContent(), id }, e.origin || '*');
+  }
+});
+</script>
+</body>
+</html>

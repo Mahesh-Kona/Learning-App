@@ -1211,6 +1211,21 @@ def concept_editor():
     return render_template('concept.html')
 
 
+@admin_bp.route('/concept-editor-block', methods=['GET'])
+def concept_editor_block():
+    """Serve the standalone concept text editor block used inside the iframe.
+
+    We explicitly allow this endpoint to be embedded in iframes on the same
+    origin by overriding the default X-Frame-Options=DENY set globally.
+    """
+    from flask import make_response
+
+    resp = make_response(render_template('concept-editor-block.html'))
+    # Allow same-origin framing so the main concept editor can embed this.
+    resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    return resp
+
+
 @admin_bp.route('/video-editor', methods=['GET'])
 def video_editor():
     # Require admin session similar to other admin pages

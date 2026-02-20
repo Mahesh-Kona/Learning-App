@@ -591,6 +591,66 @@ body{background:var(--bg);color:#222;min-height:100vh;display:flex;overflow:hidd
     justify-content: space-between;
   }
 }
+.text-editor-block {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  background: #fff;
+}
+
+.editor-toolbar {
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 10px 10px 0 0;
+}
+
+.editor-toolbar button {
+  background: white;
+  border: 1px solid #d1d5db;
+  padding: 2px 6px;
+  margin-right: 5px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.editor-toolbar button:hover {
+  background: #e5e7eb;
+}
+
+.editor-content {
+  min-height: 150px;
+  padding: 15px;
+  outline: none;
+}
+.sep {
+    width: 1px;
+    background: #ddd;
+    margin: 0 6px;
+  }
+.action-btn {
+    margin-top: 10px;
+    margin-right: 10px;
+    padding: 8px 16px;
+    background: #4361ee;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .action-btn:hover {
+    background: #3651de;
+  }
+
+  .action-btn.secondary {
+    background: #6c757d;
+  }
+
+  .action-btn.secondary:hover {
+    background: #5a6268;
+  }
 </style>
 </head>
 
@@ -762,6 +822,18 @@ let currentCourseId = null;
 // Track which concept is currently being edited
 let currentlyEditingConceptId = null;
 
+// Listen for change events from embedded text-editor iframes so stats stay in sync
+window.addEventListener('message', (e) => {
+  try {
+    const data = e.data || {};
+    if (data.type === 'EDITOR_CHANGED') {
+      updateStats();
+    }
+  } catch (err) {
+    // ignore malformed messages
+  }
+});
+
 // Initialize
 document.addEventListener('DOMContentLoaded', init);
 
@@ -789,7 +861,58 @@ function setupEventListeners() {
   document.querySelectorAll('.block-item').forEach(item => {
     item.onclick = () => addBlock(item.dataset.type);
   });
-  
+  function addTextBlock() {
+
+  const container = document.getElementById("blocksContainer");
+
+  // Remove empty placeholder if exists
+  const empty = document.getElementById("emptyPlaceholder");
+  if (empty) empty.remove();
+
+  const block = document.createElement("div");
+  block.className = "text-editor-block";
+
+  block.innerHTML = `
+    <div class="editor-toolbar">
+      <button onclick="formatText(this, 'bold')"><b>B</b></button>
+      <button onclick="formatText(this, 'italic')"><i>I</i></button>
+      <button onclick="formatText(this, 'underline')"><u>U</u></button>
+      <button onclick="formatText(this, 'insertUnorderedList')">• List</button>
+      <button onclick="formatText(this, 'insertOrderedList')">1. List</button>
+    </div>
+    <div class="editor-content" contenteditable="true">
+      Type your content here...
+    </div>
+  `;
+
+  container.appendChild(block);
+
+  updateStats();
+}
+function formatText(btn, tag) {
+
+  const block = btn.closest('.block');
+  const editor = block.querySelector('.textarea');
+  editor.focus();
+
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return;
+
+  const range = selection.getRangeAt(0);
+  const selectedText = range.toString();
+
+  if (!selectedText) return;
+
+  const taggedText = `[[${tag}]]${selectedText}[[/${tag}]]`;
+
+  range.deleteContents();
+  range.insertNode(document.createTextNode(taggedText));
+
+  selection.removeAllRanges();
+}
+
+
+
   backBtn.onclick = goBackToCards;
   clearBtn.onclick = resetConceptWithConfirmation;
   clearConceptsBtn.onclick = clearAllConcepts;
@@ -845,16 +968,25 @@ function showToast(message, type = 'success', duration = 3000) {
 }
 
 function updateStats() {
-  // Block count
+  // Block count (same behaviour as concept_old.html)
   const blocks = blocksContainer.querySelectorAll('.block');
   const blockCount = blocks.length;
   blockCountEl.textContent = blockCount;
-  
-  // Word count
+
+  // Word count (same behaviour as concept_old.html, but text comes from iframe)
   let wordCount = 0;
   blocks.forEach(block => {
     if (block.dataset.type === 'text') {
-      const text = block.querySelector('.textarea')?.textContent || '';
+      // In the new editor, text is inside an embedded iframe
+      let text = '';
+      try {
+        const iframe = block._editorIframe;
+        if (iframe && iframe.contentWindow && typeof iframe.contentWindow.getContent === 'function') {
+          text = iframe.contentWindow.getContent() || '';
+        }
+      } catch (e) {
+        text = '';
+      }
       wordCount += text.trim().split(/\s+/).filter(w => w.length > 0).length;
     } else if (block.dataset.type === 'keypoints') {
       const items = block.querySelectorAll('li');
@@ -864,9 +996,9 @@ function updateStats() {
     }
   });
   wordCountEl.textContent = wordCount;
-  
-  // Image count
-  // Count image blocks (including selected placeholders), not just uploaded <img> tags
+
+  // Image count: count image blocks (not just uploaded <img> tags),
+  // exactly like concept_old.html
   const imageBlocks = blocksContainer.querySelectorAll('.block');
   const imageCount = Array.from(imageBlocks).filter(b => {
     return b.dataset.type === 'image' || b.dataset.type === 'image-main';
@@ -877,7 +1009,7 @@ function updateStats() {
   const conceptCount = savedConceptsLocal.length;
   conceptCountEl.textContent = conceptCount;
   
-  // Update UI states
+  // Update UI states (unchanged from concept_old.html)
   if (blockCount > 0) {
     blocksContainer.classList.add('has-blocks');
     if (emptyPlaceholder) emptyPlaceholder.style.display = 'none';
@@ -952,6 +1084,60 @@ function clearAllConcepts() {
     showToast('All concepts cleared', 'warning');
   }
 }
+function wrapSelection(editor, tag){
+  editor.focus();
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return;
+
+  const range = sel.getRangeAt(0);
+  const text = range.toString();
+
+  const wrapped = text
+    ? `[[${tag}]]${text}[[/${tag}]]`
+    : `[[${tag}]][[/${tag}]]`;
+
+  range.deleteContents();
+  const node = document.createTextNode(wrapped);
+  range.insertNode(node);
+
+  range.setStartAfter(node);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function insertAtCursor(editor, text){
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return;
+
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+
+  const node = document.createTextNode(text);
+  range.insertNode(node);
+
+  range.setStartAfter(node);
+  range.collapse(true);
+
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function moveCursorInside(editor, tag){
+  const sel = window.getSelection();
+  const range = sel.getRangeAt(0);
+  const node = range.startContainer;
+
+  if(node.nodeType !== 3) return;
+
+  const pos = node.textContent.lastIndexOf(`[[${tag}]]`) + (`[[${tag}]]`).length;
+
+  range.setStart(node, pos);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 
 // FIXED: Separate function for Clear Current button with confirmation
 function resetConceptWithConfirmation() {
@@ -995,8 +1181,24 @@ function loadConceptIntoEditor(localId) {
     if (!blockEl) return;
 
     if (type === 'text') {
-      const area = blockEl.querySelector('.textarea');
-      if (area) area.innerText = b.text || '';
+      const iframe = blockEl._editorIframe;
+      if (!iframe) return;
+      const trySet = () => {
+        try {
+          if (iframe.contentWindow && typeof iframe.contentWindow.setContent === 'function') {
+            iframe.contentWindow.setContent(b.text || '');
+          } else {
+            iframe.addEventListener('load', () => {
+              try { iframe.contentWindow.setContent(b.text || ''); } catch(e) {}
+            }, { once: true });
+          }
+        } catch(e) {
+          iframe.addEventListener('load', () => {
+            try { iframe.contentWindow.setContent(b.text || ''); } catch(e2) {}
+          }, { once: true });
+        }
+      };
+      trySet();
     } else if (type === 'image' || type === 'image-main') {
       const ph = blockEl.querySelector('.image-placeholder');
       if (ph && b.image) {
@@ -1043,9 +1245,35 @@ function addBlock(type){
   const closeBtn='<button class="delete-btn-cross" onclick="this.parentElement.parentElement.remove();checkEmpty();updateStats()">×</button>';
 
   if(type==='text'){
-    block.innerHTML=`<div class="header"><span>Text</span>${closeBtn}</div>
-    <div contenteditable="true" class="textarea"></div>`;
+    block.innerHTML=`
+      <div class="header">
+        <span>Text</span>
+        ${closeBtn}
+      </div>
+    `;
+    // ── Embed the reusable editor block via iframe (served by Flask route) ──
+    const iframe = document.createElement('iframe');
+    iframe.src = "{{ url_for('admin_bp.concept_editor_block') }}";
+    iframe.style.cssText = 'width:100%;border:none;border-radius:0 0 10px 10px;min-height:280px;display:block;';
+    iframe.setAttribute('scrolling', 'no');
+    // Auto-resize iframe to fit content
+    iframe.onload = () => {
+      try {
+        const resize = () => {
+          const h = iframe.contentDocument.body.scrollHeight;
+          if (h > 180) iframe.style.height = h + 'px';
+        };
+        resize();
+        // Re-check on editor input inside iframe
+        iframe.contentDocument.getElementById('editor')
+          .addEventListener('input', resize);
+      } catch(e) {}
+    };
+    block.appendChild(iframe);
+    // Expose iframe reference on the block element for serialization
+    block._editorIframe = iframe;
   }
+
   if(type==='image'||type==='image-main'){
     block.innerHTML=`<div class="header"><span>Image</span>${closeBtn}</div>
     <div class="image-placeholder" onclick="uploadImage(this)">Click to upload image</div>`;
@@ -1062,6 +1290,106 @@ function addBlock(type){
   blocksContainer.appendChild(block);
   updateStats();
 }
+function showPreview(btn) {
+
+  const block = btn.closest('.block');
+  const editor = block.querySelector('.textarea');
+
+  let previewArea = block.querySelector('.preview-area');
+
+  // Agar preview area exist nahi karta to create karo
+  if (!previewArea) {
+    previewArea = document.createElement('div');
+    previewArea.className = 'preview-area';
+    previewArea.style.marginTop = "10px";
+    block.appendChild(previewArea);
+  }
+
+  // Source text
+  let text = editor.innerText;
+  let html = text;
+
+  // Inline tags
+  html = html
+    .replace(/\[\[b\]\]([\s\S]*?)\[\[\/b\]\]/g, '<b>$1</b>')
+    .replace(/\[\[i\]\]([\s\S]*?)\[\[\/i\]\]/g, '<i>$1</i>')
+    .replace(/\[\[u\]\]([\s\S]*?)\[\[\/u\]\]/g, '<u>$1</u>')
+    .replace(/\[\[hl\]\]([\s\S]*?)\[\[\/hl\]\]/g, '<mark>$1</mark>')
+    .replace(/\[\[h\]\]([\s\S]*?)\[\[\/h\]\]/g, '<h2>$1</h2>')
+    .replace(/\[\[sh\]\]([\s\S]*?)\[\[\/sh\]\]/g, '<h3>$1</h3>')
+    .replace(/\[\[q\]\]([\s\S]*?)\[\[\/q\]\]/g, '<div class="quote">$1</div>')
+    .replace(/\[\[def\]\]([\s\S]*?)\[\[\/def\]\]/g, '<div class="def">$1</div>')
+    .replace(/\[\[take\]\]([\s\S]*?)\[\[\/take\]\]/g, '<div class="take">$1</div>')
+    .replace(/\[\[imp\]\]([\s\S]*?)\[\[\/imp\]\]/g, '<div class="imp">$1</div>')
+    .replace(/\[\[mem\]\]([\s\S]*?)\[\[\/mem\]\]/g, '<div class="mem">$1</div>')
+    .replace(/\[\[ex\]\]([\s\S]*?)\[\[\/ex\]\]/g, '<div class="ex">$1</div>')
+    .replace(/\[\[diff\]\]([\s\S]*?)\[\[\/diff\]\]/g, '<div class="diff">$1</div>');
+
+  // Process lists properly
+  const lines = html.split('\n');
+  let numberedIndex = 1;
+
+  for (let i = 0; i < lines.length; i++) {
+
+    if (lines[i].includes('[[li]]')) {
+      lines[i] = lines[i]
+        .replace(/\[\[li\]\]/g, '')
+        .replace(/\[\[\/li\]\]/g, '');
+      lines[i] = "• " + lines[i];
+    }
+
+    if (lines[i].includes('[[nli]]')) {
+      lines[i] = lines[i]
+        .replace(/\[\[nli\]\]/g, '')
+        .replace(/\[\[\/nli\]\]/g, '');
+      lines[i] = numberedIndex + ". " + lines[i];
+      numberedIndex++;
+    } else {
+      numberedIndex = 1;
+    }
+  }
+
+  html = lines.join('<br>');
+
+  previewArea.innerHTML = html;
+  previewArea.style.display = 'block';
+  editor.style.display = 'none';
+
+  btn.innerText = "Hide Preview";
+  btn.onclick = function () {
+    previewArea.style.display = 'none';
+    editor.style.display = 'block';
+    btn.innerText = "Show Preview";
+    btn.onclick = function () { showPreview(btn); };
+  };
+}
+
+function showRawTags(btn) {
+
+  const block = btn.closest('.block');
+  const textarea = block.querySelector('.textarea');
+
+  let rawArea = block.querySelector('.raw-area');
+
+  // Agar raw-area exist nahi karta to create karo
+  if(!rawArea){
+    rawArea = document.createElement('pre');
+    rawArea.className = 'raw-area';
+    block.appendChild(rawArea);
+  }
+
+  rawArea.textContent = textarea.innerHTML;
+  rawArea.style.display = 'block';
+  textarea.style.display = 'none';
+}
+
+function clearEditor(btn){
+  if(confirm("Are you sure you want to clear this text?")){
+    const block = btn.closest('.block');
+    block.querySelector('.textarea').innerHTML = "";
+  }
+}
+
 
 function enableDrag(block){
   block.ondragstart = (e) => {
@@ -1108,7 +1436,13 @@ function serializeBlocks() {
   return Array.from(blocksContainer.querySelectorAll('.block')).map(block => {
     const type = block.dataset.type;
     if (type === 'text') {
-      return { type, text: block.querySelector('.textarea').innerText };
+      // Read raw tagged text from the embedded editor iframe
+      const iframe = block._editorIframe;
+      let text = '';
+      try {
+        text = iframe && iframe.contentWindow ? iframe.contentWindow.getContent() : '';
+      } catch(e) {}
+      return { type, text };
     }
     if (type === 'image' || type === 'image-main') {
       const img = block.querySelector('img');
@@ -1178,8 +1512,25 @@ function loadBlocksFromData(blocks) {
     if (!blockEl) return;
 
     if (type === 'text') {
-      const area = blockEl.querySelector('.textarea');
-      if (area) area.innerText = b.text || '';
+      const iframe = blockEl._editorIframe;
+      if (!iframe) return;
+      // setContent once iframe is ready
+      const trySet = () => {
+        try {
+          if (iframe.contentWindow && typeof iframe.contentWindow.setContent === 'function') {
+            iframe.contentWindow.setContent(b.text || '');
+          } else {
+            iframe.addEventListener('load', () => {
+              try { iframe.contentWindow.setContent(b.text || ''); } catch(e) {}
+            }, { once: true });
+          }
+        } catch(e) {
+          iframe.addEventListener('load', () => {
+            try { iframe.contentWindow.setContent(b.text || ''); } catch(e2) {}
+          }, { once: true });
+        }
+      };
+      trySet();
     } else if (type === 'image' || type === 'image-main') {
       const ph = blockEl.querySelector('.image-placeholder');
       if (ph && b.image) {
@@ -1453,7 +1804,7 @@ pushAllBtn.onclick = async () => {
     }
 
     // Ensure we have an admin token
-    const token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+    let token = typeof getAdminToken === 'function' ? await getAdminToken() : null;
     if (!token) {
       alert('Unable to get admin token. Please log in again as admin.');
       return;
@@ -1528,5 +1879,6 @@ function updateConceptNumbers(){
   });
 }
 </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"a078b7c4a3e54f628530e755214e130e","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
