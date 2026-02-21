@@ -141,9 +141,18 @@ def create_app():
     def set_security_headers(response):
         # Basic headers (adjust as needed in production)
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-        response.headers.setdefault('X-Frame-Options', 'DENY')
         response.headers.setdefault('Referrer-Policy', 'no-referrer')
         response.headers.setdefault('X-XSS-Protection', '1; mode=block')
+
+        # X-Frame-Options blocks embedding this app in iframes when the
+        # parent page is on a different origin. Since we want
+        # https://byte.edusaint.in to be embeddable inside a cloud/other
+        # host, we intentionally DO NOT set X-Frame-Options here.
+        #
+        # Instead, rely on a Content-Security-Policy with frame-ancestors
+        # configured via CONTENT_SECURITY_POLICY in Config/ENV, so you can
+        # control which origins are allowed to embed this app.
+
         # Add Content Security Policy header from config
         csp = app.config.get('CONTENT_SECURITY_POLICY')
         if csp:

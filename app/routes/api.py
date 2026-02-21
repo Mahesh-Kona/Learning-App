@@ -15,8 +15,10 @@ from flask_jwt_extended import (
 )
 from app.extensions import db
 from app.models import User, Course, Lesson, Topic, Student
-from sqlalchemy import or_, text
-from datetime import datetime
+from sqlalchemy import or_, text, func
+from datetime import datetime, timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
+from app.utils.emailer import send_email
 import traceback
 import os
 from app.utils.dynamic_json import generate_students_json
@@ -31,6 +33,12 @@ from app.utils.dynamic_json import (
 # Create blueprint
 # Use a distinct internal name to avoid colliding with `app.api.bp`
 api_bp = Blueprint('routes_api', __name__, url_prefix='/api/v1')
+
+
+# In-memory store for student password reset OTPs.
+# NOTE: This is suitable for single-process deployments and development.
+# For production, prefer a persistent store (DB/Redis) instead.
+_STUDENT_RESET_OTP = {}
 
 # Update a card by ID
 @api_bp.route('/cards/<int:card_id>', methods=['PUT'])
@@ -97,7 +105,7 @@ from flask_jwt_extended import (
 from app.extensions import db
 from app.models import User, Course, Lesson, Topic, Student
 from sqlalchemy import or_, text
-from datetime import datetime
+from datetime import datetime, timedelta
 import traceback
 import os
 from app.utils.dynamic_json import generate_students_json
@@ -777,6 +785,181 @@ def logout():
         'success': True,
         'message': 'Logged out successfully'
     }), 200
+
+
+@api_bp.route('/auth/student/forgot-password', methods=['POST'])
+def student_forgot_password():
+    """Start student password reset via OTP (Flutter JSON API).
+
+    Request JSON:
+    {
+      "email": "student@example.com"
+    }
+
+    Behavior:
+    - Finds the student by email.
+    - Generates a 4-digit OTP, stores only a hash + expiry in memory.
+    - Sends the OTP to the student's email using the common emailer.
+    - Returns a generic success message (does NOT return the OTP).
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        email_raw = (data.get('email') or '').strip()
+        if not email_raw:
+            return jsonify({'success': False, 'error': 'Email is required'}), 400
+
+        email_norm = email_raw.lower()
+
+        # Look up student by email (case-insensitive where supported)
+        student = None
+        try:
+            student = Student.query.filter(func.lower(Student.email) == email_norm).first()
+        except Exception:
+            try:
+                student = Student.query.filter(Student.email.ilike(email_norm)).first()
+            except Exception:
+                student = Student.query.filter_by(email=email_raw).first()
+
+        if not student:
+            return jsonify({'success': False, 'error': 'No student found with this email'}), 404
+
+        # Optional: prevent reset for inactive accounts
+        if getattr(student, 'status', None) and str(student.status) != 'active':
+            return jsonify({'success': False, 'error': 'Account is not active'}), 400
+
+        # Generate 4-digit OTP
+        import secrets
+        otp = f"{secrets.randbelow(10000):04d}"
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+        # Store hashed OTP and expiry in memory keyed by student id
+        _STUDENT_RESET_OTP[int(student.id)] = {
+            'otp_hash': generate_password_hash(otp),
+            'expires_at': expires_at,
+            'email': student.email or email_raw,
+        }
+
+        subject = 'EduSaint Student Password Reset OTP'
+        body = (
+            'Hi,\n\n'
+            'Use the OTP below to reset your EduSaint password:\n\n'
+            f'OTP: {otp}\n\n'
+            'This OTP expires in 10 minutes.\n\n'
+            'If you did not request this, please ignore this email.\n\n'
+            'Regards,\n'
+            'EduSaint\n'
+        )
+
+        app_obj = current_app._get_current_object()
+
+        def _send_student_pwreset_email() -> None:
+            try:
+                with app_obj.app_context():
+                    sent_ok, err = send_email(to_email=student.email, subject=subject, body=body)
+                    if not sent_ok:
+                        current_app.logger.warning(
+                            'Student password reset OTP for %s is %s (email send failed: %s)',
+                            email_norm,
+                            otp,
+                            err,
+                        )
+            except Exception:
+                try:
+                    with app_obj.app_context():
+                        current_app.logger.exception('Failed to send student password reset OTP email')
+                except Exception:
+                    pass
+
+        import threading
+        threading.Thread(target=_send_student_pwreset_email, daemon=True).start()
+
+        return jsonify({
+            'success': True,
+            'message': 'OTP sent to registered email if the account exists',
+            'expires_in': 10 * 60,
+        }), 200
+    except Exception as e:
+        current_app.logger.exception('Student forgot-password (OTP) API failed')
+        return jsonify({
+            'success': False,
+            'error': 'Failed to start password reset',
+            'details': str(e) if current_app.debug else None,
+        }), 500
+
+
+@api_bp.route('/auth/student/reset-password', methods=['POST'])
+def student_reset_password():
+    """Reset student password using email + OTP.
+
+    Request JSON:
+    {
+      "email": "student@example.com",
+      "otp": "1234",
+      "new_password": "NewPass123",
+      "confirm_password": "NewPass123" // optional; defaults to new_password
+    }
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        email_raw = (data.get('email') or '').strip()
+        otp = (data.get('otp') or '').strip()
+        new_password = (data.get('new_password') or '').strip()
+        confirm_password = (data.get('confirm_password') or new_password).strip()
+
+        if not email_raw or not otp:
+            return jsonify({'success': False, 'error': 'Email and OTP are required'}), 400
+        if not new_password or not confirm_password:
+            return jsonify({'success': False, 'error': 'New password and confirmation are required'}), 400
+        if new_password != confirm_password:
+            return jsonify({'success': False, 'error': 'Passwords do not match'}), 400
+        if len(new_password) < 6:
+            return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
+
+        email_norm = email_raw.lower()
+
+        # Look up student again to find the id
+        student = None
+        try:
+            student = Student.query.filter(func.lower(Student.email) == email_norm).first()
+        except Exception:
+            try:
+                student = Student.query.filter(Student.email.ilike(email_norm)).first()
+            except Exception:
+                student = Student.query.filter_by(email=email_raw).first()
+
+        if not student:
+            return jsonify({'success': False, 'error': 'No student found with this email'}), 404
+
+        info = _STUDENT_RESET_OTP.get(int(student.id)) or {}
+        if not info:
+            return jsonify({'success': False, 'error': 'No active OTP found. Please request a new one.'}), 400
+
+        expires_at = info.get('expires_at')
+        if not expires_at or datetime.utcnow() > expires_at:
+            _STUDENT_RESET_OTP.pop(int(student.id), None)
+            return jsonify({'success': False, 'error': 'OTP expired. Please request a new one.'}), 400
+
+        otp_hash = str(info.get('otp_hash') or '')
+        if not otp_hash or not check_password_hash(otp_hash, otp):
+            return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
+
+        # All good: update password and clear OTP
+        student.password = new_password
+        db.session.commit()
+        _STUDENT_RESET_OTP.pop(int(student.id), None)
+
+        return jsonify({
+            'success': True,
+            'message': 'Password updated successfully',
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Student reset-password (OTP) API failed')
+        return jsonify({
+            'success': False,
+            'error': 'Failed to reset password',
+            'details': str(e) if current_app.debug else None,
+        }), 500
 
 
 # ============================================================================
