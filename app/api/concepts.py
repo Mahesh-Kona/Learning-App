@@ -2,6 +2,7 @@ from flask import request, jsonify
 from app.extensions import db
 from app.models import Card
 from app.utils.image_utils import compress_images_in_json
+from .text_parser import parse_blocks  # ✅ Added
 from . import bp
 
 
@@ -12,7 +13,12 @@ def get_concepts():
     Final URL: /api/v1/concepts/
     """
     concepts = Card.query.filter_by(card_type='concept').all()
-    return jsonify([c.to_dict() for c in concepts])
+    result = []
+    for c in concepts:
+        d = c.to_dict()
+        d['blocks'] = parse_blocks(c.data_json or [])  # ✅ Parsed blocks added
+        result.append(d)
+    return jsonify(result)
 
 
 @bp.route('/concepts/', methods=['POST'])
@@ -37,4 +43,9 @@ def save_concept():
     )
     db.session.add(concept)
     db.session.commit()
-    return jsonify({'success': True, 'card': concept.to_dict()}), 201
+
+    # ✅ Return parsed blocks in response too
+    d = concept.to_dict()
+    d['blocks'] = parse_blocks(concept.data_json or [])
+
+    return jsonify({'success': True, 'card': d}), 201

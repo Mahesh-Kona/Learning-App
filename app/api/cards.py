@@ -4,6 +4,7 @@ from flask_jwt_extended import verify_jwt_in_request
 from ..models import Card, Topic, Lesson, User
 from ..extensions import db, limiter
 from ..utils.image_utils import compress_images_in_json
+from .text_parser import parse_blocks  # ✅ Added
 from . import bp
 
 
@@ -19,7 +20,6 @@ def create_topic():
         data_json?: object
     }
     """
-    # Check if user is admin
     claims = get_jwt()
     if not claims or claims.get('role') != 'admin':
         return {"success": False, "error": "Admin access required", "code": 403}, 403
@@ -37,7 +37,6 @@ def create_topic():
     if not title:
         return {"success": False, "error": "title is required", "code": 400}, 400
     
-    # Validate lesson exists
     lesson = Lesson.query.get(lesson_id)
     if not lesson:
         return {"success": False, "error": "Lesson not found", "code": 404}, 404
@@ -83,9 +82,8 @@ def create_card():
         display_order?: int
     }
     """
-    # Check if user is admin
     claims = get_jwt()
-    user_id = claims.get('sub')  # This is the identity (user_id string)
+    user_id = claims.get('sub')
     
     if not claims or claims.get('role') != 'admin':
         return {"success": False, "error": "Admin access required", "code": 403}, 403
@@ -106,11 +104,9 @@ def create_card():
     topic_id = data.get('topic_id')
     lesson_id = data.get('lesson_id')
     
-    # At least one of topic_id or lesson_id should be provided
     if not topic_id and not lesson_id:
         return {"success": False, "error": "Either topic_id or lesson_id is required", "code": 400}, 400
     
-    # Validate that topic or lesson exists
     if topic_id:
         topic = Topic.query.get(topic_id)
         if not topic:
@@ -121,7 +117,6 @@ def create_card():
         if not lesson:
             return {"success": False, "error": "Lesson not found", "code": 404}, 404
     
-    # Determine created_by safely to avoid FK errors if user id is invalid
     created_by_val = None
     if user_id and user_id != 'dev_admin':
         try:
@@ -136,9 +131,6 @@ def create_card():
         if card_type in ['concept', 'quiz']:
             data_json = compress_images_in_json(data_json)
 
-        # Business rule: all cards are published upon creation
-        pub_norm = True
-
         new_card = Card(
             card_type=card_type,
             title=title,
@@ -147,8 +139,7 @@ def create_card():
             lesson_id=lesson_id,
             display_order=data.get('display_order', 0),
             created_by=created_by_val,
-            # Publish all newly created cards by design
-            published=pub_norm
+            published=True
         )
         
         db.session.add(new_card)
@@ -173,7 +164,6 @@ def create_card():
         current_app.logger.exception('Failed to create card')
         detail = str(e)
         try:
-            # Attempt to surface DB-level error messages when available
             from sqlalchemy.exc import SQLAlchemyError
             if isinstance(e, SQLAlchemyError) and getattr(e, 'orig', None):
                 detail = f"{detail} | DB: {e.orig}"
@@ -194,7 +184,6 @@ def list_cards():
       - page: int (default 1)
       - per_page: int (default 20, max 100)
     """
-    # Determine auth state; optional JWT
     is_authenticated = False
     try:
         verify_jwt_in_request(optional=True)
@@ -203,10 +192,8 @@ def list_cards():
     except Exception:
         is_authenticated = False
 
-    # Build base query
     query = Card.query
 
-    # Filters
     topic_id = request.args.get("topic_id", type=int)
     lesson_id = request.args.get("lesson_id", type=int)
     card_type = request.args.get("card_type", type=str)
@@ -230,11 +217,8 @@ def list_cards():
         else:
             return {"success": False, "error": "Invalid published filter; use true/false", "code": 400}, 400
 
-    # For unauthenticated requests, restrict results
     if not is_authenticated:
-        # Only show published cards publicly
         query = query.filter(Card.published.is_(True))
-        # Require at least one scoping filter to avoid listing all data
         if topic_id is None and lesson_id is None:
             return {
                 "success": False,
@@ -242,10 +226,8 @@ def list_cards():
                 "code": 400
             }, 400
 
-    # Ordering: display_order, created_at
     query = query.order_by(Card.display_order, Card.created_at)
 
-    # Pagination
     page = request.args.get("page", default=1, type=int) or 1
     per_page = request.args.get("per_page", default=20, type=int) or 20
     per_page = max(1, min(per_page, 100))
@@ -278,12 +260,11 @@ def list_cards():
 
 @bp.route("/cards/<int:card_id>", methods=["GET"])
 def get_card(card_id):
-    """Get a specific card by ID.
+    """Get a specific card by ID with parsed blocks.
 
     Publicly accessible: unauthenticated users may fetch only published cards.
     Authenticated users can fetch any card (subject to existence).
     """
-    # Optional auth; detect whether a JWT is present
     is_authenticated = False
     try:
         verify_jwt_in_request(optional=True)
@@ -296,9 +277,12 @@ def get_card(card_id):
     if not card:
         return {"success": False, "error": "Card not found", "code": 404}, 404
 
-    # If not authenticated, only allow access to published cards
     if not is_authenticated and not card.published:
         return {"success": False, "error": "Card is not published", "code": 403}, 403
+
+    # Parse raw [[tags]] into structured blocks while keeping original data_json
+    raw_data = card.data_json or {}
+    parsed_blocks = parse_blocks(raw_data)
 
     return {
         "success": True,
@@ -306,7 +290,10 @@ def get_card(card_id):
             "id": card.id,
             "card_type": card.card_type,
             "title": card.title,
-            "data_json": card.data_json,
+            # For editor/web clients that expect the stored payload
+            "data_json": raw_data,
+            # For Dart/mobile or consumers that want parsed blocks
+            "blocks": parsed_blocks,
             "topic_id": card.topic_id,
             "lesson_id": card.lesson_id,
             "display_order": card.display_order,
@@ -330,7 +317,6 @@ def update_card(card_id):
         published?: bool
     }
     """
-    # Check if user is admin
     claims = get_jwt()
     if not claims or claims.get('role') != 'admin':
         return {"success": False, "error": "Admin access required", "code": 403}, 403
@@ -344,7 +330,6 @@ def update_card(card_id):
         return {"success": False, "error": "Card not found", "code": 404}, 404
     
     try:
-        # Update fields if provided
         if 'title' in data:
             card.title = data['title']
         if 'data_json' in data:
@@ -383,10 +368,7 @@ def update_card(card_id):
 @jwt_required()
 @limiter.limit("30/minute")
 def update_card_via_post(card_id):
-    """Update an existing card via POST for environments that block PUT.
-
-    This simply forwards to update_card to keep logic in one place.
-    """
+    """Update an existing card via POST for environments that block PUT."""
     return update_card(card_id)
 
 
@@ -395,7 +377,6 @@ def update_card_via_post(card_id):
 @limiter.limit("30/minute")
 def delete_card(card_id):
     """Delete a card. Admin only."""
-    # Check if user is admin
     claims = get_jwt()
     if not claims or claims.get('role') != 'admin':
         return {"success": False, "error": "Admin access required", "code": 403}, 403
@@ -418,10 +399,7 @@ def delete_card(card_id):
 @jwt_required()
 @limiter.limit("30/minute")
 def delete_card_via_post(card_id):
-    """Delete a card using POST for environments that block DELETE.
-
-    This simply forwards to delete_card to keep logic in one place.
-    """
+    """Delete a card using POST for environments that block DELETE."""
     return delete_card(card_id)
 
 
@@ -432,7 +410,6 @@ def get_topic_cards(topic_id):
     if not topic:
         return {"success": False, "error": "Topic not found", "code": 404}, 404
     
-    # Optional auth; unauthenticated users see only published
     is_authenticated = False
     try:
         verify_jwt_in_request(optional=True)
@@ -470,7 +447,6 @@ def get_lesson_cards(lesson_id):
     if not lesson:
         return {"success": False, "error": "Lesson not found", "code": 404}, 404
     
-    # Optional auth; unauthenticated users see only published
     is_authenticated = False
     try:
         verify_jwt_in_request(optional=True)

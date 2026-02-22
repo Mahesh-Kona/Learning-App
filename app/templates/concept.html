@@ -1571,7 +1571,7 @@ async function loadConceptCardForEdit(cardId) {
     if (card.title) {
       cardTitle.innerText = card.title;
     }
-
+    // Use the raw stored blocks for editing (not the parsed "blocks" field)
     const payload = card.data_json || {};
     const blocks = payload.blocks || (payload.content && payload.content.blocks) || [];
     loadBlocksFromData(blocks);
