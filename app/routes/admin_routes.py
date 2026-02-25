@@ -1269,6 +1269,22 @@ def notifications_page():
     return render_template('notifications.html', user=user, active='notifications')
 
 
+@admin_bp.route('/quizzes', methods=['GET'])
+def quizzes_page():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    return render_template('quizzes.html', user=user, active='quizzes')
+
+
 @admin_bp.route('/notifications/api', methods=['GET'])
 def notifications_api_list():
     uid = session.get('admin_user_id')
