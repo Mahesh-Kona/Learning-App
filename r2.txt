@@ -1,0 +1,90 @@
+✅ STEP 1: Make sure env loads (ONE TIME)
+app.py / wsgi.py (top pe)
+from dotenv import load_dotenv
+load_dotenv()
+
+✅ STEP 2: Create R2 client (ONE FILE)
+Create file: r2_client.py
+import boto3
+import os
+
+s3 = boto3.client(
+    "s3",
+    endpoint_url=f"https://{os.getenv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com",
+    aws_access_key_id=os.getenv("R2_ACCESS_KEY"),
+    aws_secret_access_key=os.getenv("R2_SECRET_KEY"),
+)
+
+R2_BUCKET = os.getenv("R2_BUCKET")
+CDN_BASE = os.getenv("R2_CDN_BASE")
+
+✅ STEP 3: Create upload helper (CORE LOGIC)
+Create file: utils/upload.py
+import base64
+import uuid
+from r2_client import s3, R2_BUCKET, CDN_BASE
+
+def upload_base64_image_to_r2(base64_data, folder="uploads"):
+    # remove data:image/...;base64,
+    if "," in base64_data:
+        base64_data = base64_data.split(",")[1]
+
+    file_bytes = base64.b64decode(base64_data)
+
+    filename = f"{uuid.uuid4()}.jpg"
+    r2_path = f"{folder}/{filename}"
+
+    s3.put_object(
+        Bucket=R2_BUCKET,
+        Key=r2_path,
+        Body=file_bytes,
+        ContentType="image/jpeg"
+    )
+
+    return f"{CDN_BASE}/{r2_path}"
+👉 Yahi function decide karta hai ki storage R2 hoga.
+
+✅ STEP 4: Modify your existing API (MOST IMPORTANT)
+❌ OLD (Base64 store)
+image_base64 = request.json["image"]
+cursor.execute(
+    "INSERT INTO content(image) VALUES (%s)",
+    (image_base64,)
+)
+
+✅ NEW (R2 + URL store)
+from utils.upload import upload_base64_image_to_r2
+
+image_base64 = request.json["image"]
+
+image_url = upload_base64_image_to_r2(
+    image_base64,
+    folder="content/images"
+)
+
+cursor.execute(
+    "INSERT INTO content(image_url) VALUES (%s)",
+    (image_url,)
+)
+🚫 No Base64 saved
+🚫 No local disk used
+✅ Cloudflare R2 + CDN URL
+
+✅ STEP 5: DB change (safe & backward compatible)
+Run once:
+ALTER TABLE content ADD COLUMN image_url VARCHAR(500);
+Frontend logic:
+if image_url exists → load network image
+else → load old base64
+
+✅ STEP 6: Restart app
+touch /home/lxyscuzf/byte.edusaint.in/passenger_wsgi.py
+
+🧪 STEP 7: TEST (VERY IMPORTANT)
+Upload one new image and verify:
+✔ R2 bucket → new file visible
+✔ DB → image_url column filled
+✔ DB → base64 column empty (for new row)
+✔ URL opens in browser:
+   https://byte.edusaint.in/content/images/xxxx.jpg
+If these 4 pass → IMPLEMENTATION SUCCESSFUL 🎉

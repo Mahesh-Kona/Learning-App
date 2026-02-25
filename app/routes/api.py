@@ -15,6 +15,8 @@ from flask_jwt_extended import (
 )
 from app.extensions import db
 from app.models import User, Course, Lesson, Topic, Student
+from app.api.cards import _extract_r2_keys_from_image_url
+from r2_client import s3, R2_BUCKET
 from sqlalchemy import or_, text, func
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -79,6 +81,19 @@ def delete_card(card_id):
     card = Card.query.get(card_id)
     if not card:
         return jsonify({'success': False, 'error': 'Card not found'}), 404
+
+    # Best-effort: remove any associated images from R2 before deleting the card
+    if R2_BUCKET:
+        try:
+            keys = _extract_r2_keys_from_image_url(card.image_url)
+            for key in keys:
+                try:
+                    s3.delete_object(Bucket=R2_BUCKET, Key=key)
+                except Exception:
+                    current_app.logger.exception('Failed to delete R2 object for card %s key=%s', card.id, key)
+        except Exception:
+            current_app.logger.exception('Failed to derive R2 keys for card %s', card.id)
+
     try:
         db.session.delete(card)
         db.session.commit()

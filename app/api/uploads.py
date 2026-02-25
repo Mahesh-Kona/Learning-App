@@ -3,6 +3,8 @@ from flask import Blueprint, request, current_app
 from werkzeug.utils import secure_filename
 from ..models import Asset
 from ..extensions import db, limiter
+from r2_client import s3, R2_BUCKET, CDN_BASE
+
 ALLOWED = {"png", "jpg", "jpeg", "gif", "webp", "mp4", "pdf"}
 
 from . import bp
@@ -57,59 +59,87 @@ def upload():
         return {"success": False, "error": "file type not allowed", "code": 400}, 400
 
     filename = secure_filename(f.filename)
-    upload_to_s3 = bool(current_app.config.get('S3_BUCKET'))
 
-    if upload_to_s3:
-        key = f"uploads/{filename}"
+    # Prefer Cloudflare R2 for image uploads when configured, so that all
+    # quiz/concept images end up under file.edusaint.in/images/<name>.
+    size = None
+    mime_type = None
+    url = None
+
+    if (f.mimetype or "").startswith("image/") and R2_BUCKET and CDN_BASE:
         try:
-            # attempt to determine size before upload
-            size = None
-            try:
-                # try request content length first
-                size = int(request.content_length) if request.content_length else None
-            except Exception:
-                size = None
-            try:
-                # try to get filesize by seeking stream (works for small uploads)
-                pos = None
-                if hasattr(f, 'stream') and hasattr(f.stream, 'seek'):
-                    try:
-                        pos = f.stream.tell()
-                    except Exception:
-                        pos = None
-                    try:
-                        f.stream.seek(0, os.SEEK_END)
-                        size = f.stream.tell()
-                        # rewind
-                        if pos is not None:
-                            f.stream.seek(pos)
-                        else:
-                            f.stream.seek(0)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-            url = _upload_s3(f, current_app.config['S3_BUCKET'], key, extra_args={'ACL': 'public-read', 'ContentType': f.mimetype})
+            file_bytes = f.read()
+            size = len(file_bytes)
+            if max_len and size and size > max_len:
+                return {"success": False, "error": "file too large", "code": 413}, 413
+
+            key = f"images/{filename}"
+            s3.put_object(
+                Bucket=R2_BUCKET,
+                Key=key,
+                Body=file_bytes,
+                ContentType=f.mimetype,
+            )
+
             mime_type = f.mimetype
-        except Exception as e:
-            current_app.logger.exception("S3 upload failed")
+            url = f"{CDN_BASE}/images/{filename}"
+        except Exception:
+            current_app.logger.exception("R2 image upload failed")
             return {"success": False, "error": "upload failed", "code": 500}, 500
     else:
-        UP = current_app.config.get("UPLOAD_PATH", "/tmp/uploads")
-        # Store videos under a dedicated subfolder for organization
-        subfolder = "videos" if (f.mimetype or "").startswith("video/") else ""
-        upload_path = os.path.join(UP, subfolder) if subfolder else UP
-        filepath = _save_local(f, upload_path, filename)
-        size = os.path.getsize(filepath)
-        # Validate saved size against configured limit
-        if max_len and size and size > max_len:
+        upload_to_s3 = bool(current_app.config.get('S3_BUCKET'))
+
+        if upload_to_s3:
+            key = f"uploads/{filename}"
             try:
-                os.remove(filepath)
-            except Exception:
-                current_app.logger.exception("failed to remove oversize file")
-            return {"success": False, "error": "file too large", "code": 413}, 413
-        mime_type = f.mimetype
-        url = f"/uploads/{(subfolder + '/' if subfolder else '')}{filename}"
+                # attempt to determine size before upload
+                size = None
+                try:
+                    # try request content length first
+                    size = int(request.content_length) if request.content_length else None
+                except Exception:
+                    size = None
+                try:
+                    # try to get filesize by seeking stream (works for small uploads)
+                    pos = None
+                    if hasattr(f, 'stream') and hasattr(f.stream, 'seek'):
+                        try:
+                            pos = f.stream.tell()
+                        except Exception:
+                            pos = None
+                        try:
+                            f.stream.seek(0, os.SEEK_END)
+                            size = f.stream.tell()
+                            # rewind
+                            if pos is not None:
+                                f.stream.seek(pos)
+                            else:
+                                f.stream.seek(0)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                url = _upload_s3(f, current_app.config['S3_BUCKET'], key, extra_args={'ACL': 'public-read', 'ContentType': f.mimetype})
+                mime_type = f.mimetype
+            except Exception as e:
+                current_app.logger.exception("S3 upload failed")
+                return {"success": False, "error": "upload failed", "code": 500}, 500
+        else:
+            UP = current_app.config.get("UPLOAD_PATH", "/tmp/uploads")
+            # Store videos under a dedicated subfolder for organization
+            subfolder = "videos" if (f.mimetype or "").startswith("video/") else ""
+            upload_path = os.path.join(UP, subfolder) if subfolder else UP
+            filepath = _save_local(f, upload_path, filename)
+            size = os.path.getsize(filepath)
+            # Validate saved size against configured limit
+            if max_len and size and size > max_len:
+                try:
+                    os.remove(filepath)
+                except Exception:
+                    current_app.logger.exception("failed to remove oversize file")
+                return {"success": False, "error": "file too large", "code": 413}, 413
+            mime_type = f.mimetype
+            url = f"/uploads/{(subfolder + '/' if subfolder else '')}{filename}"
 
     # uploader id - try to get from JWT if present (optional)
     uploader_id = None

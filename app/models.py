@@ -201,6 +201,8 @@ class Card(db.Model):  # type: ignore[name-defined]
     lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.id'), index=True, nullable=True)
     card_type = db.Column(db.Enum('concept', 'quiz', 'video', 'interactive', name='card_type'), nullable=False, index=True)
     title = db.Column(db.String(500), nullable=False)
+    # Optional main image URL for the card (e.g., thumbnail/cover stored in R2)
+    image_url = db.Column(db.String(1024), nullable=True)
     # JSON data storing card-specific content (blocks for concept, questions for quiz, etc.)
     data_json = db.Column(JSON_COL, nullable=True)
     # Display order within the topic/lesson
