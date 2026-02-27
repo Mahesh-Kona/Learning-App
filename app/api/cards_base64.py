@@ -57,19 +57,13 @@ def _process_concept_blocks_and_collect_urls(blocks):
 
     Returns (updated_blocks, urls_for_card) where urls_for_card is a list of
     scheme-less URLs suitable for storing in Card.image_url as a JSON array.
-
-    If any base64 image fails to upload to R2 (for example because R2 is
-    misconfigured in the environment), this helper raises a ValueError so that
-    the calling endpoint can surface a clear error back to the client instead
-    of silently leaving base64 data in the payload.
     """
     if not isinstance(blocks, list):
         return blocks, []
 
     urls = []
-    upload_errors = []
 
-    for index, block in enumerate(blocks):
+    for block in blocks:
         if not isinstance(block, dict):
             continue
         b_type = block.get("type")
@@ -89,9 +83,8 @@ def _process_concept_blocks_and_collect_urls(blocks):
         # Otherwise, upload the base64 image to R2.
         try:
             cdn_url = upload_base64_image_to_r2(img_val, folder="images")
-        except Exception as exc:
+        except Exception:
             current_app.logger.exception("Failed to upload concept image to R2")
-            upload_errors.append(f"Failed to upload concept image #{index + 1} to R2: {exc}")
             continue
 
         # Replace block image with the full CDN URL (for browser usage).
@@ -100,20 +93,6 @@ def _process_concept_blocks_and_collect_urls(blocks):
         norm = _normalize_url_for_storage(cdn_url)
         if norm:
             urls.append(norm)
-
-    if upload_errors:
-        # If any image failed, abort the operation so the caller can show a
-        # descriptive error message to the user (e.g. R2 not configured).
-        # We include only a concise message; full details are in the logs.
-        raise ValueError(
-            "; ".join(
-                [
-                    "Some concept images could not be stored in Cloudflare R2. "
-                    "Please check your R2 configuration (R2_ACCOUNT_ID, R2_ACCESS_KEY, "
-                    "R2_SECRET_KEY, R2_BUCKET, R2_CDN_BASE) and try again."
-                ]
-            )
-        )
 
     return blocks, urls
 
@@ -401,7 +380,7 @@ def create_card():
         
         db.session.add(new_card)
         db.session.commit()
-
+        
         return {
             "success": True,
             "id": new_card.id,
@@ -417,14 +396,6 @@ def create_card():
                 "created_at": new_card.created_at.isoformat() if new_card.created_at else None
             }
         }, 201
-    except ValueError as e:
-        # Raised when concept images could not be uploaded to R2.
-        db.session.rollback()
-        return {
-            "success": False,
-            "error": str(e),
-            "code": 400,
-        }, 400
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Failed to create card')
@@ -631,7 +602,7 @@ def update_card(card_id):
             card.published = bool(data['published'])
         
         db.session.commit()
-
+        
         return {
             "success": True,
             "id": card.id,
@@ -647,14 +618,6 @@ def update_card(card_id):
                 "updated_at": card.updated_at.isoformat() if card.updated_at else None
             }
         }, 200
-    except ValueError as e:
-        # Raised when concept images could not be uploaded to R2.
-        db.session.rollback()
-        return {
-            "success": False,
-            "error": str(e),
-            "code": 400,
-        }, 400
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Failed to update card')

@@ -3,16 +3,35 @@ from datetime import timedelta
 from urllib.parse import quote_plus
 from pathlib import Path
 
-# Load .env file from project root
+# Load .env file from project root, even if python-dotenv is unavailable
+env_path = Path(__file__).parent.parent / '.env'
+
 try:
-    from dotenv import load_dotenv
-    # Find the .env file in the project root (parent of app folder)
-    env_path = Path(__file__).parent.parent / '.env'
-    load_dotenv(env_path, override=True)
-except Exception as e:
-    # python-dotenv is optional for running the app in minimal environments
-    # If it's missing, continue without loading a .env file.
-    pass
+    from dotenv import load_dotenv  # type: ignore
+except Exception:
+    # Minimal fallback loader so we don't depend on python-dotenv being installed.
+    def load_dotenv(path: Path | str | None = None, override: bool = False):  # type: ignore
+        path_obj = Path(path) if path is not None else env_path
+        if not path_obj.is_file():
+            return False
+        try:
+            with path_obj.open('r', encoding='utf8') as fh:
+                for raw_line in fh:
+                    line = raw_line.strip()
+                    if not line or line.startswith('#') or '=' not in line:
+                        continue
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip().strip('"').strip("'")
+                    if not override and key in os.environ:
+                        continue
+                    os.environ[key] = value
+            return True
+        except Exception:
+            return False
+
+# Always attempt to load the project .env into the process env
+load_dotenv(env_path, override=True)
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "change-me")

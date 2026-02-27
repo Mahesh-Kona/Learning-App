@@ -6,7 +6,12 @@ Environment variables are loaded from a .env file via python-dotenv so
 that Cloudflare R2 and other config can be managed outside the codebase.
 """
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv  # type: ignore
+except ModuleNotFoundError:  # Fallback if python-dotenv isn't installed
+    def load_dotenv(*args, **kwargs):  # type: ignore
+        """No-op fallback when python-dotenv is unavailable."""
+        return False
 
 # Load environment variables from .env (if present) before creating the app
 load_dotenv()
