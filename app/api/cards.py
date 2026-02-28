@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt
@@ -52,7 +53,51 @@ def _normalize_url_for_storage(url: str) -> str:
     return path or url
 
 
-def _process_concept_blocks_and_collect_urls(blocks):
+def _slugify_course_title(title: str) -> str:
+    """Generate a simple slug from a course title for use in image paths.
+
+    Example: "Math Grade 8" -> "math-grade-8".
+    """
+    if not isinstance(title, str):
+        return "course"
+    s = title.strip().lower()
+    if not s:
+        return "course"
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    s = re.sub(r"-+", "-", s).strip("-")
+    return s or "course"
+
+
+def _compute_course_image_slug(topic_id=None, lesson_id=None) -> str:
+    """Return a course-specific slug for storing images.
+
+    The final R2 key used for concept images will be
+    images/<course-slug>/..., so that CDN URLs look like
+    file.edusaint.in/images/<course-slug>/img.ext.
+    """
+    course_slug = "course"
+    try:
+        lesson = None
+        if lesson_id:
+            lesson = Lesson.query.get(lesson_id)
+        elif topic_id:
+            topic = Topic.query.get(topic_id)
+            if topic and getattr(topic, "lesson_id", None):
+                lesson = Lesson.query.get(topic.lesson_id)
+
+        if lesson and getattr(lesson, "course", None):
+            course = lesson.course
+            title = getattr(course, "title", None)
+            if title:
+                course_slug = _slugify_course_title(title)
+    except Exception:
+        # On any lookup/DB error, fall back to generic slug.
+        pass
+
+    return course_slug
+
+
+def _process_concept_blocks_and_collect_urls(blocks, image_folder: str = "images"):
     """Upload all base64 images in blocks to R2 and collect their URLs.
 
     Returns (updated_blocks, urls_for_card) where urls_for_card is a list of
@@ -88,7 +133,7 @@ def _process_concept_blocks_and_collect_urls(blocks):
 
         # Otherwise, upload the base64 image to R2.
         try:
-            cdn_url = upload_base64_image_to_r2(img_val, folder="images")
+            cdn_url = upload_base64_image_to_r2(img_val, folder=image_folder)
         except Exception as exc:
             current_app.logger.exception("Failed to upload concept image to R2")
             upload_errors.append(f"Failed to upload concept image #{index + 1} to R2: {exc}")
@@ -374,7 +419,17 @@ def create_card():
             # For concept cards, upload all base64 images and collect URLs.
             blocks = (data_json or {}).get('blocks') if isinstance(data_json, dict) else None
             if blocks:
-                updated_blocks, urls = _process_concept_blocks_and_collect_urls(blocks)
+                # Compute a per-course folder so CDN URLs follow
+                # file.edusaint.in/images/<course-name>/img.ext
+                image_folder = "images"
+                try:
+                    slug = _compute_course_image_slug(topic_id=topic_id, lesson_id=lesson_id)
+                    if slug:
+                        image_folder = f"images/{slug}"
+                except Exception:
+                    image_folder = "images"
+
+                updated_blocks, urls = _process_concept_blocks_and_collect_urls(blocks, image_folder=image_folder)
                 data_json['blocks'] = updated_blocks
                 if urls:
                     # Store all URLs as JSON array string in image_url column
@@ -606,7 +661,15 @@ def update_card(card_id):
                 # For concept updates, upload all base64 images and refresh URL list.
                 blocks = (payload or {}).get('blocks') if isinstance(payload, dict) else None
                 if blocks:
-                    updated_blocks, urls = _process_concept_blocks_and_collect_urls(blocks)
+                    image_folder = "images"
+                    try:
+                        slug = _compute_course_image_slug(topic_id=card.topic_id, lesson_id=card.lesson_id)
+                        if slug:
+                            image_folder = f"images/{slug}"
+                    except Exception:
+                        image_folder = "images"
+
+                    updated_blocks, urls = _process_concept_blocks_and_collect_urls(blocks, image_folder=image_folder)
                     payload['blocks'] = updated_blocks
                     if urls:
                         card.image_url = json.dumps(urls)
