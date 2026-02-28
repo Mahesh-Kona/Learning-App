@@ -53,51 +53,71 @@ def _normalize_url_for_storage(url: str) -> str:
     return path or url
 
 
-def _slugify_course_title(title: str) -> str:
-    """Generate a simple slug from a course title for use in image paths.
+def _slugify_title(title: str, default: str) -> str:
+    """Generate a simple slug from a title for use in image paths.
 
     Example: "Math Grade 8" -> "math-grade-8".
     """
     if not isinstance(title, str):
-        return "course"
+        return default
     s = title.strip().lower()
     if not s:
-        return "course"
+        return default
     s = re.sub(r"[^a-z0-9]+", "-", s)
     s = re.sub(r"-+", "-", s).strip("-")
-    return s or "course"
+    return s or default
 
 
-def _compute_course_image_slug(topic_id=None, lesson_id=None) -> str:
-    """Return a course-specific slug for storing images.
+def _compute_image_folder(topic_id=None, lesson_id=None) -> str:
+    """Return an images/<course>/<lesson>/<topic> folder for storing images.
 
-    The final R2 key used for concept images will be
-    images/<course-slug>/..., so that CDN URLs look like
-    file.edusaint.in/images/<course-slug>/img.ext.
+    This is used so CDN URLs look like:
+        file.edusaint.in/images/<course-name>/<lesson-name>/<topic-name>/img.ext
+
+    Missing pieces (no topic/lesson/course) are simply skipped.
     """
-    course_slug = "course"
+    course_slug = None
+    lesson_slug = None
+    topic_slug = None
+
     try:
         lesson = None
-        if lesson_id:
-            lesson = Lesson.query.get(lesson_id)
-        elif topic_id:
+        topic = None
+
+        if topic_id:
             topic = Topic.query.get(topic_id)
+            if topic and getattr(topic, "title", None):
+                topic_slug = _slugify_title(topic.title, "topic")
             if topic and getattr(topic, "lesson_id", None):
                 lesson = Lesson.query.get(topic.lesson_id)
 
-        if lesson and getattr(lesson, "course", None):
-            course = lesson.course
-            title = getattr(course, "title", None)
-            if title:
-                course_slug = _slugify_course_title(title)
+        if lesson_id and lesson is None:
+            lesson = Lesson.query.get(lesson_id)
+
+        if lesson is not None:
+            if getattr(lesson, "title", None):
+                lesson_slug = _slugify_title(lesson.title, "lesson")
+            if getattr(lesson, "course", None):
+                course = lesson.course
+                title = getattr(course, "title", None)
+                if title:
+                    course_slug = _slugify_title(title, "course")
     except Exception:
-        # On any lookup/DB error, fall back to generic slug.
+        # On any lookup/DB error, we'll fall back to a generic images/ folder.
         pass
 
-    return course_slug
+    parts = ["images"]
+    if course_slug:
+        parts.append(course_slug)
+    if lesson_slug:
+        parts.append(lesson_slug)
+    if topic_slug:
+        parts.append(topic_slug)
+
+    return "/".join(parts)
 
 
-def _process_concept_blocks_and_collect_urls(blocks, image_folder: str = "images"):
+def _process_concept_blocks_and_collect_urls(blocks, image_folder: str = "images", filename_prefix: str | None = None):
     """Upload all base64 images in blocks to R2 and collect their URLs.
 
     Returns (updated_blocks, urls_for_card) where urls_for_card is a list of
@@ -133,7 +153,17 @@ def _process_concept_blocks_and_collect_urls(blocks, image_folder: str = "images
 
         # Otherwise, upload the base64 image to R2.
         try:
-            cdn_url = upload_base64_image_to_r2(img_val, folder=image_folder)
+            custom_filename = None
+            if filename_prefix:
+                # Use a deterministic name per card and image index, letting
+                # the upload helper append the correct extension.
+                custom_filename = f"{filename_prefix}-{index + 1}"
+
+            cdn_url = upload_base64_image_to_r2(
+                img_val,
+                folder=image_folder,
+                filename=custom_filename,
+            )
         except Exception as exc:
             current_app.logger.exception("Failed to upload concept image to R2")
             upload_errors.append(f"Failed to upload concept image #{index + 1} to R2: {exc}")
@@ -163,12 +193,15 @@ def _process_concept_blocks_and_collect_urls(blocks, image_folder: str = "images
     return blocks, urls
 
 
-def _collect_quiz_image_urls(data_json):
-    """Collect all image URLs from quiz data_json.
+def _collect_quiz_image_urls(data_json, topic_id=None, lesson_id=None, card_id=None):
+    """Upload/normalize all quiz images in data_json and collect their URLs.
 
-    We don't upload anything here because quiz builder already uses /uploads
-    to store media and returns URLs. We simply gather all relevant image URLs
-    so they can be stored in Card.image_url as a JSON array.
+    This processes question-level, option-level, and media images:
+      - If value is base64 (data:image/...), it is uploaded to R2 under
+        images/<course>/<lesson>/<topic>/<card_id>-N.ext and replaced with the
+        resulting CDN URL.
+      - Otherwise, URLs are normalized to a scheme-less host/path form and
+        collected as-is.
     """
     if not isinstance(data_json, dict):
         return []
@@ -178,17 +211,114 @@ def _collect_quiz_image_urls(data_json):
         return []
 
     urls = []
+    upload_errors = []
+    image_folder = None
+    image_counter = 0
+
+    def _ensure_folder() -> str:
+        nonlocal image_folder
+        if image_folder is None:
+            try:
+                image_folder = _compute_image_folder(topic_id=topic_id, lesson_id=lesson_id)
+            except Exception:
+                image_folder = "images"
+        return image_folder
+
+    def _handle_image_url(raw_val: str):
+        nonlocal image_counter
+        if not isinstance(raw_val, str) or not raw_val:
+            return None
+
+        # Base64 image: upload to R2 and return CDN URL
+        if raw_val.startswith("data:image"):
+            folder = _ensure_folder()
+            image_counter += 1
+            filename_base = str(card_id) if card_id is not None else "quiz"
+            filename = f"{filename_base}-{image_counter}"
+            try:
+                cdn_url = upload_base64_image_to_r2(
+                    raw_val,
+                    folder=folder,
+                    filename=filename,
+                )
+            except Exception as exc:
+                current_app.logger.exception("Failed to upload quiz image to R2")
+                upload_errors.append(f"Failed to upload quiz image #{image_counter} to R2: {exc}")
+                return None
+
+            norm = _normalize_url_for_storage(cdn_url)
+            if norm:
+                urls.append(norm)
+            return cdn_url
+
+        # Non-base64: attempt to remap our own CDN URLs into the
+        # structured course/lesson/topic/card_id folder, otherwise
+        # just normalize and keep as-is.
+        norm = _normalize_url_for_storage(raw_val)
+        if not norm:
+            return None
+
+        # Determine our CDN host (scheme-less) for safety checks
+        cdn_host = (os.getenv("R2_CDN_BASE", "") or CDN_BASE or "").strip()
+        if cdn_host and "://" in cdn_host:
+            cdn_host = cdn_host.split("://", 1)[1]
+
+        # Split normalized URL into host/path
+        # norm is expected to be host/path at this point.
+        parts = norm.split("/", 1)
+        if len(parts) == 2:
+            host_part, path_part = parts[0], parts[1]
+        else:
+            host_part, path_part = "", parts[0]
+
+        # If this points at our CDN and is under images/, copy it to
+        # the structured folder with a card-based filename.
+        if cdn_host and host_part == cdn_host and path_part.startswith("images/") and R2_BUCKET:
+            folder = _ensure_folder()
+            image_counter += 1
+            filename_base = str(card_id) if card_id is not None else "quiz"
+
+            # Derive extension from existing key, fallback to jpg
+            ext = "jpg"
+            try:
+                last_segment = path_part.rsplit("/", 1)[-1]
+                if "." in last_segment:
+                    ext = last_segment.rsplit(".", 1)[-1] or ext
+            except Exception:
+                pass
+
+            new_key = f"{folder}/{filename_base}-{image_counter}.{ext}"
+
+            try:
+                # Copy existing object to new structured key
+                s3.copy_object(
+                    Bucket=R2_BUCKET,
+                    CopySource={"Bucket": R2_BUCKET, "Key": path_part},
+                    Key=new_key,
+                )
+                cdn_url = f"{CDN_BASE}/{new_key}"
+                new_norm = _normalize_url_for_storage(cdn_url)
+                if new_norm:
+                    urls.append(new_norm)
+                return cdn_url
+            except Exception:
+                # If copy fails, fall back to storing the original URL
+                urls.append(norm)
+                return raw_val
+
+        # Fallback: just keep normalized URL
+        urls.append(norm)
+        return raw_val
 
     for q in questions:
         if not isinstance(q, dict):
             continue
 
         # 1) Question-level image
-        url = q.get("questionImageUrl")
-        if isinstance(url, str) and url:
-            norm = _normalize_url_for_storage(url)
-            if norm:
-                urls.append(norm)
+        if isinstance(q.get("questionImageUrl"), str):
+            new_val = _handle_image_url(q["questionImageUrl"])
+            if new_val:
+                q["questionImageUrl"] = new_val
 
         # 2) Option-level image URLs, if present
         options = q.get("options") or []
@@ -196,11 +326,10 @@ def _collect_quiz_image_urls(data_json):
             for opt in options:
                 if not isinstance(opt, dict):
                     continue
-                ou = opt.get("imageUrl")
-                if isinstance(ou, str) and ou:
-                    norm = _normalize_url_for_storage(ou)
-                    if norm:
-                        urls.append(norm)
+                if isinstance(opt.get("imageUrl"), str):
+                    new_val = _handle_image_url(opt["imageUrl"])
+                    if new_val:
+                        opt["imageUrl"] = new_val
 
         # 3) Media object (include only if it's an image)
         media = q.get("media")
@@ -208,9 +337,9 @@ def _collect_quiz_image_urls(data_json):
             mu = media.get("url")
             mtype = media.get("type") or ""
             if isinstance(mu, str) and mu and (not mtype or str(mtype).startswith("image")):
-                norm = _normalize_url_for_storage(mu)
-                if norm:
-                    urls.append(norm)
+                new_val = _handle_image_url(mu)
+                if new_val:
+                    media["url"] = new_val
 
     # De-duplicate while preserving order
     seen = set()
@@ -220,6 +349,17 @@ def _collect_quiz_image_urls(data_json):
             continue
         seen.add(u)
         deduped.append(u)
+
+    if upload_errors:
+        raise ValueError(
+            "; ".join(
+                [
+                    "Some quiz images could not be stored in Cloudflare R2. "
+                    "Please check your R2 configuration (R2_ACCOUNT_ID, R2_ACCESS_KEY, "
+                    "R2_SECRET_KEY, R2_BUCKET, R2_CDN_BASE) and try again.",
+                ]
+            )
+        )
 
     return deduped
 
@@ -415,46 +555,63 @@ def create_card():
 
     try:
         data_json = data.get('data_json', {})
-        if card_type == 'concept':
-            # For concept cards, upload all base64 images and collect URLs.
-            blocks = (data_json or {}).get('blocks') if isinstance(data_json, dict) else None
-            if blocks:
-                # Compute a per-course folder so CDN URLs follow
-                # file.edusaint.in/images/<course-name>/img.ext
-                image_folder = "images"
-                try:
-                    slug = _compute_course_image_slug(topic_id=topic_id, lesson_id=lesson_id)
-                    if slug:
-                        image_folder = f"images/{slug}"
-                except Exception:
-                    image_folder = "images"
 
-                updated_blocks, urls = _process_concept_blocks_and_collect_urls(blocks, image_folder=image_folder)
-                data_json['blocks'] = updated_blocks
-                if urls:
-                    # Store all URLs as JSON array string in image_url column
-                    image_url = json.dumps(urls)
-            data_json = compress_images_in_json(data_json)
-        elif card_type == 'quiz':
-            # For quiz cards, collect all image URLs from questions/options/media.
-            quiz_urls = _collect_quiz_image_urls(data_json)
-            if quiz_urls:
-                image_url = json.dumps(quiz_urls)
-            data_json = compress_images_in_json(data_json)
-
+        # Create the card row early so we have an id available for
+        # constructing deterministic image filenames like card_id-1.ext.
         new_card = Card(
             card_type=card_type,
             title=title,
-            image_url=image_url,
-            data_json=data_json,
+            image_url=None,
+            data_json=None,
             topic_id=topic_id,
             lesson_id=lesson_id,
             display_order=data.get('display_order', 0),
             created_by=created_by_val,
-            published=True
+            published=True,
         )
-        
+
         db.session.add(new_card)
+        db.session.flush()  # assigns new_card.id without committing
+
+        if card_type == 'concept':
+            # For concept cards, upload all base64 images and collect URLs.
+            blocks = (data_json or {}).get('blocks') if isinstance(data_json, dict) else None
+            if blocks:
+                # Compute a per-course/lesson/topic folder so CDN URLs follow
+                # file.edusaint.in/images/<course-name>/<lesson-name>/<topic-name>/card_id-1.ext
+                try:
+                    image_folder = _compute_image_folder(topic_id=topic_id, lesson_id=lesson_id)
+                except Exception:
+                    image_folder = "images"
+
+                updated_blocks, urls = _process_concept_blocks_and_collect_urls(
+                    blocks,
+                    image_folder=image_folder,
+                    filename_prefix=str(new_card.id),
+                )
+                data_json['blocks'] = updated_blocks
+                if urls:
+                    # Store all URLs as JSON array string in image_url column
+                    new_card.image_url = json.dumps(urls)
+            data_json = compress_images_in_json(data_json)
+        elif card_type == 'quiz':
+            # For quiz cards, upload/normalize all images and collect URLs.
+            quiz_urls = _collect_quiz_image_urls(
+                data_json,
+                topic_id=topic_id,
+                lesson_id=lesson_id,
+                card_id=new_card.id,
+            )
+            if quiz_urls:
+                new_card.image_url = json.dumps(quiz_urls)
+            data_json = compress_images_in_json(data_json)
+        else:
+            # For other types, honor explicit image_url if provided.
+            new_card.image_url = image_url
+
+        # Store final payload on the card row
+        new_card.data_json = data_json
+
         db.session.commit()
 
         return {
@@ -661,22 +818,28 @@ def update_card(card_id):
                 # For concept updates, upload all base64 images and refresh URL list.
                 blocks = (payload or {}).get('blocks') if isinstance(payload, dict) else None
                 if blocks:
-                    image_folder = "images"
                     try:
-                        slug = _compute_course_image_slug(topic_id=card.topic_id, lesson_id=card.lesson_id)
-                        if slug:
-                            image_folder = f"images/{slug}"
+                        image_folder = _compute_image_folder(topic_id=card.topic_id, lesson_id=card.lesson_id)
                     except Exception:
                         image_folder = "images"
 
-                    updated_blocks, urls = _process_concept_blocks_and_collect_urls(blocks, image_folder=image_folder)
+                    updated_blocks, urls = _process_concept_blocks_and_collect_urls(
+                        blocks,
+                        image_folder=image_folder,
+                        filename_prefix=str(card.id),
+                    )
                     payload['blocks'] = updated_blocks
                     if urls:
                         card.image_url = json.dumps(urls)
                 payload = compress_images_in_json(payload)
             elif card.card_type == 'quiz':
-                # For quiz updates, refresh all image URLs from questions/options/media.
-                quiz_urls = _collect_quiz_image_urls(payload)
+                # For quiz updates, upload/refresh all image URLs from questions/options/media.
+                quiz_urls = _collect_quiz_image_urls(
+                    payload,
+                    topic_id=card.topic_id,
+                    lesson_id=card.lesson_id,
+                    card_id=card.id,
+                )
                 if quiz_urls:
                     card.image_url = json.dumps(quiz_urls)
                 payload = compress_images_in_json(payload)
