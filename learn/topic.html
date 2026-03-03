@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BYTE – Topic</title>
+<meta name="description" content=""/>
+<link rel="canonical" href=""/>
+<link rel="stylesheet" href="/assets/byte.css"/>
+<style>
+.page-hero{padding:36px clamp(20px,6vw,80px) 44px;color:#fff;}
+.page-hero .tag{font-size:.7rem;font-weight:800;opacity:.7;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;}
+.page-hero h1{font-family:'Baloo 2',sans-serif;font-size:clamp(1.6rem,3.5vw,2.3rem);font-weight:900;margin-bottom:6px;}
+.page-hero p{opacity:.8;font-size:.88rem;font-weight:600;}
+
+/* Cards — clickable, locked feel */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:32px;}
+.card-item{
+  background:var(--white);border-radius:16px;padding:18px 18px 16px;
+  cursor:pointer;position:relative;overflow:hidden;
+  box-shadow:0 2px 12px rgba(0,0,0,.06);
+  transition:transform .2s,box-shadow .2s;
+  border-left:4px solid transparent;
+}
+.card-item:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.11);}
+.card-item .ctype{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:50px;font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;}
+.card-item .ctitle{font-weight:800;font-size:.92rem;line-height:1.38;margin-bottom:6px;}
+.card-item .cmeta{font-size:.74rem;color:var(--muted);font-weight:600;}
+
+/* Lock overlay on card when not logged in */
+.card-item .lock{
+  position:absolute;top:12px;right:12px;
+  width:26px;height:26px;border-radius:50%;
+  background:#f3f4f6;display:flex;align-items:center;justify-content:center;
+  font-size:.85rem;
+}
+
+/* Unlock CTA strip */
+.unlock-strip{
+  background:linear-gradient(135deg,#312e81,#4f46e5);
+  border-radius:20px;padding:28px 24px;color:#fff;text-align:center;
+  margin-bottom:24px;
+}
+.unlock-strip h3{font-family:'Baloo 2',sans-serif;font-size:1.2rem;font-weight:900;margin-bottom:6px;}
+.unlock-strip p{font-size:.86rem;opacity:.88;font-weight:600;margin-bottom:18px;line-height:1.5;}
+.unlock-btn{display:inline-block;background:#fff;color:#4338ca;padding:11px 28px;border-radius:50px;font-weight:800;font-size:.92rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18);transition:transform .2s;border:none;font-family:'Nunito',sans-serif;}
+.unlock-btn:hover{transform:translateY(-2px);}
+
+/* After login — app CTA */
+.app-cta{
+  background:linear-gradient(135deg,#059669,#10b981);
+  border-radius:20px;padding:28px 24px;color:#fff;text-align:center;
+}
+.app-cta h3{font-family:'Baloo 2',sans-serif;font-size:1.2rem;font-weight:900;margin-bottom:6px;}
+.app-cta p{font-size:.86rem;opacity:.88;font-weight:600;margin-bottom:18px;line-height:1.5;}
+.app-btn{display:inline-block;background:#fff;color:#065f46;padding:11px 28px;border-radius:50px;font-weight:800;font-size:.92rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.15);transition:transform .2s;border:none;font-family:'Nunito',sans-serif;}
+.app-btn:hover{transform:translateY(-2px);}
+</style>
+</head>
+<body>
+<div id="nav-el"></div>
+<section class="page-hero" id="hero">
+  <div style="max-width:860px;margin:0 auto;" id="hero-inner">
+    <div class="b-spin"><div class="spin"></div></div>
+  </div>
+</section>
+
+<main style="padding-top:28px;padding-bottom:20px;">
+  <div class="b-wrap b-page" style="max-width:860px;">
+    <div class="b-crumb" id="crumb"></div>
+    <div id="main-content">
+      <div class="b-spin"><div class="spin"></div><p>Loading…</p></div>
+    </div>
+  </div>
+</main>
+
+<div id="footer-el"></div>
+<script src="/assets/byte.js"></script>
+<script>
+  document.getElementById('nav-el').innerHTML = BYTE.nav('learn');
+  document.getElementById('footer-el').innerHTML = BYTE.footer();
+  BYTE.updateNav();
+
+  const parts      = BYTE.pathParts();
+  const classSlug  = parts[1]||'';
+  const courseSlug = parts[2]||'';
+  const lessonSlug = parts[3]||'';
+  const topicSlug  = parts[4]||'';
+
+  const TYPE_META = {
+    concept:     {ico:'🧠', col:'var(--c4)', bg:'var(--c4l)', lbl:'Concept'},
+    quiz:        {ico:'❓', col:'var(--c1)', bg:'var(--c1l)', lbl:'Quiz'},
+    video:       {ico:'🎬', col:'var(--c5)', bg:'var(--c5l)', lbl:'Video'},
+    interactive: {ico:'🎮', col:'var(--c3)', bg:'var(--c3l)', lbl:'Interactive'},
+  };
+
+  const HEROS = [
+    'linear-gradient(135deg,#0369a1,#0ea5e9)',
+    'linear-gradient(135deg,#065f46,#10b981)',
+    'linear-gradient(135deg,#6d28d9,#8b5cf6)',
+    'linear-gradient(135deg,#9d174d,#ec4899)',
+    'linear-gradient(135deg,#92400e,#f59e0b)',
+    'linear-gradient(135deg,#1e1b4b,#4338ca)',
+  ];
+  document.getElementById('hero').style.background = HEROS[(topicSlug.charCodeAt(0)||0) % HEROS.length];
+
+  let _topicId   = null;
+  let _topicTitle = '';
+
+  async function init(){
+    // Step 1: find course
+    const d = await BYTE.api('/courses?limit=200');
+    const all = d?.data||d?.courses||[];
+    const course = all.find(c=>{
+      const clMatch = BYTE.slug(String(c.class_name||'').trim())===classSlug || String(c.class_name||'').trim()===classSlug;
+      return clMatch && BYTE.slug(c.title||'')===courseSlug;
+    });
+
+    const className   = course ? String(course.class_name||'').trim() : BYTE.unslug(classSlug);
+    const courseTitle = course ? course.title : BYTE.unslug(courseSlug);
+    const classSlugN  = BYTE.slug(className);
+
+    // Step 2: lesson
+    let lesson = null;
+    if(course){
+      const ld = await BYTE.api(`/courses/${course.id}/lessons`);
+      const lessons = ld?.lessons||ld?.data||[];
+      lesson = lessons.find(l => BYTE.slug(l.title||'')===lessonSlug);
+    }
+    const lessonTitle = lesson ? lesson.title : BYTE.unslug(lessonSlug);
+
+    // Step 3: topics
+    let topic = null;
+    if(lesson){
+      const td = await BYTE.api(`/lessons/${lesson.id}/topics`);
+      const topics = td?.topics||td?.data||[];
+      topic = topics.find(t => BYTE.slug(t.title||'')===topicSlug);
+    }
+    const topicTitle = topic ? topic.title : BYTE.unslug(topicSlug);
+    _topicId    = topic?.id || null;
+    _topicTitle = topicTitle;
+
+    // SEO
+    BYTE.setMeta(
+      `${topicTitle} – ${lessonTitle} | ${courseTitle} Class ${className} | BYTE`,
+      `Explore "${topicTitle}" on BYTE by EduSaint. CBSE Class ${className} ${courseTitle} — concept cards, quizzes and more.`,
+      `https://byte.edusaint.in/courses/${classSlugN}/${courseSlug}/${lessonSlug}/${topicSlug}/`
+    );
+
+    // Hero
+    document.getElementById('hero-inner').innerHTML = `
+      <div class="tag">📌 Topic</div>
+      <h1>${BYTE.esc(topicTitle)}</h1>
+      <p>${BYTE.esc(lessonTitle)} &nbsp;·&nbsp; ${BYTE.esc(courseTitle)} &nbsp;·&nbsp; Class ${BYTE.esc(className)}</p>`;
+
+    // Breadcrumb
+    document.getElementById('crumb').innerHTML = `
+      <a href="/home/">Home</a><span class="sep">›</span>
+      <a href="/learn/">Courses</a><span class="sep">›</span>
+      <a href="/learn/?class=${BYTE.esc(className)}">Class ${BYTE.esc(className)}</a><span class="sep">›</span>
+      <a href="/learn/${BYTE.esc(classSlugN)}/${BYTE.esc(courseSlug)}/">${BYTE.esc(courseTitle)}</a><span class="sep">›</span>
+      <a href="/learn/${BYTE.esc(classSlugN)}/${BYTE.esc(courseSlug)}/${BYTE.esc(lessonSlug)}/">${BYTE.esc(lessonTitle)}</a><span class="sep">›</span>
+      <span class="cur">${BYTE.esc(topicTitle)}</span>`;
+
+    // Step 4: fetch cards (titles only — content behind login)
+    let cards = [];
+    if(topic){
+      const cd = await BYTE.api(`/topics/${topic.id}/cards`);
+      cards = (cd?.cards||cd?.data||[]).filter(c => c.published !== false);
+    }
+
+    renderContent(cards, topicTitle);
+  }
+
+  function renderContent(cards, topicTitle){
+    const isLoggedIn = BYTE.auth.isIn();
+    const main = document.getElementById('main-content');
+
+    if(!cards.length){
+      main.innerHTML = isLoggedIn
+        ? renderAppCTA(topicTitle)
+        : renderUnlockStrip() + BYTE.empty('No cards yet for this topic!');
+      return;
+    }
+
+    const cardItems = cards.map(card => {
+      const m = TYPE_META[card.card_type] || {ico:'📄', col:'var(--muted)', bg:'#f3f4f6', lbl:'Card'};
+      return `
+        <div class="card-item" style="border-left-color:${m.col};" onclick="handleCardClick(${card.id}, '${BYTE.esc(card.title)}')">
+          <div class="ctype" style="background:${m.bg};color:${m.col};">${m.ico} ${m.lbl}</div>
+          <div class="ctitle">${BYTE.esc(card.title)}</div>
+          <div class="cmeta">${isLoggedIn ? 'Tap to open in app' : 'Login to access'}</div>
+          <div class="lock">${isLoggedIn ? '📱' : '🔒'}</div>
+        </div>`;
+    }).join('');
+
+    let html = `
+      <div class="b-sh">
+        <h2>Cards <em>🃏</em></h2>
+        <p>${cards.length} card${cards.length!==1?'s':''} · ${isLoggedIn ? 'Tap any card to open in BYTE App' : 'Login to access interactive content'}</p>
+      </div>`;
+
+    if(!isLoggedIn){
+      html += renderUnlockStrip();
+    }
+
+    html += `<div class="card-grid">${cardItems}</div>`;
+
+    if(isLoggedIn){
+      html += renderAppCTA(topicTitle);
+    }
+
+    main.innerHTML = html;
+  }
+
+  function renderUnlockStrip(){
+    return `
+      <div class="unlock-strip">
+        <div style="font-size:2rem;margin-bottom:8px;">🔐</div>
+        <h3>Login to Access Content</h3>
+        <p>Create a free account or login to access cards, quizzes and open them in the BYTE app.</p>
+        <button class="unlock-btn" onclick="BYTE.showLoginPopup(onLoginSuccess)">Login / Sign Up Free →</button>
+      </div>`;
+  }
+
+  function renderAppCTA(title){
+    return `
+      <div class="app-cta">
+        <div style="font-size:2.2rem;margin-bottom:8px;">📱</div>
+        <h3>Open in BYTE App</h3>
+        <p>Tap through interactive flashcards, attempt quizzes and track your progress in the BYTE mobile app.</p>
+        <button class="app-btn" onclick="BYTE.openInApp(${_topicId || 0}, '${BYTE.esc(title)}')">Open in BYTE App →</button>
+      </div>`;
+  }
+
+  function handleCardClick(cardId, title){
+    if(!BYTE.auth.isIn()){
+      // Show login popup; after login → open app
+      BYTE.showLoginPopup(()=>{
+        BYTE.openInApp(_topicId, _topicTitle);
+      });
+    } else {
+      // Already logged in → straight to app
+      BYTE.openInApp(_topicId, _topicTitle);
+    }
+  }
+
+  function onLoginSuccess(){
+    // Re-render page with logged-in state
+    BYTE.updateNav();
+    init(); // re-fetch and re-render with unlocked UI
+  }
+
+  init();
+</script>
+</body>
+</html>

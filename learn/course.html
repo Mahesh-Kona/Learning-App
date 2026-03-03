@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BYTE – Course</title>
+<meta name="description" content=""/>
+<link rel="canonical" href=""/>
+<link rel="stylesheet" href="/assets/byte.css"/>
+<style>
+.page-hero{padding:44px clamp(20px,6vw,80px) 52px;color:#fff;}
+.page-hero h1{font-family:'Baloo 2',sans-serif;font-size:clamp(1.8rem,4vw,2.7rem);font-weight:900;margin-bottom:8px;}
+.page-hero p{opacity:.85;font-size:.96rem;font-weight:600;line-height:1.6;max-width:520px;}
+.hero-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.hero-tag{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);padding:4px 12px;border-radius:50px;font-size:.73rem;font-weight:700;backdrop-filter:blur(6px);}
+</style>
+</head>
+<body>
+<div id="nav-el"></div>
+<section class="page-hero" id="hero" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);">
+  <div style="max-width:1100px;margin:0 auto;" id="hero-inner">
+    <div class="b-spin"><div class="spin"></div></div>
+  </div>
+</section>
+
+<main style="padding-top:36px;padding-bottom:20px;">
+  <div class="b-wrap b-page">
+    <div class="b-crumb" id="crumb"></div>
+    <div id="main-content">
+      <div class="b-spin"><div class="spin"></div><p>Loading lessons…</p></div>
+    </div>
+  </div>
+</main>
+
+<div id="footer-el"></div>
+<script src="/assets/byte.js"></script>
+<script>
+  document.getElementById('nav-el').innerHTML = BYTE.nav('learn');
+  document.getElementById('footer-el').innerHTML = BYTE.footer();
+  BYTE.updateNav();
+
+  // URL: /courses/{classSlug}/{courseSlug}/
+  const parts = BYTE.pathParts(); // ['courses','6','science'] or ['courses','class-6','science']
+  const classSlug  = parts[1]||'';  // e.g. "6" or "class-6"
+  const courseSlug = parts[2]||'';  // e.g. "curiosity-science-class-6"
+
+  // Hero gradients
+  const HEROS=['linear-gradient(135deg,#1d4ed8,#3b82f6)','linear-gradient(135deg,#065f46,#10b981)','linear-gradient(135deg,#6d28d9,#8b5cf6)','linear-gradient(135deg,#9a3412,#f59e0b)','linear-gradient(135deg,#9d174d,#ec4899)','linear-gradient(135deg,#0e7490,#06b6d4)','linear-gradient(135deg,#3730a3,#6366f1)'];
+  const heroBg = HEROS[(courseSlug.charCodeAt(0)||0)%HEROS.length];
+  document.getElementById('hero').style.background = heroBg;
+
+  async function init(){
+    // Fetch all courses to find matching one
+    const d = await BYTE.api('/courses?limit=200');
+    const all = d?.data||d?.courses||[];
+
+    // Match by slug of title + class
+    const course = all.find(c=>{
+      const cSlug = BYTE.slug(String(c.class_name||'').trim());
+      const tSlug = BYTE.slug(c.title||'');
+      // classSlug could be "6" or "class-6"
+      const classMatch = cSlug===classSlug || String(c.class_name||'').trim()===classSlug || BYTE.slug(String(c.class_name||'').trim())===classSlug;
+      return classMatch && tSlug===courseSlug;
+    });
+
+    const className  = course ? String(course.class_name||'').trim() : BYTE.unslug(classSlug).replace('Class ','');
+    const courseTitle = course ? course.title : BYTE.unslug(courseSlug);
+    const classSlugNorm = BYTE.slug(className);
+
+    // SEO
+    BYTE.setMeta(
+      `${courseTitle} – Class ${className} | BYTE EduSaint`,
+      `${courseTitle} lessons for CBSE Class ${className} on BYTE. ${course?.description||'Structured lessons, flashcards and quizzes.'}`,
+      `https://byte.edusaint.in/courses/${classSlugNorm}/${courseSlug}/`
+    );
+
+    // Hero content
+    document.getElementById('hero-inner').innerHTML = `
+      <div style="max-width:1100px;">
+        <h1 id="hero-title">${BYTE.esc(courseTitle)}</h1>
+        <p>${BYTE.esc(course?.description||'Explore structured lessons and interactive cards.')}</p>
+        <div class="hero-tags">
+          <span class="hero-tag">📚 Class ${BYTE.esc(className)}</span>
+          ${course?.difficulty?`<span class="hero-tag">⚡ ${BYTE.esc(course.difficulty)}</span>`:''}
+          ${course?.totalLessons?`<span class="hero-tag">📖 ${course.totalLessons} Lessons</span>`:''}
+          ${course?.totalCards?`<span class="hero-tag">🃏 ${course.totalCards} Cards</span>`:''}
+        </div>
+      </div>`;
+
+    // Breadcrumb
+    document.getElementById('crumb').innerHTML = `
+      <a href="/home/">Home</a><span class="sep">›</span>
+      <a href="/learn/">Courses</a><span class="sep">›</span>
+      <a href="/learn/?class=${BYTE.esc(className)}">Class ${BYTE.esc(className)}</a><span class="sep">›</span>
+      <span class="cur">${BYTE.esc(courseTitle)}</span>`;
+
+    if(!course){ document.getElementById('main-content').innerHTML=BYTE.empty('Course not found.'); return; }
+
+    // Fetch lessons
+    const ld = await BYTE.api(`/courses/${course.id}/lessons`);
+    const lessons = ld?.lessons||ld?.data||[];
+
+    if(!lessons.length){ document.getElementById('main-content').innerHTML=BYTE.empty('No lessons yet!'); return; }
+
+    const cards = lessons.map((l,i)=>{
+      const c=BYTE.col(i+1);
+      const lSlug=BYTE.slug(l.title);
+      return `
+        <a href="/learn/${BYTE.esc(classSlugNorm)}/${BYTE.esc(courseSlug)}/${BYTE.esc(lSlug)}/" title="${BYTE.esc(l.title)} – ${BYTE.esc(courseTitle)}">
+          <div class="c-lesson">
+            <div class="thumb col-${c}">📖</div>
+            <div class="body">
+              <div class="badge bg-${c} tc-${c}">${BYTE.esc(l.level||'Lesson')}</div>
+              <div class="title">${BYTE.esc(l.title)}</div>
+              <div class="info">
+                ${l.duration?`<span>⏱ ${l.duration} min</span>`:''}
+                <span>🗂 ${l.topics_count||l.topicCount||0} topics</span>
+                <span>🃏 ${l.cardCount||0} cards</span>
+              </div>
+            </div>
+          </div>
+        </a>`;
+    }).join('');
+
+    document.getElementById('main-content').innerHTML = `
+      <div class="b-sh"><h2>Lessons <em>📖</em></h2><p>${lessons.length} lesson${lessons.length!==1?'s':''} available</p></div>
+      <div class="g-lessons">${cards}</div>`;
+  }
+
+  init();
+</script>
+</body>
+</html>

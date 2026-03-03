@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CBSE Courses – BYTE by EduSaint</title>
+<meta name="description" content="Browse all CBSE courses on BYTE by EduSaint. Classes 6–12 — Science, Maths, Social Science and more."/>
+<link rel="canonical" href="https://byte.edusaint.in/learn/"/>
+<link rel="stylesheet" href="/assets/byte.css"/>
+<style>
+.page-hero{background:linear-gradient(135deg,#1e1b4b,#312e81,#4338ca);color:#fff;padding:40px clamp(20px,5vw,60px) 48px;}
+.page-hero h1{font-family:'Baloo 2',sans-serif;font-size:clamp(1.8rem,4vw,2.7rem);font-weight:900;margin-bottom:6px;}
+.page-hero p{opacity:.82;font-size:.96rem;font-weight:600;max-width:500px;line-height:1.6;}
+
+/* DASHBOARD HERO */
+.dash-hero{background:linear-gradient(135deg,#1e1b4b,#312e81,#4338ca);color:#fff;padding:32px clamp(20px,5vw,60px) 40px;}
+.dash-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px;}
+.dash-greet{font-family:'Baloo 2',sans-serif;font-size:1.5rem;font-weight:900;}
+.dash-greet span{opacity:.75;font-size:.92rem;font-weight:600;display:block;margin-top:3px;}
+.dash-avatar-btn{display:flex;align-items:center;gap:10px;cursor:pointer;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);padding:8px 14px 8px 8px;border-radius:50px;transition:background .2s;text-decoration:none;color:#fff;}
+.dash-avatar-btn:hover{background:rgba(255,255,255,.2);}
+.dash-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Baloo 2',sans-serif;font-size:.95rem;font-weight:900;color:#fff;}
+.dash-av-name{font-weight:700;font-size:.86rem;}
+.dash-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+@media(max-width:580px){.dash-stats{grid-template-columns:repeat(2,1fr);}}
+.dash-stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:14px 12px;text-align:center;}
+.dash-stat .val{font-family:'Baloo 2',sans-serif;font-size:1.4rem;font-weight:900;line-height:1;}
+.dash-stat .lbl{font-size:.68rem;font-weight:700;opacity:.72;margin-top:4px;}
+
+/* TABS */
+.d-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:28px;overflow-x:auto;}
+.d-tab{padding:12px 18px;font-weight:800;font-size:.86rem;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .18s;white-space:nowrap;}
+.d-tab.on{color:var(--primary);border-bottom-color:var(--primary);}
+
+/* ENROLLED */
+.enr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:28px;}
+.enr-card{background:var(--white);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:transform .22s,box-shadow .22s;}
+.enr-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);}
+.enr-top{height:72px;display:flex;align-items:center;justify-content:center;font-size:2rem;}
+.enr-body{padding:14px 16px 16px;}
+.enr-title{font-weight:800;font-size:.91rem;margin-bottom:3px;line-height:1.3;}
+.enr-meta{font-size:.73rem;color:var(--muted);font-weight:600;margin-bottom:9px;}
+.enr-pbar{height:5px;background:#e5e7eb;border-radius:50px;overflow:hidden;}
+.enr-pfill{height:100%;border-radius:50px;background:linear-gradient(90deg,var(--primary),#ec4899);}
+.enr-pct{font-size:.72rem;font-weight:800;color:var(--primary);margin-top:5px;}
+
+/* LEADERBOARD */
+.lb-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
+.lb-row:last-child{border-bottom:none;padding-bottom:0;}
+.lb-rank{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.8rem;flex-shrink:0;background:#f3f4f6;}
+.lb-me{background:#eef2ff;border-radius:10px;padding:11px 10px;margin:0 -10px;}
+.lb-name{flex:1;font-weight:700;font-size:.86rem;}
+.lb-time{font-weight:800;font-size:.82rem;color:var(--primary);}
+
+/* NOTIFS */
+.notif-row{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.notif-row:last-child{border-bottom:none;}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:5px;}
+.notif-title{font-weight:800;font-size:.86rem;margin-bottom:2px;}
+.notif-msg{font-size:.76rem;color:var(--muted);font-weight:600;line-height:1.5;}
+
+/* BROWSE */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px;}
+.fpill{padding:7px 16px;border-radius:50px;border:2px solid var(--border);background:var(--white);font-weight:700;font-size:.83rem;cursor:pointer;transition:all .18s;color:var(--muted);}
+.fpill:hover,.fpill.active{border-color:var(--primary);color:var(--primary);background:#eef2ff;}
+.cls-section{margin-bottom:38px;}
+.cls-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);}
+.cls-tag{display:inline-flex;align-items:center;gap:6px;border-radius:50px;padding:6px 16px;font-family:'Baloo 2',sans-serif;font-size:.92rem;font-weight:800;}
+
+/* CARD SECTION WRAPPER */
+.tab-card{background:var(--white);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);}
+</style>
+</head>
+<body>
+<div id="nav-el"></div>
+<div id="hero-section"></div>
+
+<main style="padding-top:36px;padding-bottom:20px;">
+  <div class="b-wrap b-page">
+    <div id="main-content">
+      <div class="b-spin"><div class="spin"></div><p>Loading…</p></div>
+    </div>
+  </div>
+</main>
+
+<div id="footer-el"></div>
+<script src="/assets/byte.js"></script>
+<script>
+document.getElementById('nav-el').innerHTML = BYTE.nav('learn');
+document.getElementById('footer-el').innerHTML = BYTE.footer();
+BYTE.updateNav();
+
+const isLoggedIn = BYTE.auth.isIn();
+const _urlClass = new URLSearchParams(window.location.search).get('class');
+// If ?class= param in URL, always show browse (even if logged in)
+if(isLoggedIn && !_urlClass) initDashboard();
+else initBrowse();
+
+// ══════════════════════════════════
+// BROWSE MODE (logged out)
+// ══════════════════════════════════
+async function initBrowse(){
+  document.getElementById('hero-section').innerHTML=`
+    <div class="page-hero">
+      <h1>All Courses 📚</h1>
+      <p>Choose your class and subject. Every course is NCERT-aligned with structured lessons and interactive cards.</p>
+    </div>`;
+
+  const urlP = new URLSearchParams(window.location.search);
+  let activeClass = urlP.get('class')||'all';
+  let allCourses=[], allClasses=[];
+
+  const [cd,crd] = await Promise.all([BYTE.api('/classes'), BYTE.api('/courses?limit=200')]);
+  allClasses = cd?.classes||[];
+  allCourses = (crd?.data||crd?.courses||[]).filter(c=>c.published!==false);
+
+  function paint(){
+    const pills = [{id:'all'},...allClasses].map(cls=>{
+      const key = cls.id==='all'?'all':String(cls.name||cls.id);
+      return `<div class="fpill ${activeClass===key?'active':''}" onclick="browseSetClass('${key}')">
+        ${cls.id==='all'?'All Classes':'Class '+BYTE.esc(String(cls.name||cls.id))}
+        ${cls.courses_count!=null?' <small style="opacity:.6">('+cls.courses_count+')</small>':''}
+      </div>`;
+    }).join('');
+
+    let filtered = activeClass==='all' ? allCourses : allCourses.filter(c=>String(c.class_name||'').trim()===activeClass);
+    if(!filtered.length){ document.getElementById('main-content').innerHTML=`<div class="filter-bar">${pills}</div>`+BYTE.empty('No courses found!'); return; }
+
+    const groups={};
+    filtered.forEach(c=>{ const k=String(c.class_name||'Other').trim(); if(!groups[k])groups[k]=[]; groups[k].push(c); });
+    const keys=Object.keys(groups).sort((a,b)=>parseFloat(a)-parseFloat(b)||a.localeCompare(b));
+
+    const secs=keys.map((cls,gi)=>{
+      const cc=BYTE.col(gi+1);
+      const cards=groups[cls].map((course,i)=>`
+        <a href="/learn/${BYTE.esc(BYTE.slug(cls))}/${BYTE.esc(BYTE.slug(course.title))}/">
+          <div class="c-subject">
+            <div class="ico bg-${BYTE.col(i+1)} tc-${BYTE.col(i+1)}">${BYTE.icon(course.category||course.title)}</div>
+            <div>
+              <div class="name">${BYTE.esc(course.title)}</div>
+              <div class="meta">${BYTE.esc(course.category||'CBSE')} · ${course.totalLessons||0} lessons · ${course.totalCards||0} cards</div>
+            </div>
+          </div>
+        </a>`).join('');
+      return `<section class="cls-section">
+        <div class="cls-head">
+          <div class="cls-tag col-${cc}">${BYTE.cemoji(cls)} Class ${BYTE.esc(cls)}</div>
+          <span style="color:var(--muted);font-size:.8rem;font-weight:700;">${groups[cls].length} subject${groups[cls].length!==1?'s':''}</span>
+        </div>
+        <div class="g-subjects">${cards}</div>
+      </section>`;
+    }).join('');
+
+    document.getElementById('main-content').innerHTML=`<div class="filter-bar">${pills}</div>${secs}`;
+  }
+
+  window.browseSetClass=function(c){
+    activeClass=c;
+    const u=new URL(window.location);
+    c==='all'?u.searchParams.delete('class'):u.searchParams.set('class',c);
+    window.history.replaceState({},'',u);
+    paint();
+  };
+  paint();
+}
+
+// ══════════════════════════════════
+// DASHBOARD MODE (logged in)
+// ══════════════════════════════════
+let _myId=null, _myName='Student';
+
+async function initDashboard(){
+  const [me, settings] = await Promise.all([BYTE.api('/auth/verify'), BYTE.api('/settings')]);
+  if(!me?.success){ BYTE.auth.clear(); location.reload(); return; }
+  _myId   = me?.user?.id||me?.user;
+  const s = settings?.settings||{};
+  _myName = s.display_name||s.name||s.email||'Student';
+
+  renderDashHero(s);
+  loadDashStats();
+  renderTabs('enrolled');
+  loadTab('enrolled');
+}
+
+function getInitials(n='',e=''){
+  if(n.trim()){const p=n.trim().split(' ');return(p.length>1?p[0][0]+p[1][0]:p[0].slice(0,2)).toUpperCase();}
+  return (e||'?').slice(0,2).toUpperCase();
+}
+function avatarBg(s=''){
+  const cs=['linear-gradient(135deg,#f59e0b,#ef4444)','linear-gradient(135deg,#8b5cf6,#ec4899)','linear-gradient(135deg,#10b981,#3b82f6)','linear-gradient(135deg,#4f46e5,#7c3aed)'];
+  let h=0; for(let c of s) h=c.charCodeAt(0)+((h<<5)-h); return cs[Math.abs(h)%cs.length];
+}
+
+function renderDashHero(s){
+  const h    = new Date().getHours();
+  const greet= h<12?'Good morning ☀️':h<17?'Good afternoon 🌤️':'Good evening 🌙';
+  const name = s.display_name||s.name||'Student';
+  const initials = getInitials(name, s.email||'');
+  const bg   = avatarBg(name||s.email||'');
+
+  document.getElementById('hero-section').innerHTML=`
+    <div class="dash-hero">
+      <div style="max-width:1100px;margin:0 auto;">
+        <div class="dash-top">
+          <div>
+            <div class="dash-greet">${greet}, ${BYTE.esc(name.split(' ')[0])} 👋
+              <span>Here's your learning dashboard</span>
+            </div>
+          </div>
+          <a href="/profile/" class="dash-avatar-btn">
+            <div class="dash-av" style="background:${bg};">${BYTE.esc(initials)}</div>
+            <div class="dash-av-name">${BYTE.esc(name)}</div>
+          </a>
+        </div>
+        <div class="dash-stats" id="dash-stats">
+          <div class="dash-stat"><div class="val">…</div><div class="lbl">Enrolled</div></div>
+          <div class="dash-stat"><div class="val">…</div><div class="lbl">Completed</div></div>
+          <div class="dash-stat"><div class="val">…</div><div class="lbl">Topics Done</div></div>
+          <div class="dash-stat"><div class="val">…</div><div class="lbl">Time Spent</div></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function loadDashStats(){
+  const pd = await BYTE.api('/students/progress');
+  const p  = pd?.progress||{};
+  const t  = p.total_learning_time||0;
+  const hrs= Math.floor(t/3600), mins=Math.floor((t%3600)/60);
+  const el = document.getElementById('dash-stats'); if(!el) return;
+  el.innerHTML=`
+    <div class="dash-stat"><div class="val">${p.total_courses_enrolled||0}</div><div class="lbl">Enrolled</div></div>
+    <div class="dash-stat"><div class="val">${p.total_courses_completed||0}</div><div class="lbl">Completed</div></div>
+    <div class="dash-stat"><div class="val">${p.total_topics_completed||0}</div><div class="lbl">Topics Done</div></div>
+    <div class="dash-stat"><div class="val">${hrs>0?hrs+'h ':''}${mins}m</div><div class="lbl">Time Spent</div></div>`;
+}
+
+function renderTabs(active){
+  document.getElementById('main-content').innerHTML=`
+    <div class="d-tabs">
+      <div class="d-tab on"  id="tab-enrolled"       onclick="loadTab('enrolled')">📚 My Courses</div>
+      <div class="d-tab"     id="tab-browse"          onclick="loadTab('browse')">🔍 Browse All</div>
+      <div class="d-tab"     id="tab-leaderboard"     onclick="loadTab('leaderboard')">🏆 Leaderboard</div>
+      <div class="d-tab"     id="tab-notifications"   onclick="loadTab('notifications')">🔔 Notifications</div>
+    </div>
+    <div id="tab-content"></div>`;
+}
+
+window.loadTab = async function(tab){
+  ['enrolled','browse','leaderboard','notifications'].forEach(t=>{
+    document.getElementById('tab-'+t)?.classList.toggle('on', t===tab);
+  });
+  const tc = document.getElementById('tab-content');
+  tc.innerHTML = BYTE.spinner();
+  if(tab==='enrolled')       await tabEnrolled(tc);
+  else if(tab==='browse')    await tabBrowse(tc);
+  else if(tab==='leaderboard')    await tabLeaderboard(tc);
+  else if(tab==='notifications')  await tabNotifications(tc);
+};
+
+// ── MY COURSES TAB ──
+async function tabEnrolled(el){
+  const d = await BYTE.api('/students/enrollments');
+  const list = d?.enrollments||[];
+  if(!list.length){
+    el.innerHTML=`<div class="b-empty"><div class="ico">📭</div><p style="margin-bottom:16px;">No enrolled courses yet.</p>
+      <button class="b-btn b-btn-primary" onclick="loadTab('browse')" style="margin:0 auto;display:flex;">Browse Courses →</button></div>`;
+    return;
+  }
+  const cards=list.map((e,i)=>{
+    const c=BYTE.col(i+1);
+    const pct=Math.round(e.progress_percent||0);
+    const clsSlug=BYTE.slug(String(e.class_name||'').trim());
+    const cSlug=BYTE.slug(e.course_title||'');
+    return `<a href="/learn/${BYTE.esc(clsSlug)}/${BYTE.esc(cSlug)}/">
+      <div class="enr-card">
+        <div class="enr-top col-${c}">${BYTE.icon(e.course_title||'')}</div>
+        <div class="enr-body">
+          <div class="enr-title">${BYTE.esc(e.course_title||'Course')}</div>
+          <div class="enr-meta">${e.completed_topics||0}/${e.total_topics||0} topics</div>
+          <div class="enr-pbar"><div class="enr-pfill" style="width:${pct}%"></div></div>
+          <div class="enr-pct">${pct}% ${pct===100?'✅':''}</div>
+        </div>
+      </div>
+    </a>`;
+  }).join('');
+  el.innerHTML=`<div class="enr-grid">${cards}</div>`;
+}
+
+// ── BROWSE TAB ──
+async function tabBrowse(el){
+  let activeClass='all';
+  const [cd,crd]=await Promise.all([BYTE.api('/classes'),BYTE.api('/courses?limit=200')]);
+  const allClasses=cd?.classes||[];
+  const allCourses=(crd?.data||crd?.courses||[]).filter(c=>c.published!==false);
+
+  function paint(){
+    const pills=[{id:'all'},...allClasses].map(cls=>{
+      const key=cls.id==='all'?'all':String(cls.name||cls.id);
+      return `<div class="fpill ${activeClass===key?'active':''}" onclick="dashBrowseCls('${key}')">
+        ${key==='all'?'All':('Class '+BYTE.esc(String(cls.name||cls.id)))}
+      </div>`;
+    }).join('');
+    let filtered=activeClass==='all'?allCourses:allCourses.filter(c=>String(c.class_name||'').trim()===activeClass);
+    const groups={};
+    filtered.forEach(c=>{const k=String(c.class_name||'Other').trim();if(!groups[k])groups[k]=[];groups[k].push(c);});
+    const keys=Object.keys(groups).sort((a,b)=>parseFloat(a)-parseFloat(b)||a.localeCompare(b));
+    const secs=keys.map((cls,gi)=>{
+      const cc=BYTE.col(gi+1);
+      const cards=groups[cls].map((course,i)=>`
+        <a href="/learn/${BYTE.esc(BYTE.slug(cls))}/${BYTE.esc(BYTE.slug(course.title))}/">
+          <div class="c-subject">
+            <div class="ico bg-${BYTE.col(i+1)} tc-${BYTE.col(i+1)}">${BYTE.icon(course.category||course.title)}</div>
+            <div>
+              <div class="name">${BYTE.esc(course.title)}</div>
+              <div class="meta">${BYTE.esc(course.category||'CBSE')} · ${course.totalLessons||0} lessons</div>
+            </div>
+          </div>
+        </a>`).join('');
+      return `<section class="cls-section">
+        <div class="cls-head"><div class="cls-tag col-${cc}">${BYTE.cemoji(cls)} Class ${BYTE.esc(cls)}</div></div>
+        <div class="g-subjects">${cards}</div>
+      </section>`;
+    }).join('');
+    el.innerHTML=`<div class="filter-bar">${pills}</div>${secs||BYTE.empty('No courses!')}`;
+  }
+  window.dashBrowseCls=function(c){activeClass=c;paint();};
+  paint();
+}
+
+// ── LEADERBOARD TAB ──
+async function tabLeaderboard(el){
+  const d=await BYTE.api('/leaderboard?limit=20');
+  const board=d?.leaderboard||[];
+  if(!board.length){el.innerHTML=BYTE.empty('No leaderboard data yet!');return;}
+  const MEDALS={1:'🥇',2:'🥈',3:'🥉'};
+  const rows=board.map(r=>{
+    const isMe=String(r.user_id)===String(_myId);
+    const hrs=Math.floor((r.total_time||0)/3600);
+    const mins=Math.floor(((r.total_time||0)%3600)/60);
+    return `<div class="lb-row ${isMe?'lb-me':''}">
+      <div class="lb-rank" style="${isMe?'background:var(--primary);color:#fff;':''}">${MEDALS[r.rank]||'#'+r.rank}</div>
+      <div class="lb-name">${BYTE.esc(r.name||r.email||'Student')}
+        ${isMe?'<span style="font-size:.68rem;color:var(--primary);font-weight:800;margin-left:4px;">(You)</span>':''}
+      </div>
+      <div style="font-size:.74rem;color:var(--muted);font-weight:600;margin-right:8px;">${r.lessons_count||0} lessons</div>
+      <div class="lb-time">${hrs>0?hrs+'h ':''}${mins}m</div>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div class="tab-card">${rows}</div>`;
+}
+
+// ── NOTIFICATIONS TAB ──
+async function tabNotifications(el){
+  const d=await BYTE.api('/notifications');
+  const list=d?.notifications||[];
+  if(!list.length){el.innerHTML=BYTE.empty('No notifications yet!');return;}
+  el.innerHTML=`<div class="tab-card">
+    ${list.map(n=>`
+      <div class="notif-row" onclick="markRead(${n.id})">
+        <div class="notif-dot" id="nd-${n.id}"></div>
+        <div>
+          <div class="notif-title">${BYTE.esc(n.title||'')}</div>
+          <div class="notif-msg">${BYTE.esc(n.message||n.body||'')}</div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+window.markRead=async function(id){
+  await BYTE.api('/notifications/'+id+'/read',{method:'POST'});
+  const dot=document.getElementById('nd-'+id);
+  if(dot){ dot.style.background='#d1d5db'; dot.title='Read'; }
+};
+</script>
+</body>
+</html>

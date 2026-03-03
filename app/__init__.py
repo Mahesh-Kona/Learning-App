@@ -179,17 +179,25 @@ def create_app():
             app.logger.exception('Failed to parse CSP report')
         return ('', 204)
 
-    @app.route('/')
+    @app.route('/home/')
+    @app.route('/home')
     def home():
-        # Serve the admin login page at the root (index)
+        """Serve the public home page from the top-level home/ directory."""
         try:
-            # Always render the site's index.html at the root.
-            # Do not redirect automatically to the admin dashboard — the user requested the
-            # root URL always show the index page.
-            from flask import render_template
-            return render_template('index.html')
+            from flask import send_from_directory as _sfd
+
+            project_root = os.path.abspath(os.path.join(app.root_path, '..'))
+            return _sfd(os.path.join(project_root, 'home'), 'index.html')
         except Exception:
+            # Fallback to a simple JSON message if the static file is missing
             return jsonify({"message": "Flask Learning Backend is running 🚀"})
+
+    @app.route('/')
+    def root_redirect_to_home():
+        """Make the site root load the /home landing page."""
+        from flask import redirect
+
+        return redirect('/home/')
 
     @app.route('/manage-cards.html')
     def manage_cards_page():

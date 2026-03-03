@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Login – BYTE by EduSaint</title>
+<meta name="description" content="Login to BYTE by EduSaint and access your CBSE courses, lessons and flashcards."/>
+<link rel="canonical" href="https://byte.edusaint.in/login/"/>
+<link rel="stylesheet" href="/assets/byte.css"/>
+<style>
+body{display:flex;flex-direction:column;min-height:100vh;}
+.lw{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 20px;}
+.lcard{background:var(--white);border-radius:28px;padding:38px 32px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(79,70,229,.13);}
+.lmark{width:60px;height:60px;border-radius:18px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-family:'Baloo 2',sans-serif;font-size:1.4rem;font-weight:900;color:#fff;margin:0 auto 14px;}
+.ltitle{text-align:center;font-family:'Baloo 2',sans-serif;font-size:1.45rem;font-weight:900;margin-bottom:4px;}
+.lsub{text-align:center;font-size:.83rem;color:var(--muted);font-weight:600;margin-bottom:24px;}
+.tabs{display:flex;background:#f3f4f6;border-radius:10px;padding:3px;margin-bottom:22px;}
+.tab{flex:1;padding:8px;text-align:center;border-radius:8px;font-weight:800;font-size:.86rem;cursor:pointer;transition:all .18s;color:var(--muted);}
+.tab.on{background:var(--white);color:var(--primary);box-shadow:0 2px 8px rgba(0,0,0,.07);}
+.alt{text-align:center;margin-top:18px;font-size:.82rem;font-weight:700;color:var(--muted);}
+.alt a{color:var(--primary);}
+.forgot-row{text-align:right;margin-top:-8px;margin-bottom:14px;}
+.forgot-row a{font-size:.8rem;font-weight:700;color:var(--muted);text-decoration:none;transition:color .18s;}
+.forgot-row a:hover{color:var(--primary);}
+
+/* Forgot Password Modal */
+.fp-overlay{position:fixed;inset:0;z-index:700;background:rgba(15,10,50,.55);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;}
+.fp-overlay.on{display:flex;}
+.fp-box{background:#fff;border-radius:24px;max-width:380px;width:100%;padding:28px 24px;box-shadow:0 32px 80px rgba(0,0,0,.25);animation:fadeUp .25s ease-out;}
+.fp-title{font-family:'Baloo 2',sans-serif;font-size:1.2rem;font-weight:900;margin-bottom:4px;}
+.fp-sub{font-size:.82rem;color:var(--muted);font-weight:600;margin-bottom:20px;}
+.fp-close{float:right;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);margin-top:-4px;}
+.fp-step{display:none;}
+.fp-step.on{display:block;}
+.otp-row{display:flex;gap:10px;margin-bottom:18px;}
+.otp-row input{flex:1;text-align:center;font-size:1.4rem;font-weight:900;padding:12px 0;border:2px solid var(--border);border-radius:12px;font-family:'Baloo 2',sans-serif;}
+.otp-row input:focus{border-color:var(--primary);outline:none;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div id="nav-el"></div>
+
+<div class="lw">
+  <div class="lcard b-page">
+    <div class="lmark">B</div>
+    <div class="ltitle">Welcome to BYTE</div>
+    <div class="lsub">Continue your learning journey 🚀</div>
+
+    <div class="tabs">
+      <div class="tab on" id="tab-l" onclick="sw('l')">Login</div>
+      <div class="tab"    id="tab-r" onclick="sw('r')">Sign Up</div>
+    </div>
+
+    <div class="f-err" id="gerr"></div>
+
+    <!-- LOGIN -->
+    <form id="fl" onsubmit="doLogin(event)">
+      <div class="f-group"><label class="f-label">Email</label><input type="email" class="f-input" id="l-e" placeholder="you@example.com" required/></div>
+      <div class="f-group"><label class="f-label">Password</label><input type="password" class="f-input" id="l-p" placeholder="Your password" required/></div>
+      <div class="forgot-row"><a href="#" onclick="openFP();return false;">Forgot Password?</a></div>
+      <button type="submit" class="f-submit" id="l-btn">Login to BYTE →</button>
+    </form>
+
+    <!-- REGISTER -->
+    <form id="fr" style="display:none;" onsubmit="doRegister(event)">
+      <div class="f-group"><label class="f-label">Name</label><input type="text" class="f-input" id="r-n" placeholder="Your name" required/></div>
+      <div class="f-group"><label class="f-label">Email</label><input type="email" class="f-input" id="r-e" placeholder="you@example.com" required/></div>
+      <div class="f-group"><label class="f-label">Password</label><input type="password" class="f-input" id="r-p" placeholder="Min 6 characters" required minlength="6"/></div>
+      <div class="f-group"><label class="f-label">Class</label>
+        <select class="f-input" id="r-cls">
+          <option value="">Select class</option>
+          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+          <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option>
+        </select>
+      </div>
+      <button type="submit" class="f-submit" id="r-btn">Create Account →</button>
+    </form>
+
+    <div class="alt" id="alt-txt">
+      Don't have an account? <a href="#" onclick="sw('r');return false;">Sign Up free</a>
+    </div>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD MODAL -->
+<div class="fp-overlay" id="fp-overlay" onclick="if(event.target===this)closeFP()">
+  <div class="fp-box">
+    <button class="fp-close" onclick="closeFP()">✕</button>
+
+    <!-- Step 1: Enter Email -->
+    <div class="fp-step on" id="fp-s1">
+      <div class="fp-title">Forgot Password? 🔑</div>
+      <div class="fp-sub">Enter your registered email — we'll send an OTP</div>
+      <div class="f-err" id="fp-err1"></div>
+      <div class="f-group"><label class="f-label">Email</label><input type="email" class="f-input" id="fp-email" placeholder="you@example.com"/></div>
+      <button class="f-submit" onclick="fpSendOtp()">Send OTP →</button>
+    </div>
+
+    <!-- Step 2: Enter OTP -->
+    <div class="fp-step" id="fp-s2">
+      <div class="fp-title">Enter OTP 📩</div>
+      <div class="fp-sub" id="fp-otp-sub">OTP sent to your email</div>
+      <div class="f-err" id="fp-err2"></div>
+      <div class="otp-row">
+        <input type="tel" maxlength="1" id="otp1" oninput="otpNext(this,'otp2')"/>
+        <input type="tel" maxlength="1" id="otp2" oninput="otpNext(this,'otp3')" onkeydown="otpBack(event,this,'otp1')"/>
+        <input type="tel" maxlength="1" id="otp3" oninput="otpNext(this,'otp4')" onkeydown="otpBack(event,this,'otp2')"/>
+        <input type="tel" maxlength="1" id="otp4" onkeydown="otpBack(event,this,'otp3')"/>
+      </div>
+      <button class="f-submit" onclick="fpVerifyOtp()">Verify OTP →</button>
+      <div class="alt" style="margin-top:12px;"><a href="#" onclick="fpSendOtp();return false;">Resend OTP</a></div>
+    </div>
+
+    <!-- Step 3: New Password -->
+    <div class="fp-step" id="fp-s3">
+      <div class="fp-title">New Password 🔒</div>
+      <div class="fp-sub">Choose a strong password</div>
+      <div class="f-err" id="fp-err3"></div>
+      <div class="f-group"><label class="f-label">New Password</label><input type="password" class="f-input" id="fp-np" placeholder="Min 6 characters" minlength="6"/></div>
+      <div class="f-group"><label class="f-label">Confirm Password</label><input type="password" class="f-input" id="fp-cp" placeholder="Repeat password"/></div>
+      <button class="f-submit" onclick="fpResetPassword()">Reset Password →</button>
+    </div>
+
+    <!-- Step 4: Success -->
+    <div class="fp-step" id="fp-s4" style="text-align:center;padding:16px 0;">
+      <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
+      <div class="fp-title">Password Reset!</div>
+      <div class="fp-sub">You can now login with your new password</div>
+      <button class="f-submit" onclick="closeFP()">Back to Login →</button>
+    </div>
+  </div>
+</div>
+
+<div id="footer-el"></div>
+<script src="/assets/byte.js"></script>
+<script>
+  document.getElementById('nav-el').innerHTML = BYTE.nav('');
+  document.getElementById('footer-el').innerHTML = BYTE.footer();
+  BYTE.updateNav();
+
+  const pm = new URLSearchParams(window.location.search);
+  if(pm.get('m')==='r') sw('r');
+  if(BYTE.auth.isIn()) window.location='/learn/';
+
+  function sw(m){
+    const isL=m==='l';
+    document.getElementById('tab-l').classList.toggle('on',isL);
+    document.getElementById('tab-r').classList.toggle('on',!isL);
+    document.getElementById('fl').style.display=isL?'':'none';
+    document.getElementById('fr').style.display=isL?'none':'';
+    document.getElementById('alt-txt').innerHTML=isL
+      ?`Don't have an account? <a href="#" onclick="sw('r');return false;">Sign Up free</a>`
+      :`Already have an account? <a href="#" onclick="sw('l');return false;">Login</a>`;
+    hideErr();
+  }
+
+  function showErr(m){const e=document.getElementById('gerr');e.textContent=m;e.classList.add('on');}
+  function hideErr(){document.getElementById('gerr').classList.remove('on');}
+
+  async function doLogin(e){
+    e.preventDefault(); hideErr();
+    const btn=document.getElementById('l-btn');
+    btn.disabled=true; btn.textContent='Logging in…';
+    const d=await BYTE.api('/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('l-e').value,password:document.getElementById('l-p').value})});
+    btn.disabled=false; btn.textContent='Login to BYTE →';
+    if(d?.success){ BYTE.auth.set(d.access_token,d.refresh_token); BYTE.toast('Welcome back! 🎉'); setTimeout(()=>location.href='/learn/',600); }
+    else showErr(d?.error||'Login failed. Check your credentials.');
+  }
+
+  async function doRegister(e){
+    e.preventDefault(); hideErr();
+    const btn=document.getElementById('r-btn');
+    btn.disabled=true; btn.textContent='Creating account…';
+    const d=await BYTE.api('/auth/register',{method:'POST',body:JSON.stringify({name:document.getElementById('r-n').value,email:document.getElementById('r-e').value,password:document.getElementById('r-p').value,class:document.getElementById('r-cls').value,role:'student'})});
+    btn.disabled=false; btn.textContent='Create Account →';
+    if(d?.success){ BYTE.auth.set(d.access_token,d.refresh_token); BYTE.toast('Account created! Welcome 🎉'); setTimeout(()=>location.href='/learn/',600); }
+    else showErr(d?.error||'Registration failed. Try again.');
+  }
+
+  // ── FORGOT PASSWORD ──
+  let _fpToken = null;
+
+  function openFP(){
+    document.getElementById('fp-overlay').classList.add('on');
+    fpStep(1);
+  }
+  function closeFP(){
+    document.getElementById('fp-overlay').classList.remove('on');
+    _fpToken = null;
+  }
+  function fpStep(n){
+    [1,2,3,4].forEach(i=>{
+      document.getElementById('fp-s'+i).classList.toggle('on', i===n);
+    });
+  }
+  function fpErr(step, msg){
+    const e = document.getElementById('fp-err'+step);
+    e.textContent = msg; e.classList.add('on');
+  }
+  function fpClearErr(step){
+    const e = document.getElementById('fp-err'+step);
+    e.textContent=''; e.classList.remove('on');
+  }
+
+  async function fpSendOtp(){
+    fpClearErr(1);
+    const email = document.getElementById('fp-email').value.trim();
+    if(!email){ fpErr(1,'Please enter your email'); return; }
+    const d = await BYTE.api('/auth/forgot-password', {method:'POST', body:JSON.stringify({email})});
+    if(d?.success){
+      document.getElementById('fp-otp-sub').textContent = `OTP sent to ${email}`;
+      fpStep(2);
+    } else {
+      fpErr(1, d?.error || 'Email not found. Please check and try again.');
+    }
+  }
+
+  function otpNext(el, nextId){
+    if(el.value.length===1) document.getElementById(nextId)?.focus();
+  }
+  function otpBack(e, el, prevId){
+    if(e.key==='Backspace' && !el.value) document.getElementById(prevId)?.focus();
+  }
+
+  async function fpVerifyOtp(){
+    fpClearErr(2);
+    const otp = ['otp1','otp2','otp3','otp4'].map(id=>document.getElementById(id).value).join('');
+    if(otp.length!==4){ fpErr(2,'Please enter the 4-digit OTP'); return; }
+    const email = document.getElementById('fp-email').value.trim();
+    const d = await BYTE.api('/auth/verify-otp', {method:'POST', body:JSON.stringify({email, otp})});
+    if(d?.success){
+      _fpToken = d.reset_token || null;
+      fpStep(3);
+    } else {
+      fpErr(2, d?.error || 'Invalid OTP. Please try again.');
+    }
+  }
+
+  async function fpResetPassword(){
+    fpClearErr(3);
+    const np = document.getElementById('fp-np').value;
+    const cp = document.getElementById('fp-cp').value;
+    if(np.length < 6){ fpErr(3,'Password must be at least 6 characters'); return; }
+    if(np !== cp){ fpErr(3,'Passwords do not match'); return; }
+    const email = document.getElementById('fp-email').value.trim();
+    const d = await BYTE.api('/auth/reset-password', {method:'POST', body:JSON.stringify({email, new_password:np, reset_token:_fpToken})});
+    if(d?.success){
+      fpStep(4);
+    } else {
+      fpErr(3, d?.error || 'Reset failed. Please try again.');
+    }
+  }
+</script>
+</body>
+</html>
+
+check

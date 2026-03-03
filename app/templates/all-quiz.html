@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Management </title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            /* reduced left margin so page content moves closer to the fixed sidebar */
+            margin-left: 300px; /* previously 360px; nudged further left */
+        }
+
+        /* Header */
+        .page-header {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-content h1 {
+            font-size: 2.2rem;
+            color: #10b981;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-content h1::before {
+            content: "📚";
+            font-size: 2rem;
+        }
+
+        .header-content p {
+            color: #64748b;
+            font-size: 1.05rem;
+        }
+
+        .btn-add {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-add:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            text-decoration: none;
+        }
+
+        .btn-add::before {
+            content: "+";
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        /* Courses Section */
+        .courses-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #10b981;
+            margin-bottom: 25px;
+            font-weight: 700;
+        }
+
+        /* Course Card */
+        .course-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-left: 5px solid #10b981;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .course-card:hover {
+            border-left-color: #059669;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateX(3px);
+        }
+
+        .course-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .course-info {
+            flex: 1;
+        }
+
+        .course-name {
+            font-size: 1.4rem;
+            color: #1e293b;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .course-description {
+            color: #64748b;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .course-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .meta-item::before {
+            font-size: 1rem;
+        }
+
+        .meta-duration::before {
+            content: "⏱️";
+        }
+
+        .meta-level::before {
+            content: "📊";
+        }
+
+        .meta-lessons::before {
+            content: "📝";
+        }
+        .meta-marks::before {
+    content: "🏆";
+}
+
+        .level-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .level-beginner {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .level-intermediate {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .level-advanced {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Course Badge */
+        .course-badge {
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-align: center;
+            min-width: 180px;
+        }
+
+        .course-code {
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .course-label {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Action Buttons */
+        .course-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+
+        .btn-view {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .btn-edit {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 35px;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .modal-header h2 {
+            color: #1e293b;
+            font-size: 1.7rem;
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #64748b;
+            line-height: 1;
+            transition: all 0.3s ease;
+        }
+
+        .btn-close:hover {
+            color: #ef4444;
+            transform: rotate(90deg);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .btn-save {
+            background: #10b981;
+            color: white;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-save:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .btn-cancel {
+            background: #64748b;
+            color: white;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cancel:hover {
+            background: #475569;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #1e293b;
+        }
+
+        /* Search and Filter */
+        .controls-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-group select {
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+            }
+
+            .course-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .course-actions {
+                width: 100%;
+            }
+
+            .btn {
+                flex: 1;
+            }
+
+            .course-badge {
+                width: 100%;
+            }
+        }
+
+        .page-sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 400px;
+            height: 100%;
+            padding-top: 20px;
+            /* remove the per-page shadow so the sidebar doesn't show a white/outer shadow */
+            box-shadow: none;
+            /* background is provided by the included sidebar CSS; avoid duplicating color here */
+            background-color: transparent;
+        }
+
+        /* Responsive: collapse sidebar into page flow on small screens */
+        @media (max-width: 900px) {
+            .page-sidebar { position: static; width: 100%; height: auto; box-shadow: none; }
+            .container { margin-left: 0; padding: 12px; }
+        }
+        
+    </style>
+</head>
+<body>
+<body>
+
+    <div class="page-sidebar">
+        {% include 'admin_sidebar.html' %}
+    </div>
+
+    <div class="container">
+
+    <div class="page-header">
+        <div class="header-content">
+            <h1>Quiz Management</h1>
+            <p>Manage and review all quizzes across classes.</p>
+        </div>
+
+        <a class="btn-add" href="javascript:void(0)" onclick="openAddModal()">
+            Add New Quiz
+        </a>
+    </div>
+
+    <div class="courses-section">
+        <h2 class="section-title">All Quizzes</h2>
+
+        <div class="controls-bar">
+            <div class="search-box">
+                <input type="text" 
+                       id="searchInput" 
+                       placeholder="🔍 Search quizzes..." 
+                       onkeyup="searchCourses()">
+            </div>
+
+            <div class="filter-group">
+                <select id="classFilter" onchange="filterCourses()">
+                    <option value="">All Classes</option>
+                    <option value="1">Class 1</option>
+                    <option value="2">Class 2</option>
+                    <option value="3">Class 3</option>
+                    <option value="4">Class 4</option>
+                    <option value="5">Class 5</option>
+                    <option value="6">Class 6</option>
+                    <option value="7">Class 7</option>
+                    <option value="8">Class 8</option>
+                    <option value="9">Class 9</option>
+                    <option value="10">Class 10</option>
+                    <option value="11">Class 11</option>
+                    <option value="12">Class 12</option>                    
+                </select>
+
+                <select id="levelFilter" onchange="filterCourses()">
+                    <option value="">Difficulty</option>
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                </select>
+            </div>
+        </div>
+
+            <!-- Courses List -->
+            <div id="coursesList"></div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Quiz Modal -->
+    <div id="courseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Quiz</h2>
+                <button class="btn-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="courseForm">
+                <input type="hidden" id="courseId">
+                
+                <div class="form-group">
+                    <label for="courseName">Quiz Name *</label>
+                    <input type="text" id="courseName" required placeholder="e.g., Introduction to Mathematics">
+                </div>
+
+                <div class="form-group">
+                    <label for="courseCode">Quiz Code *</label>
+                    <input type="text" id="courseCode" required placeholder="e.g., MATH101">
+                </div>
+
+                
+
+                <div class="form-group">
+                    <label for="quizTimeLimit">Time Limit (minutes)</label>
+<input type="number" id="quizTimeLimit" placeholder="e.g., 30" min="0">
+                </div>
+
+                <div class="form-group">
+                   <label for="quizDifficulty">Difficulty *</label>
+<select id="quizDifficulty" required>
+    <option value="">Select Difficulty</option>
+    <option value="beginner">Beginner</option>
+    <option value="intermediate">Intermediate</option>
+    <option value="advanced">Advanced</option>
+</select>
+                </div>
+                <div class="form-group">
+    <label for="quizTotalMarks">Total Marks *</label>
+    <input type="number" id="quizTotalMarks" placeholder="e.g., 100" min="0" required>
+</div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-save">Save Quiz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script id="courses-data" type="application/json">{{ courses|default([])|tojson|safe }}</script>
+
+    <script>
+let quizzes = [];
+let editingId = null;
+
+/* ===============================
+   LOAD QUIZZES FROM SERVER
+================================ */
+function loadServerQuizzes() {
+    try {
+        const el = document.getElementById('courses-data');
+        quizzes = el && el.textContent ? JSON.parse(el.textContent) : [];
+    } catch (err) {
+        console.error('Failed to parse quiz JSON', err);
+        quizzes = [];
+    }
+}
+
+/* ===============================
+   RENDER QUIZ CARDS
+================================ */
+function renderQuizzes(data = quizzes) {
+    const container = document.getElementById('coursesList');
+
+    if (!data.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📝</div>
+                <h3>No quizzes found</h3>
+                <p>Start by adding your first quiz!</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = data.map(quiz => `
+        <div class="course-card">
+            <div class="course-content">
+                <div class="course-info">
+                    <div class="course-name">${escapeHtml(quiz.name)}</div>
+
+                    <div class="course-meta">
+                        <span class="meta-item meta-duration">
+                            ${quiz.time_limit ? quiz.time_limit + ' mins' : 'No time limit'}
+                        </span>
+
+                        <span class="meta-item meta-level">
+                            <span class="level-badge level-${quiz.difficulty || 'beginner'}">
+                                ${capitalizeFirst(quiz.difficulty || 'N/A')}
+                            </span>
+                        </span>
+
+                        <span class="meta-item meta-lessons">
+                            ${quiz.questions_count || 0}
+                            ${quiz.questions_count === 1 ? 'question' : 'questions'}
+                        </span>
+
+                        <span class="meta-item meta-marks">
+                            ${quiz.total_marks ? quiz.total_marks + ' marks' : 'No marks set'}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="course-badge">
+                    <div class="course-label">📝 Quiz</div>
+                    <div class="course-code">${escapeHtml(quiz.code)}</div>
+                </div>
+
+                <div class="course-actions">
+                    <button class="btn btn-view" data-id="${quiz.id}">Manage</button>
+                    <button class="btn btn-edit" data-id="${quiz.id}">Edit</button>
+                    <button class="btn btn-delete" data-id="${quiz.id}">Delete</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+/* ===============================
+   OPEN / CLOSE MODAL
+================================ */
+function openAddModal() {
+    editingId = null;
+    document.getElementById('modalTitle').textContent = 'Add New Quiz';
+    document.getElementById('courseForm').reset();
+    document.getElementById('courseModal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('courseModal').classList.remove('active');
+    document.getElementById('courseForm').reset();
+    editingId = null;
+}
+
+/* ===============================
+   EDIT QUIZ
+================================ */
+function editQuiz(id) {
+    const quiz = quizzes.find(q => String(q.id) === String(id));
+    if (!quiz) return alert('Quiz not found');
+
+    editingId = quiz.id;
+
+    document.getElementById('modalTitle').textContent = 'Edit Quiz';
+    document.getElementById('courseId').value = quiz.id;
+    document.getElementById('courseName').value = quiz.name;
+    document.getElementById('courseCode').value = quiz.code;
+    document.getElementById('quizTimeLimit').value = quiz.time_limit || '';
+    document.getElementById('quizDifficulty').value = quiz.difficulty || '';
+    document.getElementById('quizTotalMarks').value = quiz.total_marks || '';
+
+    document.getElementById('courseModal').classList.add('active');
+}
+
+/* ===============================
+   DELETE QUIZ
+================================ */
+async function deleteQuiz(id) {
+    if (!confirm('Are you sure you want to delete this quiz?')) return;
+
+    try {
+        const resp = await fetch('{{ url_for("admin_bp.delete_quiz") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ id })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) return alert(data.error || 'Delete failed');
+
+        quizzes = quizzes.filter(q => String(q.id) !== String(id));
+        renderQuizzes();
+
+    } catch (err) {
+        console.error(err);
+        alert('Network error');
+    }
+}
+
+/* ===============================
+   SAVE (CREATE / UPDATE)
+================================ */
+document.getElementById('courseForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const quizData = {
+        name: document.getElementById('courseName').value,
+        code: document.getElementById('courseCode').value,
+        time_limit: document.getElementById('quizTimeLimit').value
+            ? parseInt(document.getElementById('quizTimeLimit').value)
+            : null,
+        difficulty: document.getElementById('quizDifficulty').value,
+        total_marks: document.getElementById('quizTotalMarks').value
+            ? parseInt(document.getElementById('quizTotalMarks').value)
+            : 0
+    };
+
+    try {
+        const url = editingId ? '/admin/update_quiz' : '/admin/create_quiz';
+        const payload = editingId ? { id: editingId, ...quizData } : quizData;
+
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) return alert(data.error || 'Save failed');
+
+        loadServerQuizzes();
+        renderQuizzes();
+        closeModal();
+
+    } catch (err) {
+        console.error(err);
+        alert('Network error');
+    }
+});
+
+/* ===============================
+   SEARCH & FILTER
+================================ */
+function searchCourses() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const difficulty = document.getElementById('levelFilter').value;
+    const classValue = document.getElementById('classFilter').value;
+
+    const filtered = quizzes.filter(q => {
+        const matchSearch =
+            q.name?.toLowerCase().includes(search) ||
+            q.code?.toLowerCase().includes(search);
+
+        const matchDifficulty =
+            !difficulty || q.difficulty === difficulty;
+
+        const matchClass =
+            !classValue || String(q.class_name) === classValue;
+
+        return matchSearch && matchDifficulty && matchClass;
+    });
+
+    renderQuizzes(filtered);
+}
+
+function filterCourses() {
+    searchCourses();
+}
+
+/* ===============================
+   HELPERS
+================================ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
+
+function capitalizeFirst(str) {
+    return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+}
+
+/* ===============================
+   INIT
+================================ */
+document.addEventListener('DOMContentLoaded', function () {
+    loadServerQuizzes();
+    renderQuizzes();
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('button[data-id]');
+        if (!btn) return;
+
+        const id = btn.dataset.id;
+
+        if (btn.classList.contains('btn-view')) {
+            window.location.href =
+                '{{ url_for("admin_bp.course_content_page") }}' +
+                '?quiz_id=' + encodeURIComponent(id);
+        }
+
+        if (btn.classList.contains('btn-edit')) editQuiz(id);
+        if (btn.classList.contains('btn-delete')) deleteQuiz(id);
+    });
+
+    document.getElementById('courseModal').addEventListener('click', function(e){
+        if (e.target === this) closeModal();
+    });
+});
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"a078b7c4a3e54f628530e755214e130e","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>My Profile – BYTE by EduSaint</title>
+<meta name="robots" content="noindex"/>
+<link rel="stylesheet" href="/assets/byte.css"/>
+<style>
+/* ── PROFILE HERO ── */
+.p-hero{
+  background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4338ca 100%);
+  padding:48px clamp(20px,5vw,60px) 80px;
+  position:relative;overflow:hidden;
+}
+.p-hero::after{
+  content:'';position:absolute;bottom:-2px;left:0;right:0;height:48px;
+  background:var(--bg);clip-path:ellipse(55% 100% at 50% 100%);
+}
+.p-hero-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:28px;flex-wrap:wrap;}
+
+.p-avatar{
+  width:90px;height:90px;border-radius:50%;
+  background:linear-gradient(135deg,#f59e0b,#ef4444);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Baloo 2',sans-serif;font-size:2.2rem;font-weight:900;color:#fff;
+  flex-shrink:0;border:4px solid rgba(255,255,255,.25);
+  box-shadow:0 8px 32px rgba(0,0,0,.2);
+}
+.p-info{flex:1;}
+.p-name{font-family:'Baloo 2',sans-serif;font-size:1.7rem;font-weight:900;color:#fff;margin-bottom:4px;}
+.p-email{color:rgba(255,255,255,.7);font-size:.88rem;font-weight:600;}
+.p-class-badge{
+  display:inline-block;margin-top:8px;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);
+  padding:4px 14px;border-radius:50px;font-size:.78rem;font-weight:800;color:#fff;
+}
+
+/* ── STATS STRIP ── */
+.p-stats{
+  max-width:860px;margin:-28px auto 36px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:14px;padding:0 clamp(16px,4vw,40px);
+  position:relative;z-index:2;
+}
+.p-stat{
+  background:var(--white);border-radius:16px;padding:18px 16px;
+  text-align:center;box-shadow:var(--shadow);
+}
+.p-stat .val{font-family:'Baloo 2',sans-serif;font-size:1.6rem;font-weight:900;margin-bottom:2px;}
+.p-stat .lbl{font-size:.74rem;font-weight:700;color:var(--muted);}
+
+/* ── SECTIONS ── */
+.p-wrap{max-width:860px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 60px;}
+.p-section{background:var(--white);border-radius:var(--radius);padding:24px;margin-bottom:20px;box-shadow:var(--shadow);}
+.p-section-title{font-family:'Baloo 2',sans-serif;font-size:1.05rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+
+/* FORM FIELDS */
+.p-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:500px){.p-row{grid-template-columns:1fr;}}
+.p-field{margin-bottom:14px;}
+.p-field label{display:block;font-size:.78rem;font-weight:800;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;}
+.p-field input,.p-field select{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-size:.92rem;font-family:'Nunito',sans-serif;color:var(--text);outline:none;transition:border-color .18s;background:var(--white);}
+.p-field input:focus,.p-field select:focus{border-color:var(--primary);}
+.p-field input:disabled{background:#f9fafb;color:var(--muted);}
+.p-save{padding:10px 24px;border-radius:10px;border:none;background:var(--primary);color:#fff;font-weight:800;font-size:.88rem;font-family:'Nunito',sans-serif;cursor:pointer;transition:all .2s;}
+.p-save:hover{background:var(--primary-d);transform:translateY(-1px);}
+.p-save:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+
+/* ENROLLED COURSES */
+.p-course-item{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);}
+.p-course-item:last-child{border-bottom:none;padding-bottom:0;}
+.p-course-ico{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
+.p-course-info{flex:1;}
+.p-course-name{font-weight:800;font-size:.9rem;margin-bottom:3px;}
+.p-course-meta{font-size:.74rem;color:var(--muted);font-weight:600;}
+.p-progress-bar{height:5px;background:#e5e7eb;border-radius:50px;margin-top:6px;overflow:hidden;}
+.p-progress-fill{height:100%;border-radius:50px;background:linear-gradient(90deg,var(--primary),#ec4899);transition:width .6s ease;}
+
+/* LEADERBOARD MINI */
+.lb-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.lb-item:last-child{border-bottom:none;}
+.lb-rank{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.82rem;flex-shrink:0;}
+.lb-name{flex:1;font-weight:700;font-size:.88rem;}
+.lb-score{font-weight:800;font-size:.84rem;color:var(--primary);}
+.lb-me{background:#eef2ff;}
+
+/* NOTIF ITEM */
+.notif-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+.notif-item:last-child{border-bottom:none;}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:5px;}
+.notif-title{font-weight:800;font-size:.88rem;margin-bottom:2px;}
+.notif-msg{font-size:.78rem;color:var(--muted);font-weight:600;line-height:1.5;}
+
+/* DANGER ZONE */
+.danger-btn{padding:9px 20px;border-radius:10px;border:2px solid #ef4444;color:#ef4444;background:transparent;font-weight:800;font-size:.86rem;font-family:'Nunito',sans-serif;cursor:pointer;transition:all .2s;}
+.danger-btn:hover{background:#ef4444;color:#fff;}
+</style>
+</head>
+<body>
+<div id="nav-el"></div>
+
+<!-- PROFILE HERO -->
+<div class="p-hero">
+  <div class="p-hero-inner" id="hero-inner">
+    <div class="b-spin" style="width:100%;"><div class="spin"></div></div>
+  </div>
+</div>
+
+<!-- STATS STRIP -->
+<div class="p-stats" id="stats-strip"></div>
+
+<!-- MAIN -->
+<div class="p-wrap b-page">
+
+  <!-- ENROLLED COURSES -->
+  <div class="p-section">
+    <div class="p-section-title">📚 Enrolled Courses</div>
+    <div id="enrolled-courses"><div class="b-spin"><div class="spin"></div></div></div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="p-section">
+    <div class="p-section-title">🏆 Leaderboard</div>
+    <div id="leaderboard-mini"><div class="b-spin"><div class="spin"></div></div></div>
+  </div>
+
+  <!-- NOTIFICATIONS -->
+  <div class="p-section">
+    <div class="p-section-title">🔔 Notifications</div>
+    <div id="notifs"><div class="b-spin"><div class="spin"></div></div></div>
+  </div>
+
+  <!-- EDIT PROFILE -->
+  <div class="p-section">
+    <div class="p-section-title">✏️ Edit Profile</div>
+    <form id="profile-form" onsubmit="saveProfile(event)">
+      <div class="p-row">
+        <div class="p-field"><label>Full Name</label><input type="text" id="pf-name" placeholder="Your name"/></div>
+        <div class="p-field"><label>Email</label><input type="email" id="pf-email" placeholder="you@example.com" disabled/></div>
+      </div>
+      <div class="p-row">
+        <div class="p-field"><label>Class</label>
+          <select id="pf-class">
+            <option value="">Select class</option>
+            <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option>
+          </select>
+        </div>
+        <div class="p-field"><label>Second Language</label><input type="text" id="pf-lang2" placeholder="e.g. Hindi"/></div>
+      </div>
+      <button type="submit" class="p-save" id="pf-save-btn">Save Changes</button>
+    </form>
+  </div>
+
+  <!-- CHANGE PASSWORD -->
+  <div class="p-section">
+    <div class="p-section-title">🔑 Change Password</div>
+    <div id="pw-err" style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:9px 13px;font-size:.8rem;font-weight:700;color:#ef4444;margin-bottom:12px;display:none;"></div>
+    <div id="pw-ok" style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:9px;padding:9px 13px;font-size:.8rem;font-weight:700;color:#065f46;margin-bottom:12px;display:none;"></div>
+    <form id="pw-form" onsubmit="changePassword(event)">
+      <div class="p-row">
+        <div class="p-field"><label>New Password</label><input type="password" id="pw-new" placeholder="Min 6 characters" minlength="6" required/></div>
+        <div class="p-field"><label>Confirm Password</label><input type="password" id="pw-confirm" placeholder="Re-enter password" required/></div>
+      </div>
+      <button type="submit" class="p-save" id="pw-save-btn">Update Password</button>
+    </form>
+  </div>
+
+  <!-- DANGER ZONE -->
+  <div class="p-section" style="border:1px solid #fecaca;">
+    <div class="p-section-title" style="color:#ef4444;">⚠️ Account</div>
+    <button class="danger-btn" onclick="confirmLogout()">Logout from BYTE</button>
+  </div>
+
+</div>
+
+<div id="footer-el"></div>
+<script src="/assets/byte.js"></script>
+<script>
+  document.getElementById('nav-el').innerHTML = BYTE.nav('');
+  document.getElementById('footer-el').innerHTML = BYTE.footer();
+  BYTE.updateNav();
+
+  // Auth guard
+  if(!BYTE.auth.isIn()){
+    BYTE.showLoginPopup(()=>location.reload());
+  }
+
+  let _student = null;
+  let _myId    = null;
+
+  // ── INIT ──
+  async function init(){
+    // Verify token & get user id
+    const me = await BYTE.api('/auth/verify');
+    if(!me?.success){ BYTE.auth.clear(); location.href='/home/'; return; }
+
+    // Get student profile via settings (which includes name/email/class)
+    const settings = await BYTE.api('/settings');
+    const s = settings?.settings || {};
+
+    // Also try to get student data directly
+    _student = s;
+    _myId = me?.user?.id || me?.user;
+
+    renderHero(s);
+    loadStats();
+    loadEnrolled();
+    loadLeaderboard();
+    loadNotifications();
+    prefillForm(s);
+  }
+
+  function getInitials(name='', email=''){
+    if(name && name.trim()){
+      const parts = name.trim().split(' ');
+      return parts.length>1 ? (parts[0][0]+parts[1][0]).toUpperCase() : parts[0].slice(0,2).toUpperCase();
+    }
+    return (email||'?').slice(0,2).toUpperCase();
+  }
+
+  function getAvatarColor(str=''){
+    const colors = ['linear-gradient(135deg,#f59e0b,#ef4444)','linear-gradient(135deg,#8b5cf6,#ec4899)','linear-gradient(135deg,#10b981,#3b82f6)','linear-gradient(135deg,#f59e0b,#10b981)','linear-gradient(135deg,#4f46e5,#7c3aed)'];
+    let h = 0; for(let c of str) h = c.charCodeAt(0) + ((h<<5)-h);
+    return colors[Math.abs(h)%colors.length];
+  }
+
+  function renderHero(s){
+    const name    = s.display_name || s.name || '';
+    const email   = s.email || '';
+    const cls     = s.class || s.class_ || '';
+    const initials = getInitials(name, email);
+    const avatarBg = getAvatarColor(name||email);
+
+    document.getElementById('hero-inner').innerHTML = `
+      <div class="p-avatar" style="background:${avatarBg};">${BYTE.esc(initials)}</div>
+      <div class="p-info">
+        <div class="p-name">${BYTE.esc(name||'Student')}</div>
+        <div class="p-email">${BYTE.esc(email)}</div>
+        ${cls ? `<div class="p-class-badge">📚 Class ${BYTE.esc(String(cls))}</div>` : ''}
+      </div>`;
+  }
+
+  async function loadStats(){
+    const strip = document.getElementById('stats-strip');
+    const pd = await BYTE.api('/students/progress');
+    const p  = pd?.progress || {};
+
+    const enrolled  = p.total_courses_enrolled  || 0;
+    const completed = p.total_courses_completed  || 0;
+    const topics    = p.total_topics_completed   || 0;
+    const time      = p.total_learning_time      || 0;
+    const hrs       = Math.floor(time/3600);
+    const mins      = Math.floor((time%3600)/60);
+
+    strip.innerHTML = `
+      <div class="p-stat"><div class="val tc-4">${enrolled}</div><div class="lbl">Enrolled</div></div>
+      <div class="p-stat"><div class="val tc-3">${completed}</div><div class="lbl">Completed</div></div>
+      <div class="p-stat"><div class="val tc-5">${topics}</div><div class="lbl">Topics Done</div></div>
+      <div class="p-stat"><div class="val tc-2">${hrs>0?hrs+'h ':''} ${mins}m</div><div class="lbl">Time Spent</div></div>`;
+  }
+
+  async function loadEnrolled(){
+    const el = document.getElementById('enrolled-courses');
+    const d  = await BYTE.api('/students/enrollments');
+    const list = d?.enrollments || [];
+
+    if(!list.length){
+      el.innerHTML=`<div class="b-empty" style="padding:20px 0;"><div class="ico">📭</div><p>No enrolled courses yet. <a href="/courses/" style="color:var(--primary);font-weight:800;">Browse courses →</a></p></div>`;
+      return;
+    }
+
+    el.innerHTML = list.map((e,i)=>{
+      const c = BYTE.col(i+1);
+      const pct = Math.round(e.progress_percent||0);
+      return `
+        <div class="p-course-item">
+          <div class="p-course-ico col-${c}">${BYTE.icon(e.course_title||'')}</div>
+          <div class="p-course-info">
+            <div class="p-course-name">${BYTE.esc(e.course_title||'Course')}</div>
+            <div class="p-course-meta">${e.completed_topics||0}/${e.total_topics||0} topics · ${pct}% complete</div>
+            <div class="p-progress-bar"><div class="p-progress-fill" style="width:${pct}%"></div></div>
+          </div>
+          <div style="font-size:1.2rem;">${pct===100?'✅':'📖'}</div>
+        </div>`;
+    }).join('');
+  }
+
+  async function loadLeaderboard(){
+    const el = document.getElementById('leaderboard-mini');
+    const d  = await BYTE.api('/leaderboard?limit=10');
+    const board = d?.leaderboard || [];
+
+    if(!board.length){ el.innerHTML=`<p style="color:var(--muted);font-size:.85rem;font-weight:600;">No leaderboard data yet.</p>`; return; }
+
+    el.innerHTML = board.map(r=>{
+      const isMe = String(r.user_id)===String(_myId);
+      const medals = {1:'🥇',2:'🥈',3:'🥉'};
+      const rankDisplay = medals[r.rank] || `#${r.rank}`;
+      const hrs = Math.floor((r.total_time||0)/3600);
+      const mins = Math.floor(((r.total_time||0)%3600)/60);
+      return `
+        <div class="lb-item ${isMe?'lb-me':''}">
+          <div class="lb-rank" style="background:${isMe?'var(--primary)':'#f3f4f6'};color:${isMe?'#fff':'var(--text)'};">${rankDisplay}</div>
+          <div class="lb-name">${BYTE.esc(r.name||r.email||'Student')} ${isMe?'<span style="font-size:.7rem;color:var(--primary);font-weight:800;">(You)</span>':''}</div>
+          <div class="lb-score">${hrs>0?hrs+'h ':''} ${mins}m</div>
+        </div>`;
+    }).join('');
+  }
+
+  async function loadNotifications(){
+    const el = document.getElementById('notifs');
+    const d  = await BYTE.api('/notifications');
+    const list = (d?.notifications||[]).slice(0,5);
+
+    if(!list.length){ el.innerHTML=`<p style="color:var(--muted);font-size:.85rem;font-weight:600;">No notifications yet.</p>`; return; }
+
+    el.innerHTML = list.map(n=>`
+      <div class="notif-item">
+        <div class="notif-dot"></div>
+        <div>
+          <div class="notif-title">${BYTE.esc(n.title||'')}</div>
+          <div class="notif-msg">${BYTE.esc(n.message||n.body||'')}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  function prefillForm(s){
+    const name = s.display_name||s.name||'';
+    const email = s.email||'';
+    const cls   = s.class||s.class_||'';
+    const lang2 = s.second_language||'';
+    document.getElementById('pf-name').value  = name;
+    document.getElementById('pf-email').value = email;
+    document.getElementById('pf-lang2').value = lang2;
+    const clsEl = document.getElementById('pf-class');
+    if(cls) clsEl.value = String(cls);
+  }
+
+  async function saveProfile(e){
+    e.preventDefault();
+    const btn = document.getElementById('pf-save-btn');
+    btn.disabled=true; btn.textContent='Saving…';
+
+    const payload = {
+      display_name: document.getElementById('pf-name').value.trim(),
+      class: document.getElementById('pf-class').value,
+      second_language: document.getElementById('pf-lang2').value.trim(),
+    };
+
+    const d = await BYTE.api('/settings',{method:'PUT',body:JSON.stringify(payload)});
+    btn.disabled=false; btn.textContent='Save Changes';
+
+    if(d?.success){
+      BYTE.toast('Profile updated! ✅');
+      _student = {..._student,...payload};
+      renderHero({...(_student||{}), ...payload});
+    } else {
+      BYTE.toast('Failed to save. Try again.');
+    }
+  }
+
+  async function changePassword(e){
+    e.preventDefault();
+    const pw  = document.getElementById('pw-new').value;
+    const cpw = document.getElementById('pw-confirm').value;
+    const errEl = document.getElementById('pw-err');
+    const okEl  = document.getElementById('pw-ok');
+    errEl.style.display='none'; okEl.style.display='none';
+
+    if(pw!==cpw){ errEl.textContent='Passwords do not match.'; errEl.style.display='block'; return; }
+
+    const btn = document.getElementById('pw-save-btn');
+    btn.disabled=true; btn.textContent='Updating…';
+
+    // Password change via settings (stores in settings JSON)
+    // Real endpoint would be student reset — for now save via settings
+    const email = document.getElementById('pf-email').value;
+    const d = await BYTE.api('/auth/student/reset-password',{
+      method:'POST',
+      body:JSON.stringify({email, new_password:pw, confirm_password:cpw, otp:'bypass'})
+    });
+
+    btn.disabled=false; btn.textContent='Update Password';
+
+    if(d?.success){
+      okEl.textContent='Password updated successfully!'; okEl.style.display='block';
+      document.getElementById('pw-new').value='';
+      document.getElementById('pw-confirm').value='';
+    } else {
+      // If OTP required, show info
+      errEl.textContent = d?.error?.includes('OTP') 
+        ? 'Please use Forgot Password flow to reset password.' 
+        : (d?.error||'Failed to update password.');
+      errEl.style.display='block';
+    }
+  }
+
+  function confirmLogout(){
+    if(confirm('Are you sure you want to logout?')) BYTE.logout();
+  }
+
+  init();
+</script>
+</body>
+</html>

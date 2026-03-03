@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BYTE – Lesson</title>
+<meta name="description" content=""/>
+<link rel="canonical" href=""/>
+<link rel="stylesheet" href="/assets/byte.css"/>
+<style>
+.page-hero{background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;padding:40px clamp(20px,6vw,80px) 48px;}
+.page-hero h1{font-family:'Baloo 2',sans-serif;font-size:clamp(1.7rem,3.5vw,2.5rem);font-weight:900;margin-bottom:8px;}
+.page-hero p{opacity:.82;font-size:.94rem;line-height:1.65;max-width:560px;font-weight:600;}
+.meta-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;}
+.meta-pill{background:var(--white);border-radius:50px;padding:7px 16px;font-size:.8rem;font-weight:800;display:flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.meta-pill span{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.app-cta{background:linear-gradient(135deg,#f59e0b,#ef4444);border-radius:var(--radius);padding:26px 22px;color:#fff;text-align:center;margin-top:32px;}
+.app-cta h3{font-family:'Baloo 2',sans-serif;font-size:1.15rem;font-weight:800;margin-bottom:6px;}
+.app-cta p{font-size:.86rem;opacity:.88;font-weight:600;}
+</style>
+</head>
+<body>
+<div id="nav-el"></div>
+<section class="page-hero" id="hero">
+  <div style="max-width:860px;margin:0 auto;" id="hero-inner">
+    <div class="b-spin"><div class="spin"></div></div>
+  </div>
+</section>
+
+<main style="padding-top:32px;padding-bottom:20px;">
+  <div class="b-wrap b-page" style="max-width:860px;">
+    <div class="b-crumb" id="crumb"></div>
+    <div class="meta-bar" id="meta-bar"></div>
+    <div id="main-content">
+      <div class="b-spin"><div class="spin"></div><p>Loading topics…</p></div>
+    </div>
+  </div>
+</main>
+
+<div id="footer-el"></div>
+<script src="/assets/byte.js"></script>
+<script>
+  document.getElementById('nav-el').innerHTML = BYTE.nav('learn');
+  document.getElementById('footer-el').innerHTML = BYTE.footer();
+  BYTE.updateNav();
+
+  // URL: /courses/{classSlug}/{courseSlug}/{lessonSlug}/
+  const parts      = BYTE.pathParts();
+  const classSlug  = parts[1]||'';
+  const courseSlug = parts[2]||'';
+  const lessonSlug = parts[3]||'';
+
+  async function init(){
+    // Step 1: find course
+    const d = await BYTE.api('/courses?limit=200');
+    const all = d?.data||d?.courses||[];
+    const course = all.find(c=>{
+      const clMatch = BYTE.slug(String(c.class_name||'').trim())===classSlug || String(c.class_name||'').trim()===classSlug;
+      return clMatch && BYTE.slug(c.title||'')===courseSlug;
+    });
+
+    const className   = course ? String(course.class_name||'').trim() : BYTE.unslug(classSlug);
+    const courseTitle = course ? course.title : BYTE.unslug(courseSlug);
+    const classSlugN  = BYTE.slug(className);
+
+    if(!course){ renderNotFound(className,courseTitle,classSlugN); return; }
+
+    // Step 2: find lesson
+    const ld = await BYTE.api(`/courses/${course.id}/lessons`);
+    const lessons = ld?.lessons||ld?.data||[];
+    const lesson = lessons.find(l=>BYTE.slug(l.title||'')===lessonSlug);
+
+    const lessonTitle = lesson ? lesson.title : BYTE.unslug(lessonSlug);
+
+    // SEO
+    BYTE.setMeta(
+      `${lessonTitle} – ${courseTitle} Class ${className} | BYTE`,
+      `${lessonTitle}. Class ${className} ${courseTitle} on BYTE by EduSaint — structured topics, flashcards and quizzes.`,
+      `https://byte.edusaint.in/courses/${classSlugN}/${courseSlug}/${lessonSlug}/`
+    );
+
+    // Hero
+    document.getElementById('hero-inner').innerHTML = `
+      <h1>${BYTE.esc(lessonTitle)}</h1>
+      <p>${BYTE.esc(lesson?.description||'Explore structured topics with flashcards and interactive cards.')}</p>`;
+
+    // Breadcrumb
+    document.getElementById('crumb').innerHTML = `
+      <a href="/home/">Home</a><span class="sep">›</span>
+      <a href="/learn/">Courses</a><span class="sep">›</span>
+      <a href="/learn/?class=${BYTE.esc(className)}">Class ${BYTE.esc(className)}</a><span class="sep">›</span>
+      <a href="/learn/${BYTE.esc(classSlugN)}/${BYTE.esc(courseSlug)}/">${BYTE.esc(courseTitle)}</a><span class="sep">›</span>
+      <span class="cur">${BYTE.esc(lessonTitle)}</span>`;
+
+    if(!lesson){ document.getElementById('main-content').innerHTML=BYTE.empty('Lesson not found.'); return; }
+
+    // Step 3: fetch topics
+    const td = await BYTE.api(`/lessons/${lesson.id}/topics`);
+    const topics = td?.topics||td?.data||[];
+
+    // Meta bar
+    const metaItems=[];
+    if(lesson.duration) metaItems.push(`<div class="meta-pill"><span style="background:var(--c3)"></span>${lesson.duration} min</div>`);
+    if(lesson.level)    metaItems.push(`<div class="meta-pill"><span style="background:var(--c4)"></span>${BYTE.esc(lesson.level)}</div>`);
+    metaItems.push(`<div class="meta-pill"><span style="background:var(--c5)"></span>${topics.length} Topics</div>`);
+    document.getElementById('meta-bar').innerHTML = metaItems.join('');
+
+    if(!topics.length){ document.getElementById('main-content').innerHTML=BYTE.empty('No topics yet!'); return; }
+
+    const items = topics.map((t,i)=>{
+      const c=BYTE.col(i+1);
+      const tSlug=BYTE.slug(t.title||'');
+      const cardCount = t.cardCount||t.card_count||0;
+      return `
+        <a href="/learn/${BYTE.esc(classSlugN)}/${BYTE.esc(courseSlug)}/${BYTE.esc(lessonSlug)}/${BYTE.esc(tSlug)}/"
+           title="${BYTE.esc(t.title)} – ${BYTE.esc(lessonTitle)}">
+          <div class="c-topic">
+            <div class="num col-${c}">${i+1}</div>
+            <div class="info">
+              <div class="ttl">${BYTE.esc(t.title)}</div>
+              <div class="sub">${cardCount} card${cardCount!==1?'s':''} · Tap to explore</div>
+            </div>
+            <div class="arr">›</div>
+          </div>
+        </a>`;
+    }).join('');
+
+    document.getElementById('main-content').innerHTML = `
+      <div class="b-sh"><h2>Topics <em>🗂️</em></h2></div>
+      <div class="g-topics">${items}</div>
+      <div class="app-cta">
+        <div style="font-size:2.2rem;margin-bottom:8px;">📱</div>
+        <h3>Cards & Quizzes in BYTE App</h3>
+        <p>Interactive flashcards and quizzes are in the BYTE mobile app.</p>
+      </div>`;
+  }
+
+  function renderNotFound(cls,course,clsSlug){
+    document.getElementById('hero-inner').innerHTML=`<h1>${BYTE.esc(BYTE.unslug(lessonSlug))}</h1>`;
+    document.getElementById('crumb').innerHTML=`<a href="/home/">Home</a><span class="sep">›</span><a href="/learn/">Courses</a><span class="sep">›</span><a href="/learn/?class=${BYTE.esc(cls)}">Class ${BYTE.esc(cls)}</a><span class="sep">›</span><a href="/learn/${BYTE.esc(clsSlug)}/${BYTE.esc(courseSlug)}/">${BYTE.esc(course)}</a><span class="sep">›</span><span class="cur">${BYTE.esc(BYTE.unslug(lessonSlug))}</span>`;
+    document.getElementById('main-content').innerHTML=BYTE.empty('Lesson not found.');
+  }
+
+  init();
+</script>
+</body>
+</html>

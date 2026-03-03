@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BYTE by EduSaint – Interactive CBSE Learning App for Classes 1–12</title>
+<meta name="description" content="BYTE by EduSaint is India's interactive CBSE learning app with flashcards, smart quizzes & NCERT-aligned lessons for Classes 1–12. Study smarter, score higher."/>
+<meta name="keywords" content="CBSE learning app, NCERT study material, flashcards for students, online quizzes CBSE, EduSaint, BYTE app, class 6 7 8 9 10 11 12 study"/>
+<meta name="author" content="EduSaint Eduservices"/>
+<meta name="robots" content="index, follow"/>
+<link rel="canonical" href="https://byte.edusaint.in/home/"/>
+<!-- Open Graph -->
+<meta property="og:title" content="BYTE by EduSaint – Study Smarter, Score Higher"/>
+<meta property="og:description" content="Interactive CBSE learning with flashcards, smart quizzes & structured lessons for Classes 1–12. Free to start."/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://byte.edusaint.in/home/"/>
+<meta property="og:site_name" content="BYTE by EduSaint"/>
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="BYTE by EduSaint – Interactive CBSE Learning"/>
+<meta name="twitter:description" content="Flashcards, smart quizzes & NCERT-aligned lessons for Classes 1–12. India's interactive study app."/>
+<!-- Schema.org -->
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"EducationalOrganization","name":"EduSaint","url":"https://byte.edusaint.in","description":"Interactive CBSE learning platform with flashcards and quizzes for Classes 1-12","applicationCategory":"EducationalApplication","operatingSystem":"Web, Android, iOS"}</script>
+<link rel="stylesheet" href="/assets/byte.css"/>
+<style>
+/* ── HERO ── */
+.hero{
+  background:#0f0a2e;color:#fff;
+  position:relative;overflow:hidden;
+  min-height:92vh;display:flex;align-items:center;
+}
+.hero-orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.5;animation:orbFloat 8s ease-in-out infinite;}
+.hero-orb1{width:520px;height:520px;background:radial-gradient(circle,#4f46e5,#7c3aed);top:-140px;right:-120px;animation-delay:0s;}
+.hero-orb2{width:360px;height:360px;background:radial-gradient(circle,#ec4899,#f59e0b);bottom:-80px;left:-80px;opacity:.3;animation-delay:3s;}
+.hero-orb3{width:240px;height:240px;background:radial-gradient(circle,#06b6d4,#3b82f6);top:38%;right:22%;opacity:.25;animation-delay:5s;}
+@keyframes orbFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-26px);}}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;}
+
+.hero-inner{
+  position:relative;z-index:2;
+  display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;
+  max-width:1100px;margin:0 auto;
+  padding:80px clamp(20px,5vw,60px);width:100%;
+}
+@media(max-width:720px){.hero-inner{grid-template-columns:1fr;gap:32px;}.hero-right{display:none;}.hero{min-height:auto;}}
+
+.hero-brand{font-size:.72rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:12px;animation:fadeUp .5s ease both;}
+.hero-brand span{color:#a78bfa;}
+.hero-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);padding:6px 16px;border-radius:50px;font-size:.75rem;font-weight:800;margin-bottom:22px;letter-spacing:.6px;animation:fadeUp .5s .05s ease both;}
+.hero h1{font-family:'Baloo 2',sans-serif;font-size:clamp(2.4rem,5vw,4rem);font-weight:900;line-height:1.08;margin-bottom:18px;animation:fadeUp .5s .1s ease both;}
+.hero h1 .byte{background:linear-gradient(90deg,#a78bfa,#f472b6,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:1.02rem;opacity:.78;line-height:1.7;max-width:440px;margin-bottom:30px;font-weight:600;animation:fadeUp .5s .15s ease both;}
+.hero-btns{display:flex;gap:12px;flex-wrap:wrap;animation:fadeUp .5s .2s ease both;}
+.hbtn{padding:13px 28px;border-radius:50px;font-weight:800;font-size:.95rem;border:none;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .22s;display:inline-flex;align-items:center;gap:8px;}
+.hbtn-primary{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;box-shadow:0 6px 24px rgba(79,70,229,.45);}
+.hbtn-primary:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(79,70,229,.55);}
+.hbtn-ghost{background:rgba(255,255,255,.09);color:#fff;border:1.5px solid rgba(255,255,255,.22);backdrop-filter:blur(8px);}
+.hbtn-ghost:hover{background:rgba(255,255,255,.16);}
+
+.hero-stats{display:flex;gap:32px;margin-top:36px;flex-wrap:wrap;animation:fadeUp .5s .25s ease both;}
+.hstat .num{font-family:'Baloo 2',sans-serif;font-size:1.7rem;font-weight:900;line-height:1;}
+.hstat .lbl{font-size:.7rem;opacity:.6;font-weight:700;margin-top:3px;letter-spacing:.4px;}
+
+/* floating cards */
+.hero-right{position:relative;height:420px;}
+.hcard{position:absolute;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(12px);border-radius:20px;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:cardFloat 6s ease-in-out infinite;}
+.hcard1{top:20px;left:10px;animation-delay:0s;min-width:200px;}
+.hcard2{top:150px;right:0;animation-delay:2.2s;min-width:190px;}
+.hcard3{bottom:30px;left:30px;animation-delay:4s;min-width:180px;}
+@keyframes cardFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-14px);}}
+.hcard-tag{font-size:.62rem;font-weight:800;opacity:.6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px;}
+.hcard-title{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:.92rem;margin-bottom:5px;}
+.hcard-sub{font-size:.76rem;opacity:.65;font-weight:600;}
+.hcard-bar{height:4px;background:rgba(255,255,255,.15);border-radius:50px;overflow:hidden;margin-top:10px;}
+.hcard-fill{height:100%;border-radius:50px;background:linear-gradient(90deg,#a78bfa,#f472b6);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── WRAP ── */
+.sec{padding:72px clamp(20px,5vw,60px);max-width:1100px;margin:0 auto;}
+.sec-label{font-size:.7rem;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--primary);margin-bottom:8px;}
+.sec-title{font-family:'Baloo 2',sans-serif;font-size:clamp(1.65rem,3.2vw,2.3rem);font-weight:900;margin-bottom:10px;line-height:1.18;}
+.sec-sub{font-size:.94rem;color:var(--muted);font-weight:600;line-height:1.65;margin-bottom:44px;max-width:500px;}
+
+/* ── FEATURES 2x2 ── */
+.feats2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
+@media(max-width:520px){.feats2{grid-template-columns:1fr;}}
+.feat2{border-radius:22px;padding:32px 28px;display:flex;gap:20px;align-items:flex-start;transition:transform .22s,box-shadow .22s;}
+.feat2:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(0,0,0,.1);}
+.feat2-ico{width:72px;height:72px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:1.9rem;flex-shrink:0;overflow:hidden;padding:10px;box-sizing:border-box;}.feat2-ico img{width:100%;height:100%;object-fit:contain;}
+.feat2-body h3{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.05rem;margin-bottom:7px;}
+.feat2-body p{font-size:.83rem;line-height:1.65;font-weight:600;opacity:.75;}
+
+/* ── HOW IT WORKS ── */
+.hiw-bg{background:linear-gradient(135deg,#0f0a2e,#1e1b4b);color:#fff;}
+.hiw-inner{padding:72px clamp(20px,5vw,60px);max-width:1100px;margin:0 auto;}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;position:relative;}
+.steps::before{content:'';position:absolute;top:36px;left:16.5%;right:16.5%;height:2px;background:linear-gradient(90deg,#4f46e5,#ec4899,#10b981);opacity:.25;}
+@media(max-width:580px){.steps{grid-template-columns:1fr;}.steps::before{display:none;}}
+.step{text-align:center;padding:20px 14px;}
+.step-num{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Baloo 2',sans-serif;font-size:1.6rem;font-weight:900;color:#fff;margin:0 auto 16px;position:relative;z-index:1;box-shadow:0 8px 24px rgba(0,0,0,.3);}
+.step h4{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1rem;margin-bottom:8px;}
+.step p{font-size:.82rem;opacity:.7;font-weight:600;line-height:1.6;}
+
+/* ── FEATURED COURSES ── */
+.featured-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px;}
+.fc{background:var(--white);border-radius:20px;overflow:hidden;box-shadow:var(--shadow);transition:transform .22s,box-shadow .22s;text-decoration:none;color:var(--text);border:1px solid var(--border);display:block;}
+.fc:hover{transform:translateY(-5px);box-shadow:0 18px 48px rgba(0,0,0,.12);}
+.fc-top{height:90px;display:flex;align-items:center;justify-content:center;font-size:2.8rem;}
+.fc-body{padding:15px 18px 20px;}
+.fc-cls{font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px;}
+.fc-title{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:.93rem;margin-bottom:5px;line-height:1.3;}
+.fc-meta{font-size:.73rem;color:var(--muted);font-weight:600;}
+
+/* ── CLASSES ── */
+.classes-hd{background:linear-gradient(135deg,#fffbeb,#fef9c3);border-radius:22px;padding:26px 26px 22px;margin-bottom:26px;border:1px solid #fde68a;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.classes-hd h2{font-family:'Baloo 2',sans-serif;font-size:1.35rem;font-weight:900;}
+.classes-hd p{font-size:.84rem;color:var(--muted);font-weight:600;margin-top:3px;}
+
+/* ── APP DOWNLOAD ── */
+.app-sec{background:linear-gradient(135deg,#064e3b,#065f46,#047857);border-radius:28px;margin:0 clamp(16px,4vw,40px) 64px;padding:52px clamp(24px,5vw,60px);color:#fff;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;overflow:hidden;position:relative;}
+@media(max-width:640px){.app-sec{grid-template-columns:1fr;gap:28px;}}
+.app-sec::after{content:'📱';font-size:22rem;position:absolute;right:-30px;bottom:-70px;opacity:.05;pointer-events:none;line-height:1;}
+.app-title{font-family:'Baloo 2',sans-serif;font-size:clamp(1.6rem,3.2vw,2.3rem);font-weight:900;margin-bottom:10px;line-height:1.15;}
+.app-sub{font-size:.94rem;opacity:.85;line-height:1.68;font-weight:600;margin-bottom:28px;}
+.app-btns{display:flex;gap:12px;flex-wrap:wrap;}
+.store-btn{display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.28);padding:11px 20px;border-radius:14px;color:#fff;text-decoration:none;font-weight:800;font-size:.87rem;font-family:'Nunito',sans-serif;transition:all .2s;backdrop-filter:blur(6px);}
+.store-btn:hover{background:rgba(255,255,255,.22);transform:translateY(-2px);}
+.store-btn .sico{font-size:1.5rem;}
+.store-btn .stxt small{display:block;font-size:.62rem;font-weight:600;opacity:.75;margin-bottom:1px;}
+.app-mockup{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:28px;padding:18px;display:inline-block;backdrop-filter:blur(8px);box-shadow:0 24px 60px rgba(0,0,0,.25);}
+.app-screen{background:linear-gradient(160deg,#fff,#f0fdf4);border-radius:18px;padding:16px;width:200px;}
+.app-sc-title{font-family:'Baloo 2',sans-serif;font-size:.82rem;font-weight:800;color:#065f46;margin-bottom:10px;}
+.app-card-m{background:#ecfdf5;border-radius:10px;padding:9px 11px;margin-bottom:7px;border-left:3px solid #10b981;}
+.app-card-m .q{font-size:.7rem;font-weight:700;color:#374151;margin-bottom:3px;}
+.app-card-m .a{font-size:.63rem;color:#6b7280;font-weight:600;}
+.app-prog{display:flex;align-items:center;gap:8px;margin-top:10px;}
+.app-pbar{flex:1;height:5px;background:#d1fae5;border-radius:50px;overflow:hidden;}
+.app-pfill{height:100%;background:#10b981;border-radius:50px;width:65%;}
+.app-ppct{font-size:.66rem;font-weight:800;color:#10b981;}
+
+/* ── SITE FOOTER ── */
+.site-footer{background:linear-gradient(135deg,#1e1b4b,#2d2760);color:#fff;padding:60px clamp(20px,5vw,60px) 0;}
+.sf-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:36px;padding-bottom:48px;border-bottom:1px solid rgba(255,255,255,.08);}
+@media(max-width:720px){.sf-inner{grid-template-columns:1fr 1fr;gap:32px;}}
+@media(max-width:460px){.sf-inner{grid-template-columns:1fr;}}
+.sf-logo{font-family:'Baloo 2',sans-serif;font-size:1.8rem;font-weight:900;margin-bottom:2px;}
+.sf-logo em{background:linear-gradient(90deg,#a78bfa,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-style:normal;}
+.sf-by{font-size:.7rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;opacity:.45;margin-bottom:14px;}
+.sf-tagline{font-size:.83rem;opacity:.6;line-height:1.65;font-weight:600;font-style:italic;max-width:220px;margin-bottom:18px;}
+.sf-social{display:flex;gap:8px;}
+.sf-soc-btn{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7);text-decoration:none;transition:all .18s;}
+.sf-soc-btn:hover{background:rgba(255,255,255,.16);color:#fff;transform:translateY(-2px);}
+.sf-col-title{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:.82rem;letter-spacing:.8px;text-transform:uppercase;opacity:.45;margin-bottom:14px;}
+.sf-col a{display:block;color:rgba(255,255,255,.72);font-size:.85rem;font-weight:600;text-decoration:none;margin-bottom:10px;transition:color .15s;display:flex;align-items:center;gap:4px;}
+.sf-col a:hover{color:#fff;}
+.sf-bottom{max-width:1100px;margin:0 auto;padding:20px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;font-size:.75rem;opacity:.4;font-weight:600;}
+
+/* ── TYPING EFFECT ── */
+#typing-text{border-right:3px solid #a78bfa;}
+@keyframes blink{0%,100%{border-color:#a78bfa;}50%{border-color:transparent;}}
+.blink-cursor{animation:blink .75s step-end infinite;}
+
+/* ── HOVER EFFECTS ── */
+/* Feature cards */
+.feat2{transition:transform .22s,box-shadow .22s,background .22s;}
+.feat2:hover{transform:translateY(-5px);box-shadow:0 20px 48px rgba(0,0,0,.1);}
+.feat2:nth-child(1):hover{background:#dde4ff !important;}
+.feat2:nth-child(2):hover{background:#fce4f3 !important;}
+.feat2:nth-child(3):hover{background:#fff0c2 !important;}
+.feat2:nth-child(4):hover{background:#d8f5e8 !important;}
+.feat2-ico{transition:transform .22s;}
+.feat2:hover .feat2-ico{transform:scale(1.08) rotate(-3deg);}
+
+/* Class cards */
+.c-class{transition:transform .2s,box-shadow .2s,filter .2s !important;}
+.c-class:hover{transform:translateY(-6px) scale(1.03) !important;box-shadow:0 16px 40px rgba(0,0,0,.15) !important;filter:brightness(1.08);}
+
+/* Featured course cards */
+.fc{transition:transform .22s,box-shadow .22s;}
+.fc:hover{transform:translateY(-6px);box-shadow:0 20px 48px rgba(0,0,0,.14);}
+.fc-top{transition:transform .3s;}
+.fc:hover .fc-top{transform:scale(1.05);}
+
+/* Steps */
+.step{transition:transform .2s;}
+.step:hover{transform:translateY(-4px);}
+.step:hover .step-num{box-shadow:0 12px 32px rgba(0,0,0,.4) !important;}
+
+/* Social buttons */
+.sf-soc-btn{transition:all .18s;}
+.sf-soc-btn:hover{background:rgba(255,255,255,.2) !important;transform:translateY(-3px) scale(1.1);}
+
+/* Store buttons */
+.store-btn{transition:all .2s;}
+.store-btn:hover{background:rgba(255,255,255,.25) !important;transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.2);}
+
+/* Footer links */
+.sf-col a{transition:color .15s,transform .15s,padding-left .15s;}
+.sf-col a:hover{color:#a78bfa !important;padding-left:4px;}
+
+/* Nav buttons */
+.b-btn{transition:all .2s;}
+.b-btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(79,70,229,.4);}
+.b-btn-ghost:hover{background:var(--bg2) !important;}
+
+/* Footer EduSaint logo */
+.sf-logo-wrap{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.sf-app-icon{width:36px;height:36px;border-radius:9px;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.sf-es-logo{height:24px;width:auto;object-fit:contain;opacity:.6;filter:brightness(10);transition:opacity .2s;}
+.sf-es-logo:hover{opacity:1;}
+</style>
+</head>
+<body>
+<div id="nav-el"></div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-orb hero-orb1"></div>
+  <div class="hero-orb hero-orb2"></div>
+  <div class="hero-orb hero-orb3"></div>
+  <div class="hero-inner">
+    <div>
+      <div class="hero-brand">by <span>EduSaint</span> · India's Interactive Learning Platform</div>
+      <div class="hero-badge">✨ CBSE Classes 1–12</div>
+      <h1><span id="typing-text"></span><br/>with <span class="byte">BYTE</span></h1>
+      <p class="hero-sub">Interactive flashcards, structured lessons & smart quizzes — built for students who actually want to understand.</p>
+      <div class="hero-btns">
+        <button class="hbtn hbtn-primary" onclick="window.location='/learn/'">Explore Courses 🚀</button>
+        <button class="hbtn hbtn-ghost" onclick="BYTE.showLoginPopup();setTimeout(()=>BYTE._lpSwitch('r'),50)">Sign Up Free →</button>
+      </div>
+      <div class="hero-stats">
+        <div class="hstat"><div class="num" id="stat-courses">—</div><div class="lbl">Courses</div></div>
+        <div class="hstat"><div class="num" id="stat-cards">—</div><div class="lbl">Cards</div></div>
+        <div class="hstat"><div class="num" id="stat-lessons">—</div><div class="lbl">Lessons</div></div>
+        <div class="hstat"><div class="num">Free</div><div class="lbl">To Start</div></div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hcard hcard1">
+        <div class="hcard-tag">🔬 Science · Class 8</div>
+        <div class="hcard-title">Curiosity — Science</div>
+        <div class="hcard-sub">10 lessons · 284 cards</div>
+        <div class="hcard-bar"><div class="hcard-fill" style="width:72%"></div></div>
+      </div>
+      <div class="hcard hcard2">
+        <div class="hcard-tag">📌 Today's Topic</div>
+        <div class="hcard-title">Photosynthesis</div>
+        <div class="hcard-sub">5 cards remaining 🌱</div>
+      </div>
+      <div class="hcard hcard3">
+        <div class="hcard-tag">🏆 Your Rank</div>
+        <div class="hcard-title">#3 This Week</div>
+        <div class="hcard-sub">Keep going! 🔥</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES 2x2 -->
+<div style="background:var(--bg);">
+  <div class="sec">
+    <div class="sec-label">Why BYTE?</div>
+    <div class="sec-title">Everything you need to ace your exams</div>
+    <div class="sec-sub">One platform. All subjects. Structured exactly like your NCERT textbook.</div>
+    <div class="feats2">
+      <div class="feat2" style="background:#eef2ff;">
+        <div class="feat2-ico" style="background:#eef2ff;"><img src="/assets/flash-cards.png" alt="Flashcard Learning"/></div>
+        <div class="feat2-body">
+          <h3>Flashcard Learning</h3>
+          <p>Bite-sized concept cards that make studying fast and actually fun. Master topics one card at a time.</p>
+        </div>
+      </div>
+      <div class="feat2" style="background:#fdf2f8;">
+        <div class="feat2-ico" style="background:#fdf2f8;"><img src="/assets/question.png" alt="Smart Quizzes"/></div>
+        <div class="feat2-body">
+          <h3>Smart Quizzes</h3>
+          <p>Test yourself after every topic with instant feedback. Know exactly what you've mastered and what needs work.</p>
+        </div>
+      </div>
+      <div class="feat2" style="background:#fffbeb;">
+        <div class="feat2-ico" style="background:#fffbeb;"><img src="/assets/ebook-icon.png" alt="NCERT Aligned"/></div>
+        <div class="feat2-body">
+          <h3>NCERT Aligned</h3>
+          <p>Every chapter broken into topics exactly as per your textbook. No confusion, just clarity — chapter by chapter.</p>
+        </div>
+      </div>
+      <div class="feat2" style="background:#f0fdf4;">
+        <div class="feat2-ico" style="background:#f0fdf4;"><img src="/assets/hand-holding-smartphone.png" alt="Learn Anywhere"/></div>
+        <div class="feat2-body">
+          <h3>Learn Anywhere</h3>
+          <p>Full access on the BYTE mobile app by EduSaint. Study on the bus, at home, wherever you are.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="hiw-bg">
+  <div class="hiw-inner">
+    <div style="text-align:center;margin-bottom:52px;">
+      <div class="sec-label" style="color:#a78bfa;">How It Works</div>
+      <div class="sec-title" style="color:#fff;margin-bottom:0;">Start learning in 3 simple steps</div>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num" style="background:linear-gradient(135deg,#4f46e5,#7c3aed);">1</div>
+        <h4>Pick Your Class</h4>
+        <p>Browse all available classes and subjects. New courses being added regularly.</p>
+      </div>
+      <div class="step">
+        <div class="step-num" style="background:linear-gradient(135deg,#ec4899,#f59e0b);">2</div>
+        <h4>Explore Lessons</h4>
+        <p>Each course is broken into lessons and topics — structured just like your textbook.</p>
+      </div>
+      <div class="step">
+        <div class="step-num" style="background:linear-gradient(135deg,#10b981,#3b82f6);">3</div>
+        <h4>Learn on the App</h4>
+        <p>Open cards and quizzes on the BYTE app. Track progress and climb the leaderboard.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURED COURSES -->
+<div style="background:var(--bg);">
+  <div class="sec">
+    <div class="sec-label">Explore Courses</div>
+    <div class="sec-title">Start Learning Today 📚</div>
+    <div class="sec-sub">Courses across all subjects — pick one and dive right in.</div>
+    <div class="featured-grid" id="featured-grid">
+      <div class="b-spin"><div class="spin"></div></div>
+    </div>
+    <div style="text-align:center;margin-top:32px;">
+      <a href="/learn/" style="display:inline-block;padding:13px 32px;background:var(--primary);color:#fff;border-radius:50px;font-weight:800;font-size:.92rem;text-decoration:none;box-shadow:0 4px 16px rgba(79,70,229,.3);transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">View All Courses →</a>
+    </div>
+  </div>
+</div>
+
+<!-- PICK YOUR CLASS -->
+<div style="background:var(--bg);padding-bottom:60px;">
+  <div class="sec" style="padding-top:0;">
+    <div class="classes-hd">
+      <div>
+        <h2>Pick Your Class 📚</h2>
+        <p>Tap your class to explore available subjects and courses.</p>
+      </div>
+      <a href="/learn/" style="font-weight:800;color:var(--primary);font-size:.87rem;">All courses →</a>
+    </div>
+    <div class="g-classes" id="classes-grid">
+      <div class="b-spin"><div class="spin"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP DOWNLOAD -->
+<div class="app-sec">
+  <div>
+    <div style="font-size:.7rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;opacity:.6;margin-bottom:10px;">EduSaint · BYTE App</div>
+    <div class="app-title">Take BYTE<br/>Everywhere 📱</div>
+    <p class="app-sub">Download the BYTE app by EduSaint and access all your courses, flashcards and quizzes. Available on Android & iOS.</p>
+    <div class="app-btns">
+      <a href="https://play.google.com/store/apps/details?id=in.edusaint.byte" target="_blank" class="store-btn">
+        <span class="sico">🤖</span>
+        <span class="stxt"><small>Get it on</small>Google Play</span>
+      </a>
+      <a href="https://apps.apple.com/app/byte-edusaint/id0000000000" target="_blank" class="store-btn">
+        <span class="sico">🍎</span>
+        <span class="stxt"><small>Download on the</small>App Store</span>
+      </a>
+    </div>
+  </div>
+  <div style="text-align:center;position:relative;z-index:1;">
+    <div class="app-mockup">
+      <div class="app-screen">
+        <div class="app-sc-title">📚 Today's Lesson</div>
+        <div class="app-card-m"><div class="q">What is photosynthesis?</div><div class="a">Process by which plants make food using sunlight...</div></div>
+        <div class="app-card-m"><div class="q">Which gas is released?</div><div class="a">Oxygen (O₂) is released as a by-product...</div></div>
+        <div class="app-prog">
+          <div class="app-pbar"><div class="app-pfill"></div></div>
+          <div class="app-ppct">65%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="sf-inner">
+    <div class="sf-brand">
+      <div class="sf-logo-wrap">
+        <img src="/assets/app-icon.png" alt="BYTE" class="sf-app-icon"/>
+        <div class="sf-logo">B<em>Y</em>TE</div>
+      </div>
+      <div class="sf-by">by EduSaint — India's Interactive Learning Platform</div>
+      <p class="sf-tagline">"Every student deserves to understand, not just memorize."</p>
+      <div class="sf-social">
+        <a href="mailto:ruby@edusaint.in" title="Email" class="sf-soc-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </a>
+        <a href="#" title="Instagram" class="sf-soc-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+        </a>
+        <a href="#" title="YouTube" class="sf-soc-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42A2.78 2.78 0 0 0 20.6 4.47C18.88 4 12 4 12 4s-6.88 0-8.6.47A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.4 19.53C5.12 20 12 20 12 20s6.88 0 8.6-.47a2.78 2.78 0 0 0 1.94-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75,15.02 15.5,12 9.75,8.98 9.75,15.02" style="fill:#fff;"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="sf-col">
+      <div class="sf-col-title">Quick Links</div>
+      <a href="/home/">Home</a>
+      <a href="/learn/">Courses</a>
+      <a href="#features">Features</a>
+    </div>
+    <div class="sf-col">
+      <div class="sf-col-title">Support</div>
+      <a href="mailto:ruby@edusaint.in">Contact Us</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Use</a>
+      <a href="#">FAQs</a>
+    </div>
+    <div class="sf-col">
+      <div class="sf-col-title">Get the App</div>
+      <a href="https://play.google.com/store/apps/details?id=in.edusaint.byte" target="_blank">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="display:inline;margin-right:5px;vertical-align:middle;opacity:.7;"><path d="M3 20.5v-17c0-.83 1.05-1.27 1.69-.71l14 8.5c.54.33.54 1.09 0 1.42l-14 8.5C4.05 21.77 3 21.33 3 20.5z"/></svg>Google Play
+      </a>
+      <a href="#" target="_blank">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:5px;vertical-align:middle;opacity:.7;"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg>App Store
+      </a>
+      <a href="mailto:ruby@edusaint.in">ruby@edusaint.in</a>
+    </div>
+    <div class="sf-col">
+      <div class="sf-col-title">EduSaint Products</div>
+      <a href="https://school.edusaint.in" target="_blank">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:5px;vertical-align:middle;opacity:.7;" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Find Your School
+      </a>
+      <a href="https://erp.edusaint.in" target="_blank">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:5px;vertical-align:middle;opacity:.7;" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>School ERP
+      </a>
+      <a href="https://byte.edusaint.in/home/" target="_blank">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:5px;vertical-align:middle;opacity:.7;" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>BYTE Learning
+      </a>
+    </div>
+  </div>
+  <div class="sf-bottom">
+    <span>&#169; 2026 EduSaint Eduservices Pvt. Ltd. All rights reserved.</span>
+    <span>Made with &#10084;&#65039; in India</span>
+  </div>
+</footer>
+<script src="/assets/byte.js"></script>
+<script>
+  document.getElementById('nav-el').innerHTML = BYTE.nav('home');
+  BYTE.updateNav();
+
+  async function loadAll(){
+    // Fetch classes + courses in parallel
+    const [cd, crd] = await Promise.all([
+      BYTE.api('/classes'),
+      BYTE.api('/courses?limit=200')
+    ]);
+
+    const classes = cd?.classes||[];
+    const all = (crd?.data||crd?.courses||[]).filter(c=>c.published!==false);
+
+    // ── Dynamic stats ──
+    const totalCourses = all.length;
+    const totalCards = all.reduce((s,c)=>s+(c.totalCards||0),0);
+    const totalLessons = all.reduce((s,c)=>s+(c.totalLessons||0),0);
+    document.getElementById('stat-courses').textContent = totalCourses||'—';
+    document.getElementById('stat-cards').textContent = totalCards>999?(Math.round(totalCards/100)/10)+'k+':totalCards||'—';
+    document.getElementById('stat-lessons').textContent = totalLessons||'—';
+
+    // ── Featured — top 6 by totalCards ──
+    const grid = document.getElementById('featured-grid');
+    if(!all.length){ grid.innerHTML=BYTE.empty('No courses yet!'); }
+    else {
+      const top=[...all].sort((a,b)=>(b.totalCards||0)-(a.totalCards||0)).slice(0,6);
+      grid.innerHTML=top.map((course,i)=>{
+        const cls=String(course.class_name||'').trim();
+        return `<a href="/learn/${BYTE.esc(BYTE.slug(cls))}/${BYTE.esc(BYTE.slug(course.title))}/" class="fc">
+          <div class="fc-top col-${BYTE.col(i+1)}">${BYTE.icon(course.category||course.title)}</div>
+          <div class="fc-body">
+            <div class="fc-cls">Class ${BYTE.esc(cls)} · ${BYTE.esc(course.category||'CBSE')}</div>
+            <div class="fc-title">${BYTE.esc(course.title)}</div>
+            <div class="fc-meta">${course.totalLessons||0} lessons · ${course.totalCards||0} cards</div>
+          </div>
+        </a>`;
+      }).join('');
+    }
+
+    // ── Classes — show only available (from API), sorted 1–12 ──
+    const cgrid = document.getElementById('classes-grid');
+    if(!classes.length){
+      // fallback from courses data
+      const clsSet={};
+      all.forEach(c=>{ const k=String(c.class_name||'').trim(); if(k&&!clsSet[k]) clsSet[k]={name:k,courses_count:0}; clsSet[k].courses_count++; });
+      const fallback=Object.values(clsSet).sort((a,b)=>parseFloat(a.name)-parseFloat(b.name));
+      cgrid.innerHTML=fallback.map((cls,i)=>`
+        <a href="/learn/?class=${BYTE.esc(cls.name)}" title="CBSE Class ${BYTE.esc(cls.name)} on BYTE">
+          <div class="c-class col-${BYTE.col(i+1)}">
+            <span class="ico">${BYTE.cemoji(cls.name)}</span>
+            <div class="num">Class ${BYTE.esc(cls.name)}</div>
+            <div class="lbl">${cls.courses_count} course${cls.courses_count!==1?'s':''}</div>
+          </div>
+        </a>`).join('');
+      return;
+    }
+    // Sort 1→12
+    classes.sort((a,b)=>parseFloat(a.name||a.id)-parseFloat(b.name||b.id));
+    cgrid.innerHTML=classes.map((cls,i)=>{
+      const name=cls.name||cls.id;
+      return `<a href="/learn/?class=${BYTE.esc(name)}" title="CBSE Class ${BYTE.esc(name)} on BYTE">
+        <div class="c-class col-${BYTE.col(i+1)}">
+          <span class="ico">${BYTE.cemoji(name)}</span>
+          <div class="num">Class ${BYTE.esc(name)}</div>
+          <div class="lbl">${cls.courses_count||''} course${cls.courses_count!==1?'s':''}</div>
+        </div>
+      </a>`;
+    }).join('');
+  }
+
+  loadAll();
+
+  // ── TYPING EFFECT ──
+  const phrases = ['Study Smarter,\nScore Higher', 'Learn with Focus,\nAce Every Exam', 'Master Concepts,\nBuild Confidence'];
+  let pi = 0, ci = 0, deleting = false;
+  const el = document.getElementById('typing-text');
+  function type(){
+    if(!el) return;
+    const phrase = phrases[pi];
+    const display = phrase.replace('\n','\n');
+    if(!deleting){
+      ci++;
+      el.innerHTML = phrase.substring(0,ci).replace('\n','<br/>');
+      el.classList.add('blink-cursor');
+      if(ci===phrase.length){ setTimeout(()=>{deleting=true;},2200); setTimeout(type,2400); return; }
+      setTimeout(type, ci===1?300:48);
+    } else {
+      ci--;
+      el.innerHTML = phrase.substring(0,ci).replace('\n','<br/>');
+      if(ci===0){ deleting=false; pi=(pi+1)%phrases.length; setTimeout(type,300); return; }
+      setTimeout(type,28);
+    }
+  }
+  setTimeout(type,500);
+</script>
+</body>
+</html>
