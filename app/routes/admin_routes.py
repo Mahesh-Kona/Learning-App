@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, render_template_string, request, redirect, url_for, session, flash, current_app, send_from_directory
 from app.extensions import db
 from app.models import User
-from app.models import Course, Lesson, Topic, Asset, Student
+from app.models import Course, Lesson, Topic, Asset, Student, PracticeQuiz
 from sqlalchemy import func
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash
@@ -1269,7 +1269,7 @@ def notifications_page():
     return render_template('notifications.html', user=user, active='notifications')
 
 
-@admin_bp.route('/quizzes', methods=['GET'])
+@admin_bp.route('/all-quiz', methods=['GET'])
 def quizzes_page():
     uid = session.get('admin_user_id')
     if not uid:
@@ -1282,7 +1282,81 @@ def quizzes_page():
             session.pop('admin_user_id', None)
             return redirect(url_for('admin_bp.admin_login_get'))
 
-    return render_template('quizzes.html', user=user, active='quizzes')
+    # Load practice quizzes from DB and shape for the listing UI
+    quizzes = PracticeQuiz.query.order_by(PracticeQuiz.created_at.desc()).all()
+    courses = [q.to_list_card() for q in quizzes]
+
+    return render_template('all-quiz.html', user=user, active='quizzes', courses=courses)
+
+
+@admin_bp.route('/create-quiz', methods=['GET', 'POST'])
+def create_quiz_page():
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    if request.method == 'POST':
+        title = (request.form.get('title') or '').strip()
+        description = (request.form.get('description') or '').strip()
+        time_limit = request.form.get('time_limit')
+        total_marks = request.form.get('total_marks')
+        total_questions = request.form.get('total_questions')
+        difficulty = (request.form.get('difficulty') or '').strip() or None
+        category = (request.form.get('category') or '').strip() or None
+        class_name = (request.form.get('class') or '').strip() or None
+        published = bool(request.form.get('published'))
+        featured = bool(request.form.get('featured'))
+
+        if not title:
+            flash('Title is required to create a quiz.', 'error')
+            return render_template('create_quiz.html', user=user, active='create_quiz')
+
+        def _to_int(val):
+            try:
+                return int(val) if val not in (None, '',) else None
+            except (TypeError, ValueError):
+                return None
+
+        quiz = PracticeQuiz(
+            title=title,
+            description=description or None,
+            time_limit=_to_int(time_limit),
+            total_marks=_to_int(total_marks),
+            total_questions=_to_int(total_questions),
+            difficulty=difficulty,
+            category=category,
+            class_name=class_name,
+        )
+
+        # Optional thumbnail upload (store under UPLOAD_PATH and save URL)
+        try:
+            if 'thumbnail' in request.files and request.files['thumbnail'].filename:
+                f = request.files['thumbnail']
+                orig_name = secure_filename(f.filename)
+                unique_name = f"{uuid.uuid4().hex}_{orig_name}"
+                UP = current_app.config.get('UPLOAD_PATH', '/tmp/uploads')
+                if not os.path.isabs(UP):
+                    UP = os.path.join(current_app.root_path, UP)
+                os.makedirs(UP, exist_ok=True)
+                filepath = os.path.join(UP, unique_name)
+                f.save(filepath)
+                url = f"/uploads/{unique_name}"
+                quiz.thumbnail_url = url
+        except Exception:
+            current_app.logger.exception('Failed handling practice quiz thumbnail upload')
+
+        db.session.add(quiz)
+        db.session.commit()
+        return redirect(url_for('admin_bp.quizzes_page'))
+
+    return render_template('create_quiz.html', user=user, active='create_quiz')
 
 
 @admin_bp.route('/notifications/api', methods=['GET'])
@@ -1353,6 +1427,163 @@ def notifications_api_create():
         except Exception:
             pass
         return jsonify({'success': False, 'error': 'Failed to create'}), 500
+
+
+@admin_bp.route('/create_quiz', methods=['POST'])
+def practice_quiz_create_api():
+    """JSON endpoint used by all-quiz.html modal to create a PracticeQuiz."""
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+    if uid != 'dev_admin':
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'success': False, 'error': 'Not authorized'}), 403
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Name is required'}), 400
+
+    def _to_int(val):
+        try:
+            return int(val) if val not in (None, '',) else None
+        except (TypeError, ValueError):
+            return None
+
+    quiz = PracticeQuiz(
+        title=name,
+        description=(data.get('description') or '').strip() or None,
+        time_limit=_to_int(data.get('time_limit')),
+        total_marks=_to_int(data.get('total_marks')),
+        total_questions=_to_int(data.get('questions_count')),
+        # incoming difficulty is beginner/intermediate/advanced from UI
+        difficulty={
+            'beginner': 'easy',
+            'intermediate': 'medium',
+            'advanced': 'hard',
+        }.get((data.get('difficulty') or '').strip(), None),
+        category=(data.get('category') or '').strip() or None,
+        class_name=(str(data.get('class_name')).strip() or None) if data.get('class_name') not in (None, '') else None,
+    )
+
+    try:
+        db.session.add(quiz)
+        db.session.commit()
+        return jsonify({'success': True, 'quiz': quiz.to_list_card()}), 201
+    except Exception:
+        current_app.logger.exception('Failed to create practice quiz via API')
+        try:
+            db.session.rollback()
+        except Exception:
+            current_app.logger.exception('Rollback failed after practice quiz create error')
+        return jsonify({'success': False, 'error': 'Failed to create quiz'}), 500
+
+
+@admin_bp.route('/update_quiz', methods=['POST'])
+def practice_quiz_update_api():
+    """JSON endpoint used by all-quiz.html modal to update a PracticeQuiz."""
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+    if uid != 'dev_admin':
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'success': False, 'error': 'Not authorized'}), 403
+
+    data = request.get_json(silent=True) or {}
+    quiz_id = data.get('id')
+    if not quiz_id:
+        return jsonify({'success': False, 'error': 'Quiz id is required'}), 400
+
+    quiz = PracticeQuiz.query.get(quiz_id)
+    if not quiz:
+        return jsonify({'success': False, 'error': 'Quiz not found'}), 404
+
+    def _to_int(val):
+        try:
+            return int(val) if val not in (None, '',) else None
+        except (TypeError, ValueError):
+            return None
+
+    name = (data.get('name') or '').strip()
+    if name:
+        quiz.title = name
+    quiz.time_limit = _to_int(data.get('time_limit'))
+    quiz.total_marks = _to_int(data.get('total_marks'))
+    quiz.total_questions = _to_int(data.get('questions_count'))
+
+    diff_key = (data.get('difficulty') or '').strip()
+    if diff_key:
+        quiz.difficulty = {
+            'beginner': 'easy',
+            'intermediate': 'medium',
+            'advanced': 'hard',
+        }.get(diff_key, quiz.difficulty)
+
+    # Optional extended fields
+    if 'description' in data:
+        desc = (data.get('description') or '').strip()
+        quiz.description = desc or None
+
+    if 'category' in data:
+        category = (data.get('category') or '').strip()
+        quiz.category = category or None
+
+    if 'class_name' in data:
+        raw_class = data.get('class_name')
+        quiz.class_name = (str(raw_class).strip() or None) if raw_class not in (None, '') else None
+
+
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'quiz': quiz.to_list_card()}), 200
+    except Exception:
+        current_app.logger.exception('Failed to update practice quiz via API')
+        try:
+            db.session.rollback()
+        except Exception:
+            current_app.logger.exception('Rollback failed after practice quiz update error')
+        return jsonify({'success': False, 'error': 'Failed to update quiz'}), 500
+
+
+@admin_bp.route('/delete_quiz', methods=['POST'])
+def practice_quiz_delete_api():
+    """JSON endpoint used by all-quiz.html to delete a PracticeQuiz."""
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+    if uid != 'dev_admin':
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'success': False, 'error': 'Not authorized'}), 403
+
+    data = request.get_json(silent=True) or {}
+    quiz_id = data.get('id')
+    if not quiz_id:
+        return jsonify({'success': False, 'error': 'Quiz id is required'}), 400
+
+    quiz = PracticeQuiz.query.get(quiz_id)
+    if not quiz:
+        return jsonify({'success': False, 'error': 'Quiz not found'}), 404
+
+    try:
+        db.session.delete(quiz)
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception:
+        current_app.logger.exception('Failed to delete practice quiz via API')
+        try:
+            db.session.rollback()
+        except Exception:
+            current_app.logger.exception('Rollback failed after practice quiz delete error')
+        return jsonify({'success': False, 'error': 'Failed to delete quiz'}), 500
 
 
 @admin_bp.route('/notifications/api/<int:notification_id>', methods=['PUT'])

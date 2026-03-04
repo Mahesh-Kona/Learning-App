@@ -230,6 +230,61 @@ class Card(db.Model):  # type: ignore[name-defined]
         }
 
 
+class PracticeQuiz(db.Model):  # type: ignore[name-defined]
+    """Standalone practice quizzes created from the admin Create Quiz page.
+
+    These are separate from lesson/topic card quizzes and power the
+    all-quiz.html management view.
+    """
+    __tablename__ = 'practice_quizzes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False, index=True)
+    description = db.Column(db.Text, nullable=True)
+    time_limit = db.Column(db.Integer, nullable=True)  # minutes
+    total_marks = db.Column(db.Integer, nullable=True)
+    total_questions = db.Column(db.Integer, nullable=True)
+
+    # Store raw difficulty from the form (easy/medium/hard)
+    difficulty = db.Column(
+        db.Enum('easy', 'medium', 'hard', name='practice_quiz_difficulty'),
+        nullable=True,
+        index=True,
+    )
+
+    category = db.Column(db.String(100), nullable=True, index=True)
+    class_name = db.Column(db.String(50), nullable=True, index=True)
+    thumbnail_url = db.Column(db.String(1024), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_list_card(self) -> dict:
+        """Return a dict shaped for all-quiz.html listing."""
+        # Map internal difficulty to UI difficulty labels
+        diff_map = {
+            'easy': 'beginner',
+            'medium': 'intermediate',
+            'hard': 'advanced',
+        }
+        ui_diff = diff_map.get(self.difficulty or '', 'beginner')
+
+        return {
+            'id': self.id,
+            'name': self.title,
+            # keep a code key for the UI, even though the
+            # underlying table no longer stores it explicitly
+            'code': '',
+            'time_limit': self.time_limit,
+            'difficulty': ui_diff,
+            'total_marks': self.total_marks or 0,
+            'questions_count': self.total_questions or 0,
+            'class_name': self.class_name or '',
+            'description': self.description or '',
+            'category': self.category or '',
+            'thumbnail_url': self.thumbnail_url or '',
+        }
+
+
 class Activity(db.Model):  # type: ignore[name-defined]
     """Simple activity model for fill-in-the-blanks content.
 

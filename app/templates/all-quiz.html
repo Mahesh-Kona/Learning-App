@@ -532,7 +532,7 @@
             <p>Manage and review all quizzes across classes.</p>
         </div>
 
-        <a class="btn-add" href="javascript:void(0)" onclick="openAddModal()">
+        <a class="btn-add" href="{{ url_for('admin_bp.create_quiz_page') }}">
             Add New Quiz
         </a>
     </div>
@@ -595,30 +595,59 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="courseCode">Quiz Code *</label>
-                    <input type="text" id="courseCode" required placeholder="e.g., MATH101">
+                    <label for="quizDescriptionModal">Description</label>
+                    <textarea id="quizDescriptionModal" placeholder="Describe this quiz..."></textarea>
                 </div>
-
-                
 
                 <div class="form-group">
                     <label for="quizTimeLimit">Time Limit (minutes)</label>
-<input type="number" id="quizTimeLimit" placeholder="e.g., 30" min="0">
+                    <input type="number" id="quizTimeLimit" placeholder="e.g., 30" min="0">
                 </div>
 
                 <div class="form-group">
-                   <label for="quizDifficulty">Difficulty *</label>
-<select id="quizDifficulty" required>
-    <option value="">Select Difficulty</option>
-    <option value="beginner">Beginner</option>
-    <option value="intermediate">Intermediate</option>
-    <option value="advanced">Advanced</option>
-</select>
+                    <label for="quizQuestions">Number of Questions</label>
+                    <input type="number" id="quizQuestions" placeholder="e.g., 20" min="0">
                 </div>
+
                 <div class="form-group">
-    <label for="quizTotalMarks">Total Marks *</label>
-    <input type="number" id="quizTotalMarks" placeholder="e.g., 100" min="0" required>
-</div>
+                    <label for="quizDifficulty">Difficulty *</label>
+                    <select id="quizDifficulty" required>
+                        <option value="">Select Difficulty</option>
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="quizTotalMarks">Total Marks *</label>
+                    <input type="number" id="quizTotalMarks" placeholder="e.g., 100" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="quizCategory">Subject</label>
+                    <select id="quizCategory">
+                        <option value="">Select Subject</option>
+                        <option value="mathematics">Mathematics</option>
+                        <option value="science">Science</option>
+                        <option value="english">English</option>
+                        <option value="physics">Physics</option>
+                        <option value="chemistry">Chemistry</option>
+                        <option value="biology">Biology</option>
+                        <option value="computer">Computer Science</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="quizClass">Class</label>
+                    <select id="quizClass">
+                        <option value="">Select Class</option>
+                        {% for i in range(1,13) %}
+                        <option value="{{ i }}">Class {{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
 
                 <div class="form-actions">
                     <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -698,7 +727,6 @@ function renderQuizzes(data = quizzes) {
                 </div>
 
                 <div class="course-actions">
-                    <button class="btn btn-view" data-id="${quiz.id}">Manage</button>
                     <button class="btn btn-edit" data-id="${quiz.id}">Edit</button>
                     <button class="btn btn-delete" data-id="${quiz.id}">Delete</button>
                 </div>
@@ -735,10 +763,13 @@ function editQuiz(id) {
     document.getElementById('modalTitle').textContent = 'Edit Quiz';
     document.getElementById('courseId').value = quiz.id;
     document.getElementById('courseName').value = quiz.name;
-    document.getElementById('courseCode').value = quiz.code;
+    document.getElementById('quizDescriptionModal').value = quiz.description || '';
     document.getElementById('quizTimeLimit').value = quiz.time_limit || '';
+    document.getElementById('quizQuestions').value = quiz.questions_count || '';
     document.getElementById('quizDifficulty').value = quiz.difficulty || '';
     document.getElementById('quizTotalMarks').value = quiz.total_marks || '';
+    document.getElementById('quizCategory').value = quiz.category || '';
+    document.getElementById('quizClass').value = quiz.class_name || '';
 
     document.getElementById('courseModal').classList.add('active');
 }
@@ -750,7 +781,7 @@ async function deleteQuiz(id) {
     if (!confirm('Are you sure you want to delete this quiz?')) return;
 
     try {
-        const resp = await fetch('{{ url_for("admin_bp.delete_quiz") }}', {
+        const resp = await fetch('/admin/delete_quiz', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -779,14 +810,19 @@ document.getElementById('courseForm').addEventListener('submit', async function(
 
     const quizData = {
         name: document.getElementById('courseName').value,
-        code: document.getElementById('courseCode').value,
+        description: document.getElementById('quizDescriptionModal').value,
         time_limit: document.getElementById('quizTimeLimit').value
             ? parseInt(document.getElementById('quizTimeLimit').value)
+            : null,
+        questions_count: document.getElementById('quizQuestions').value
+            ? parseInt(document.getElementById('quizQuestions').value)
             : null,
         difficulty: document.getElementById('quizDifficulty').value,
         total_marks: document.getElementById('quizTotalMarks').value
             ? parseInt(document.getElementById('quizTotalMarks').value)
-            : 0
+            : 0,
+        category: document.getElementById('quizCategory').value,
+        class_name: document.getElementById('quizClass').value
     };
 
     try {
@@ -805,7 +841,17 @@ document.getElementById('courseForm').addEventListener('submit', async function(
         const data = await resp.json();
         if (!resp.ok) return alert(data.error || 'Save failed');
 
-        loadServerQuizzes();
+        if (data.quiz) {
+            if (editingId) {
+                const idx = quizzes.findIndex(q => String(q.id) === String(editingId));
+                if (idx !== -1) {
+                    quizzes[idx] = data.quiz;
+                }
+            } else {
+                quizzes.unshift(data.quiz);
+            }
+        }
+
         renderQuizzes();
         closeModal();
 
@@ -871,13 +917,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!btn) return;
 
         const id = btn.dataset.id;
-
-        if (btn.classList.contains('btn-view')) {
-            window.location.href =
-                '{{ url_for("admin_bp.course_content_page") }}' +
-                '?quiz_id=' + encodeURIComponent(id);
-        }
-
         if (btn.classList.contains('btn-edit')) editQuiz(id);
         if (btn.classList.contains('btn-delete')) deleteQuiz(id);
     });

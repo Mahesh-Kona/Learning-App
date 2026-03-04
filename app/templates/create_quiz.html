@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduSaint - Create Quiz</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/create_course.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_sidebar.css') }}" />
+
+<style>
+.tags-input-container .tag,
+.tags-input-container .tag-remove,
+.upload-btn {
+cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+<div class="dashboard">
+
+{% set active = 'create_quiz' %}
+{% include 'admin_sidebar.html' %}
+
+<main class="main-content">
+
+<!-- HEADER -->
+<div class="header">
+<div class="header-left">
+<h1>Quiz Management</h1>
+<p>Create and manage quizzes for your courses</p>
+</div>
+</div>
+
+<div class="course-creation">
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+<h1 class="page-title">Create New Quiz</h1>
+<div class="page-actions">
+<button type="button" class="btn btn-outline" id="cancelBtn">
+<i class="fas fa-times"></i> Cancel
+</button>
+
+<button form="quizForm" type="submit" class="btn btn-primary">
+<i class="fas fa-save"></i> Save Quiz
+</button>
+</div>
+</div>
+
+<form id="quizForm" class="course-form-container" method="post" action="" enctype="multipart/form-data">
+
+<div class="course-main">
+
+<!-- BASIC INFO -->
+<div class="form-section">
+<h2 class="section-title">
+<i class="fas fa-info-circle"></i> Basic Information
+</h2>
+
+<div class="form-group">
+<label for="quizTitle">Quiz Title *</label>
+<input type="text" id="quizTitle" name="title" required
+placeholder="e.g., Trigonometry Practice Test"/>
+</div>
+
+<div class="form-group">
+<label for="quizDescription">Quiz Description</label>
+<textarea id="quizDescription" name="description"
+placeholder="Describe this quiz..."></textarea>
+</div>
+</div>
+
+
+<!-- QUIZ SETTINGS -->
+<div class="form-section">
+<h2 class="section-title">
+<i class="fas fa-cog"></i> Quiz Settings
+</h2>
+
+<div class="settings-grid">
+<div class="form-group">
+<label for="quizTimeLimit">Time Limit (Minutes)</label>
+<input type="number" id="quizTimeLimit"
+name="time_limit" min="1"
+placeholder="e.g., 30"/>
+</div>
+
+<div class="form-group">
+<label for="quizTotalMarks">Total Marks</label>
+<input type="number" id="quizTotalMarks"
+name="total_marks" min="1"
+placeholder="e.g., 100"/>
+</div>
+</div>
+
+<div class="settings-grid">
+<div class="form-group">
+<label for="quizQuestions">Number of Questions</label>
+<input type="number" id="quizQuestions"
+name="total_questions" min="1"
+placeholder="e.g., 20"/>
+</div>
+
+<div class="form-group">
+<label for="quizDifficulty">Difficulty Level</label>
+<select id="quizDifficulty" name="difficulty">
+<option value="">Select Difficulty</option>
+<option value="easy">Easy</option>
+<option value="medium">Medium</option>
+<option value="hard">Hard</option>
+</select>
+</div>
+</div>
+</div>
+
+</div>
+
+
+<!-- SIDEBAR -->
+<div class="course-sidebar">
+
+<!-- THUMBNAIL -->
+<div class="sidebar-section">
+<h3 class="sidebar-title">
+<i class="fas fa-image"></i> Quiz Thumbnail
+</h3>
+
+<div class="image-upload">
+<input type="file" id="thumbnail"
+name="thumbnail" accept="image/*"
+style="display:none;"/>
+
+<img id="previewImage"
+src="https://via.placeholder.com/320x180.png?text=Quiz+Thumbnail"
+style="width:100%;border-radius:6px;margin-bottom:8px;"/>
+
+<button class="upload-btn">Choose Image</button>
+</div>
+</div>
+
+
+<!-- CATEGORY & CLASS -->
+<div class="sidebar-section">
+<h3 class="sidebar-title">
+<i class="fas fa-layer-group"></i> Category & Class
+</h3>
+
+<div class="form-group">
+<label for="quizCategory">Subject *</label>
+<select id="quizCategory" name="category" required>
+<option value="">Select Subject</option>
+<option value="mathematics">Mathematics</option>
+<option value="science">Science</option>
+<option value="english">English</option>
+<option value="physics">Physics</option>
+<option value="chemistry">Chemistry</option>
+<option value="biology">Biology</option>
+<option value="computer">Computer Science</option>
+</select>
+</div>
+
+<div class="form-group">
+<label for="quizClass">Class *</label>
+<select id="quizClass" name="class" required>
+<option value="">Select Class</option>
+{% for i in range(1,13) %}
+<option value="{{ i }}">Class {{ i }}</option>
+{% endfor %}
+</select>
+</div>
+</div>
+
+
+</div>
+</form>
+
+</div>
+</main>
+</div>
+
+
+<!-- JAVASCRIPT -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+const uploadBtn = document.querySelector('.upload-btn');
+const thumbnailInput = document.getElementById('thumbnail');
+const previewImage = document.getElementById('previewImage');
+const cancelBtn = document.getElementById('cancelBtn');
+
+if (uploadBtn) {
+uploadBtn.addEventListener('click', function (e) {
+e.preventDefault();
+thumbnailInput.click();
+});
+}
+
+if (thumbnailInput) {
+thumbnailInput.addEventListener('change', function () {
+const file = this.files[0];
+if (file) {
+const reader = new FileReader();
+reader.onload = e => previewImage.src = e.target.result;
+reader.readAsDataURL(file);
+}
+});
+}
+
+if (cancelBtn) {
+cancelBtn.addEventListener('click', function () {
+if (confirm('Discard changes?')) {
+window.location.href = '{{ url_for('admin_bp.quizzes_page') }}';
+}
+});
+}
+
+});
+</script>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
