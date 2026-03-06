@@ -10,17 +10,19 @@ from app.extensions import db
 
 @pytest.fixture
 def client():
-    # Ensure tests use an in-memory SQLite DB at app creation time
-    os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
-    os.environ['FLASK_ENV'] = 'testing'
+    """Test client that uses whatever DB the app is configured with.
+
+    This honors your MariaDB/MySQL settings from .env / environment
+    (DATABASE_URL or FORCE_MYSQL + MYSQL_*). It only forces FLASK_ENV
+    and TESTING flags.
+    """
+    os.environ.setdefault('FLASK_ENV', 'testing')
     app = create_app()
     app.config.update({
         "TESTING": True,
-        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
-        "SQLALCHEMY_ENGINE_OPTIONS": {},
     })
     with app.app_context():
-        db.create_all()
-        yield app.test_client()
-        db.session.remove()
-        db.drop_all()
+        try:
+            yield app.test_client()
+        finally:
+            db.session.remove()

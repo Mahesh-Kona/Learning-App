@@ -842,6 +842,10 @@ def student_forgot_password():
         if getattr(student, 'status', None) and str(student.status) != 'active':
             return jsonify({'success': False, 'error': 'Account is not active'}), 400
 
+        # Decide which email to send OTP to (prefer stored student email,
+        # fall back to raw email from request)
+        target_email = (student.email or email_raw).strip()
+
         # Generate 4-digit OTP
         import secrets
         otp = f"{secrets.randbelow(10000):04d}"
@@ -851,7 +855,7 @@ def student_forgot_password():
         _STUDENT_RESET_OTP[int(student.id)] = {
             'otp_hash': generate_password_hash(otp),
             'expires_at': expires_at,
-            'email': student.email or email_raw,
+            'email': target_email,
         }
 
         subject = 'EduSaint Student Password Reset OTP'
@@ -870,7 +874,7 @@ def student_forgot_password():
         def _send_student_pwreset_email() -> None:
             try:
                 with app_obj.app_context():
-                    sent_ok, err = send_email(to_email=student.email, subject=subject, body=body)
+                    sent_ok, err = send_email(to_email=target_email, subject=subject, body=body)
                     if not sent_ok:
                         current_app.logger.warning(
                             'Student password reset OTP for %s is %s (email send failed: %s)',
@@ -888,16 +892,95 @@ def student_forgot_password():
         import threading
         threading.Thread(target=_send_student_pwreset_email, daemon=True).start()
 
-        return jsonify({
+        response_data = {
             'success': True,
             'message': 'OTP sent to registered email if the account exists',
             'expires_in': 10 * 60,
-        }), 200
+        }
+
+        # In development, optionally expose the OTP in the response to make
+        # testing faster. This should be disabled in production.
+        try:
+            if current_app.debug or current_app.config.get('RETURN_OTP_IN_RESPONSE'):
+                response_data['otp'] = otp
+        except Exception:
+            # If for some reason app context/config isn't available, just skip
+            # adding the debug field rather than failing the whole request.
+            pass
+
+        return jsonify(response_data), 200
     except Exception as e:
         current_app.logger.exception('Student forgot-password (OTP) API failed')
         return jsonify({
             'success': False,
             'error': 'Failed to start password reset',
+            'details': str(e) if current_app.debug else None,
+        }), 500
+
+
+@api_bp.route('/auth/student/verify-otp', methods=['POST'])
+def student_verify_otp():
+    """Verify student password reset OTP without changing password.
+
+    Request JSON:
+    {
+      "email": "student@example.com",
+      "otp": "1234"
+    }
+
+    Behavior:
+    - Finds the student by email.
+    - Looks up the in-memory OTP entry for that student.
+    - Checks expiry and compares the provided OTP against the stored hash.
+    - Returns success if valid, otherwise an appropriate error.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        email_raw = (data.get('email') or '').strip()
+        otp = (data.get('otp') or '').strip()
+
+        if not email_raw or not otp:
+            return jsonify({'success': False, 'error': 'Email and OTP are required'}), 400
+
+        email_norm = email_raw.lower()
+
+        # Look up student by email (case-insensitive where supported)
+        student = None
+        try:
+            student = Student.query.filter(func.lower(Student.email) == email_norm).first()
+        except Exception:
+            try:
+                student = Student.query.filter(Student.email.ilike(email_norm)).first()
+            except Exception:
+                student = Student.query.filter_by(email=email_raw).first()
+
+        if not student:
+            return jsonify({'success': False, 'error': 'No student found with this email'}), 404
+
+        info = _STUDENT_RESET_OTP.get(int(student.id)) or {}
+        if not info:
+            return jsonify({'success': False, 'error': 'No active OTP found. Please request a new one.'}), 400
+
+        expires_at = info.get('expires_at')
+        if not expires_at or datetime.utcnow() > expires_at:
+            _STUDENT_RESET_OTP.pop(int(student.id), None)
+            return jsonify({'success': False, 'error': 'OTP expired. Please request a new one.'}), 400
+
+        otp_hash = str(info.get('otp_hash') or '')
+        if not otp_hash or not check_password_hash(otp_hash, otp):
+            return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
+
+        # Mark as verified for potential future flows, but do not clear OTP
+        info['verified'] = True
+        info['verified_at'] = datetime.utcnow()
+        _STUDENT_RESET_OTP[int(student.id)] = info
+
+        return jsonify({'success': True, 'message': 'OTP verified successfully'}), 200
+    except Exception as e:
+        current_app.logger.exception('Student verify-otp API failed')
+        return jsonify({
+            'success': False,
+            'error': 'Failed to verify OTP',
             'details': str(e) if current_app.debug else None,
         }), 500
 
@@ -953,6 +1036,11 @@ def student_reset_password():
         if not expires_at or datetime.utcnow() > expires_at:
             _STUDENT_RESET_OTP.pop(int(student.id), None)
             return jsonify({'success': False, 'error': 'OTP expired. Please request a new one.'}), 400
+
+        # Enforce strict flow: forgot-password -> verify-otp -> reset-password
+        # Require that the OTP was previously verified via /auth/student/verify-otp
+        if not info.get('verified'):
+            return jsonify({'success': False, 'error': 'OTP not verified yet. Please verify the OTP first.'}), 400
 
         otp_hash = str(info.get('otp_hash') or '')
         if not otp_hash or not check_password_hash(otp_hash, otp):
