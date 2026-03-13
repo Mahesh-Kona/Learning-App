@@ -1302,6 +1302,10 @@ def create_quiz_page():
             session.pop('admin_user_id', None)
             return redirect(url_for('admin_bp.admin_login_get'))
 
+    # Preserve optional course context so we can redirect back
+    # to the quiz content management page for that course.
+    course_id_param = request.args.get('course_id')
+
     if request.method == 'POST':
         title = (request.form.get('title') or '').strip()
         description = (request.form.get('description') or '').strip()
@@ -1331,7 +1335,8 @@ def create_quiz_page():
             total_marks=_to_int(total_marks),
             total_questions=_to_int(total_questions),
             difficulty=difficulty,
-            category=category,
+            # map legacy "category" form field to the new course column
+            course=category,
             class_name=class_name,
         )
 
@@ -1354,9 +1359,14 @@ def create_quiz_page():
 
         db.session.add(quiz)
         db.session.commit()
+
+        # If we came from a specific course's quiz content page,
+        # send the admin back there; otherwise, go to the all-quiz page.
+        if course_id_param:
+            return redirect(url_for('admin_bp.quiz_content_page', course_id=course_id_param))
         return redirect(url_for('admin_bp.quizzes_page'))
 
-    return render_template('create_quiz.html', user=user, active='create_quiz')
+    return render_template('create_quiz.html', user=user, active='create_quiz', course_id=course_id_param)
 
 
 @admin_bp.route('/notifications/api', methods=['GET'])
@@ -1465,9 +1475,14 @@ def practice_quiz_create_api():
             'intermediate': 'medium',
             'advanced': 'hard',
         }.get((data.get('difficulty') or '').strip(), None),
-        category=(data.get('category') or '').strip() or None,
+        # keep accepting JSON key "category" but map to course column
+        course=(data.get('category') or '').strip() or None,
         class_name=(str(data.get('class_name')).strip() or None) if data.get('class_name') not in (None, '') else None,
     )
+
+    # Optional questions payload coming from quiz builder
+    if 'questions_json' in data:
+        quiz.questions_json = data.get('questions_json') or None
 
     try:
         db.session.add(quiz)
@@ -1515,7 +1530,9 @@ def practice_quiz_update_api():
         quiz.title = name
     quiz.time_limit = _to_int(data.get('time_limit'))
     quiz.total_marks = _to_int(data.get('total_marks'))
-    quiz.total_questions = _to_int(data.get('questions_count'))
+    # Allow caller to update total_questions explicitly; if omitted, keep existing value
+    if 'questions_count' in data:
+        quiz.total_questions = _to_int(data.get('questions_count'))
 
     diff_key = (data.get('difficulty') or '').strip()
     if diff_key:
@@ -1532,11 +1549,16 @@ def practice_quiz_update_api():
 
     if 'category' in data:
         category = (data.get('category') or '').strip()
-        quiz.category = category or None
+        # map legacy JSON key to new course column
+        quiz.course = category or None
 
     if 'class_name' in data:
         raw_class = data.get('class_name')
         quiz.class_name = (str(raw_class).strip() or None) if raw_class not in (None, '') else None
+
+    # Optional questions payload coming from quiz builder
+    if 'questions_json' in data:
+        quiz.questions_json = data.get('questions_json') or None
 
 
     try:
@@ -1584,6 +1606,40 @@ def practice_quiz_delete_api():
         except Exception:
             current_app.logger.exception('Rollback failed after practice quiz delete error')
         return jsonify({'success': False, 'error': 'Failed to delete quiz'}), 500
+
+
+@admin_bp.route('/get_quiz', methods=['GET'])
+def practice_quiz_get_api():
+    """Return full PracticeQuiz data including questions_json for quiz builder.
+
+    Query param: id (quiz id)
+    Response: { success: bool, quiz: { ... } }
+    """
+    uid = session.get('admin_user_id')
+    if not uid:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+    if uid != 'dev_admin':
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return jsonify({'success': False, 'error': 'Not authorized'}), 403
+
+    quiz_id = request.args.get('id')
+    try:
+        quiz_id = int(quiz_id)
+    except Exception:
+        return jsonify({'success': False, 'error': 'Invalid quiz id'}), 400
+
+    quiz = PracticeQuiz.query.get(quiz_id)
+    if not quiz:
+        return jsonify({'success': False, 'error': 'Quiz not found'}), 404
+
+    # Base shape from to_list_card plus questions_json for editor
+    base = quiz.to_list_card()
+    base['questions_json'] = quiz.questions_json or {}
+
+    return jsonify({'success': True, 'quiz': base}), 200
 
 
 @admin_bp.route('/notifications/api/<int:notification_id>', methods=['PUT'])
@@ -2948,6 +3004,63 @@ def course_content_page():
         course=course,
         lessons_count=lessons_count,
         lessons_for_ui=lessons_for_ui,
+    )
+
+
+@admin_bp.route('/quiz-content', methods=['GET'])
+def quiz_content_page():
+    """Render the Quiz Content Management UI for a specific course.
+
+    Optional query param: course_id (used for course context in the template).
+    """
+    uid = session.get('admin_user_id')
+    if not uid:
+        return redirect(url_for('admin_bp.admin_login_get'))
+
+    if uid == 'dev_admin':
+        user = SimpleNamespace(id='dev_admin', role='admin', name='Dev Admin', email='dev@local')
+    else:
+        user = User.query.get(uid)
+        if not user or user.role != 'admin':
+            session.pop('admin_user_id', None)
+            return redirect(url_for('admin_bp.admin_login_get'))
+
+    course_id = request.args.get('course_id')
+
+    course = None
+    try:
+        if course_id:
+            cid = int(course_id)
+            course = Course.query.get(cid)
+    except Exception:
+        course = None
+
+    quizzes_for_course = []
+    quizzes_count = 0
+    # Compute total practice quizzes and prepare list for this course.
+    # The PracticeQuiz.course column currently stores the course title.
+    try:
+        if course is not None:
+            title_key = (course.title or '').strip()
+            if title_key:
+                rows = PracticeQuiz.query.filter_by(course=title_key).order_by(PracticeQuiz.created_at.desc()).all()
+                quizzes_for_course = [q.to_list_card() for q in rows]
+                quizzes_count = len(quizzes_for_course)
+            else:
+                quizzes_count = 0
+        else:
+            quizzes_count = PracticeQuiz.query.count()
+    except Exception:
+        quizzes_for_course = []
+        quizzes_count = 0
+
+    return render_template(
+        'Quiz-Content-Management.html',
+        user=user,
+        active='quiz-content',
+        course=course,
+        quizzes_count=quizzes_count,
+        quizzes_for_course=quizzes_for_course,
     )
 
 

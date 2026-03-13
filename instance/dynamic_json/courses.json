@@ -43,50 +43,6 @@
       "duration_weeks": null,
       "total_lessons": 2,
       "published": null
-    },
-    {
-      "id": 25,
-      "title": "Maths for Class 10th",
-      "description": "cover all maths chapter",
-      "category": null,
-      "thumbnail_url": null,
-      "difficulty": "beginner",
-      "duration_weeks": null,
-      "total_lessons": 0,
-      "published": true
-    },
-    {
-      "id": 27,
-      "title": "New test course 15 dec",
-      "description": "test desuoc",
-      "category": "physics",
-      "thumbnail_url": null,
-      "difficulty": "beginner",
-      "duration_weeks": 23,
-      "total_lessons": 0,
-      "published": true
-    },
-    {
-      "id": 28,
-      "title": "PlainSubmit Course",
-      "description": "plain form submit test",
-      "category": "science",
-      "thumbnail_url": "/uploads/86e9861e3da349d4b83a79e6948403c8_plain.png",
-      "difficulty": "intermediate",
-      "duration_weeks": 8,
-      "total_lessons": 0,
-      "published": true
-    },
-    {
-      "id": 30,
-      "title": "test course for cls 1",
-      "description": "test course for cls 1",
-      "category": "Physics",
-      "thumbnail_url": null,
-      "difficulty": "beginner",
-      "duration_weeks": 22,
-      "total_lessons": 0,
-      "published": true
     }
   ]
 }

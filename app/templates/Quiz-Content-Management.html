@@ -1,0 +1,2573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Quiz Manager</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+<style>
+/* Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+  color: #1a1a1a;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Admin Header */
+.admin-header {
+  background: white;
+  padding: 24px 32px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  border-left: 6px solid #076024ff;
+}
+
+/* Admin Breadcrumb */
+.admin-breadcrumb {
+  color: #64748b;
+  font-size: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-breadcrumb a {
+  color: #010407ff;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.admin-breadcrumb a:hover {
+  background: #f1f5f9;
+  color: #1b2c58ff;
+}
+
+.admin-breadcrumb .separator {
+  color: #cbd5e1;
+  font-weight: 300;
+}
+
+.admin-breadcrumb .current-course {
+  background: #f8fafc;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  color: #1e293b;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-badge {
+  background: linear-gradient(135deg, #094922ff 0%, #10492aff 100%);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Page Title */
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.page-title h1 {
+  font-size: 32px;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-title-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #0d5729ff 0%, #0c6d43ff 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: white;
+}
+
+.course-subtitle {
+  color: #64748b;
+  font-size: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.course-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.course-meta-item {
+  background: #f1f5f9;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Admin Warning */
+.admin-warning {
+  background: #d9bd4aff;
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.9; }
+}
+
+.admin-warning-icon {
+  font-size: 20px;
+  color: #9c0e0eff;
+}
+
+.admin-warning-content {
+  flex: 1;
+}
+
+.admin-warning strong {
+  color: #92400e;
+}
+
+.admin-warning p {
+  color: #92400e;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* Admin Stats - Simplified */
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+}
+
+.admin-stat {
+  text-align: center;
+  padding: 16px;
+  border-radius: 10px;
+  background: #f8fafc;
+  transition: transform 0.2s ease;
+}
+
+.admin-stat:hover {
+  transform: translateY(-2px);
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+/* Quick Actions */
+.quick-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.quick-actions .btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #0d5038ff 0%, #115c3dff 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+}
+
+/* Filter Bar - Simplified */
+.filter-bar {
+  background: white;
+  padding: 20px 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.search-box {
+  flex: 1;
+  min-width: 300px;
+  position: relative;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 12px 20px 12px 44px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: #f8fafc;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: white;
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+/* Lessons Container */
+.lessons-container {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  margin-bottom: 24px;
+}
+
+.lessons-header {
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #0d4d35ff 0%, #0f883aff 100%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lessons-header h2 {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Lesson Items */
+.lesson-list {
+  padding: 0;
+}
+
+.lesson-item {
+  border-bottom: 2px solid #f1f5f9;
+  transition: all 0.3s ease;
+}
+
+.lesson-item:last-child {
+  border-bottom: none;
+}
+
+.lesson-item-header {
+  padding: 20px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background: white;
+}
+
+.lesson-item-header:hover {
+  background: #f8fafc;
+}
+
+.lesson-main-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.lesson-number {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #216b3aff 0%, #4ba27bff 100%);
+  color: white;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.lesson-details {
+  flex: 1;
+}
+
+.lesson-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.lesson-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.lesson-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lesson-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.lesson-actions .btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lesson-actions .btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.lesson-actions .btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+}
+
+.lesson-actions .btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+}
+
+.lesson-actions .btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+.expand-icon {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+  color: #94a3b8;
+}
+
+.lesson-item.expanded .expand-icon {
+  transform: rotate(180deg);
+  color: #3b82f6;
+}
+
+/* Topics Container */
+.topics-container {
+  display: none;
+  background: #f8fafc;
+  padding: 0;
+}
+
+.lesson-item.expanded .topics-container {
+  display: block;
+  animation: slideDown 0.4s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.topics-header {
+  padding: 20px 32px;
+  background: white;
+  border-top: 2px solid #f1f5f9;
+  border-bottom: 2px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topics-header h3 {
+  font-size: 18px;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topics-header-actions .btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #2563eb 0%, #2563eb 100%);
+  color: white;
+}
+
+.topics-header-actions .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.2);
+}
+
+/* Topics Grid */
+.topics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+  padding: 24px 32px;
+}
+
+.topic-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+  border: 2px solid #e2e8f0;
+}
+
+.topic-card:hover {
+  border-color: #0f743bff;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.1);
+}
+
+.topic-card-header {
+  padding: 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topic-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #0b7036ff 0%, #115c38ff 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.topic-card-info {
+  flex: 1;
+}
+
+.topic-card-info h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.topic-card-info p {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.topic-card-body {
+  padding: 20px;
+}
+
+.topic-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.topic-stat {
+  text-align: center;
+}
+
+.topic-stat .value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  display: block;
+}
+
+.topic-stat .label {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.topic-card-footer {
+  display: flex;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 2px solid #f1f5f9;
+}
+
+.topic-card-footer .btn {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.topic-card-footer .btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.topic-card-footer .btn-primary:hover {
+  background: #2563eb;
+}
+
+.topic-card-footer .btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+}
+
+.topic-card-footer .btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+  grid-column: 1 / -1;
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 20px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+/* Add Lesson Button */
+.add-lesson-btn {
+  background: white;
+  border: 3px dashed #cbd5e1;
+  border-radius: 16px;
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.add-lesson-btn:hover {
+  border-color: #0c4c39ff;
+  color: #0a3f1cff;
+  background: #f0f9ff;
+  transform: translateY(-2px);
+}
+
+.add-lesson-btn .icon {
+  font-size: 32px;
+  width: 64px;
+  height: 64px;
+  background: #f1f5f9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+
+/* ========== MODAL STYLES ========== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-container {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.4s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  padding: 28px 32px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header.lesson {
+  background: linear-gradient(135deg, #025504ff 0%, #0d6f3bff 100%);
+}
+
+.modal-header.topic {
+  background: linear-gradient(135deg, #025504ff 0%, #0d6f3bff 100%);
+}
+
+.modal-header h2 {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.modal-content {
+  padding: 32px;
+  overflow-y: auto;
+  max-height: calc(90vh - 200px);
+}
+
+
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 24px;
+  
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #1e293b;
+  
+}
+
+.form-group label .required {
+  color: #ef4444;
+  margin-left: 4px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: #f8fafc;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: white;
+}
+
+.form-control::placeholder {
+  color: #94a3b8;
+}
+
+textarea.form-control {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* Form Row */
+.form-row {
+  display: grid;
+  font-family: "Segoe UI", sans-serif;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+.custom-input {
+  width: 300px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1.5px solid #cbd5e1;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.custom-input:focus {
+  border-color: #22c55e;
+}
+
+.form-helper {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+
+/* Form Hint */
+.form-hint {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Icon Selection */
+.icon-selection {
+  margin: 16px 0;
+}
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+  .icon-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.icon-option {
+  width: 48px;
+  height: 48px;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-option:hover {
+  background: #e2e8f0;
+  transform: scale(1.1);
+}
+
+.icon-option.selected {
+  background: #3bf6c7ff;
+  color: white;
+  border-color: #3b82f6;
+  transform: scale(1.1);
+}
+.custom-select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 2px solid #22c55e;
+  font-size: 15px;
+  cursor: pointer;
+  outline: none;
+  background-color: #fff;
+  transition: all 0.2s ease;
+}
+
+/* Modal Footer */
+.modal-footer {
+  padding: 24px 32px;
+  background: #f8fafc;
+  border-top: 2px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modal-footer .btn {
+  min-width: 120px;
+}
+
+/* Notification */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+}
+
+.notification.success {
+  background: #10b981;
+  color: white;
+}
+
+.notification.info {
+  background: #3b82f6;
+  color: white;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .topics-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .admin-header {
+    padding: 20px;
+  }
+  
+  .page-title h1 {
+    font-size: 24px;
+  }
+  
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-box {
+    min-width: 100%;
+  }
+  
+  .lesson-item-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .lesson-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .topics-grid {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  
+  .admin-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .modal-container {
+    max-width: 95%;
+  }
+  
+  .modal-content {
+    padding: 24px;
+  }
+  
+  .icon-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .quick-actions {
+    flex-direction: column;
+  }
+  
+  .quick-actions .btn {
+    justify-content: center;
+  }
+  
+  .lesson-meta {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .topic-card-footer {
+    flex-direction: column;
+  }
+  
+  .admin-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .course-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="dashboard">
+
+<main class="main-content">
+
+<div class="container">
+
+  <!-- Admin Header -->
+  <div class="admin-header">
+
+    <div class="admin-breadcrumb">
+      <a href="{{ url_for('admin_bp.admin_dashboard') }}">🚀 Admin Panel</a>
+      <span class="separator">></span>
+      <a href="{{ url_for('admin_bp.all_courses_page') }}">📋 All Courses</a>
+      <span class="separator">></span>
+
+      <span class="current-course">
+        🎓 {{ course.title if course else 'Unknown Course' }}{% if course and course.class_name %} - {{ course.class_name }}{% endif %}
+        <span class="admin-badge">QUIZ EDITING</span>
+      </span>
+
+      <span class="separator">></span>
+
+      <span style="color:#3b82f6;font-weight:600;">
+        📝 Quiz Structure
+      </span>
+    </div>
+
+
+    <!-- Page Title -->
+
+    <div class="page-title">
+      <div class="page-title-icon">📝</div>
+
+      <h1>
+        Quiz Manager
+
+        <span style="font-size:14px;color:#64748b;font-weight:normal;">
+          |
+          <strong style="color:#ef4444;">
+            {% if course %}
+              {{ course.title }}
+              {% if course.class_name %} Grade {{ course.class_name }}{% endif %}
+            {% else %}
+              Unknown Course
+            {% endif %}
+          </strong>
+        </span>
+
+      </h1>
+    </div>
+
+
+    <!-- Subtitle -->
+
+    <div class="course-subtitle">
+      Manage quizzes for this course
+    </div>
+
+
+    <!-- Course Meta -->
+
+    <div class="course-meta">
+
+      <div class="course-meta-item">
+        <span>🏷️</span>
+        Category: {{ course.category if course and course.category else 'N/A' }}
+      </div>
+
+      <div class="course-meta-item">
+        <span>🎯</span>
+        Class: {{ course.class_name if course and course.class_name else 'N/A' }}
+      </div>
+
+      <div class="course-meta-item">
+        <span>⏱️</span>
+        Duration (weeks):
+        {{ course.duration_weeks if course and course.duration_weeks else 'N/A' }}
+      </div>
+
+    </div>
+
+
+    <!-- Warning -->
+
+    <div class="admin-warning">
+      <div class="admin-warning-icon">⚠️</div>
+
+      <div class="admin-warning-content">
+        <strong>Admin Mode Active</strong>
+
+        <p>
+          You are editing live quizzes. Changes will be visible to students
+          immediately after saving.
+        </p>
+
+      </div>
+    </div>
+
+
+    <!-- Stats -->
+
+    <div class="admin-stats">
+
+      <div class="admin-stat">
+        <div class="stat-label">📝 Total Quizzes</div>
+        <div class="stat-value">{{ quizzes_count }}</div>
+      </div>
+
+      <div class="admin-stat">
+        <div class="stat-label">🏷️ Difficulty</div>
+        <div class="stat-value">
+          {{ course.difficulty if course and course.difficulty else 'N/A' }}
+        </div>
+      </div>
+
+      <div class="admin-stat">
+        <div class="stat-label">📅 Created</div>
+        <div class="stat-value">
+          {{ course.created_at.strftime('%Y-%m-%d') if course and course.created_at else 'N/A' }}
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- Quick Actions -->
+
+    <div class="quick-actions">
+
+      <button class="btn btn-primary" onclick="goToCreateQuiz()">
+        <span>➕</span>
+        Add New Quiz
+      </button>
+
+     
+      <button class="btn btn-secondary" onclick="editCourseSettings()">
+        <span>⚙️</span>
+        Course Settings
+      </button>
+
+      <button class="btn btn-success" onclick="saveAndPublish()">
+        <span>🚀</span>
+        Publish Changes
+      </button>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Search -->
+
+  <div class="filter-bar">
+
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+
+      <input type="text"
+             placeholder="Search quizzes or questions..."
+             oninput="filterContent(this.value)">
+    </div>
+
+  </div>
+
+
+
+  <!-- Quiz Container -->
+
+  <div class="lessons-container">
+
+    <div class="lessons-header">
+      <h2>
+        <span>📝</span>
+        Quizzes in This Course ({{ quizzes_count }})
+      </h2>
+    </div>
+
+    <div class="lesson-list" id="quizList">
+    </div>
+
+
+    <div class="add-lesson-btn" onclick="goToCreateQuiz()">
+
+      <div class="icon">➕</div>
+
+      <div>Add New Quiz to This Course</div>
+
+      <div style="font-size:14px;font-weight:normal;color:#94a3b8;">
+        Create a quiz with questions
+      </div>
+
+    </div>
+
+  </div>
+
+
+<!-- ================= QUIZ MODAL ================= -->
+
+<div class="modal-overlay" id="quizModal">
+
+  <div class="modal-container">
+
+    <div class="modal-header lesson">
+
+      <h2 id="quizModalTitle">
+        <span>➕</span>
+        Add New Quiz
+      </h2>
+
+      <button class="modal-close" onclick="closeQuizModal()">×</button>
+
+    </div>
+
+
+    <div class="modal-content">
+
+      <form id="quizForm" onsubmit="submitQuizForm(event)">
+
+        <input type="hidden" id="quizId">
+
+
+        <div class="form-group">
+          <label>Quiz Title *</label>
+
+          <input type="text"
+                 id="quizTitle"
+                 class="form-control"
+                 placeholder="Enter quiz title"
+                 required>
+        </div>
+
+
+        <div class="form-group">
+          <label>Quiz Description</label>
+
+          <textarea id="quizDescription"
+                    class="form-control"
+                    rows="3"
+                    placeholder="Describe this quiz"></textarea>
+        </div>
+
+
+        <div class="form-row">
+
+          <div class="form-group">
+            <label>Total Marks</label>
+
+            <input type="number"
+                   id="quizMarks"
+                   class="form-control"
+                   placeholder="e.g., 20">
+          </div>
+
+
+          <div class="form-group">
+            <label>Time Limit (minutes)</label>
+
+            <input type="number"
+                   id="quizTime"
+                   class="form-control"
+                   placeholder="e.g., 30">
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <div class="form-group">
+            <label>Number of Questions</label>
+
+            <input type="number"
+                   id="quizQuestionsCount"
+                   class="form-control"
+                   placeholder="e.g., 10">
+          </div>
+
+
+          <div class="form-group">
+            <label>Difficulty</label>
+
+            <select id="quizDifficultyLevel" class="form-control">
+              <option value="">Select</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+
+        </div>
+
+      </form>
+
+    </div>
+
+
+    <div class="modal-footer">
+
+      <button class="btn btn-secondary" onclick="closeQuizModal()">
+        ❌ Cancel
+      </button>
+
+      <button class="btn btn-danger" id="deleteQuizBtn" style="display:none;">
+        🗑️ Delete
+      </button>
+
+      <button class="btn btn-primary" onclick="submitQuizForm()">
+        <span id="quizSubmitBtnText">✅ Update Quiz</span>
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- ================= QUESTION MODAL ================= -->
+
+<div class="modal-overlay" id="questionModal">
+
+  <div class="modal-container">
+
+    <div class="modal-header topic">
+
+      <h2 id="questionModalTitle">
+        <span>➕</span>
+        Add New Question
+      </h2>
+
+      <button class="modal-close" onclick="closeQuestionModal()">×</button>
+
+    </div>
+
+
+    <div class="modal-content">
+
+      <form id="questionForm" onsubmit="submitQuestionForm(event)">
+
+        <input type="hidden" id="questionId">
+        <input type="hidden" id="parentQuizId">
+
+
+        <div class="form-group">
+          <label>Question *</label>
+
+          <textarea id="questionText"
+                    class="form-control"
+                    rows="3"
+                    placeholder="Enter question"
+                    required></textarea>
+        </div>
+
+
+        <div class="form-group">
+          <label>Difficulty Level</label>
+
+          <select id="difficultyLevel" class="form-control">
+            <option value="">Select</option>
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+
+        <div class="form-row">
+
+          <div class="form-group">
+            <label>Marks</label>
+
+            <input type="number"
+                   id="questionMarks"
+                   class="form-control"
+                   placeholder="e.g., 2">
+          </div>
+
+          <div class="form-group">
+            <label>Order</label>
+
+            <input type="number"
+                   id="questionOrder"
+                   class="form-control"
+                   placeholder="1">
+          </div>
+
+        </div>
+
+      </form>
+
+    </div>
+
+
+    <div class="modal-footer">
+
+      <button class="btn btn-secondary" onclick="closeQuestionModal()">
+        ❌ Cancel
+      </button>
+
+      <button class="btn btn-danger" id="deleteQuestionBtn" style="display:none;">
+        🗑️ Delete
+      </button>
+
+      <button class="btn btn-primary" onclick="submitQuestionForm()">
+        <span id="questionSubmitBtnText">✅ Create Question</span>
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// Global course context for this page (safely JSON-encoded)
+const COURSE_ID = {{ course.id|tojson if course else 'null' }};
+const COURSE_CLASS = {{ course.class_name|tojson if course and course.class_name else 'null' }};
+const COURSE_TITLE = {{ course.title|tojson if course and course.title else 'null' }};
+
+// Initial quizzes passed from backend for this course
+const INITIAL_QUIZZES = {{ quizzes_for_course|tojson|safe if quizzes_for_course is defined else '[]' }};
+
+function goToCreateQuiz() {
+  // Redirect to the full Create Quiz page, pre-seeding class & course
+  const params = new URLSearchParams();
+  if (COURSE_CLASS) params.set('class', COURSE_CLASS);
+  if (COURSE_TITLE) params.set('course_title', COURSE_TITLE);
+  if (COURSE_ID) params.set('course_id', COURSE_ID);
+  const qs = params.toString();
+  const baseUrl = '{{ url_for("admin_bp.create_quiz_page") }}';
+  window.location.href = qs ? `${baseUrl}?${qs}` : baseUrl;
+}
+
+function goToQuizEditor() {
+  // Open the Quiz Builder (quiz.html) so admin can add questions
+  const params = new URLSearchParams();
+  if (COURSE_ID) params.set('course_id', COURSE_ID);
+  const qs = params.toString();
+  const baseUrl = '{{ url_for("admin_bp.quiz_editor") }}';
+  window.location.href = qs ? `${baseUrl}?${qs}` : baseUrl;
+}
+
+function openQuizQuestions(quizId) {
+  // Open Quiz Builder for this quiz; currently this just opens
+  // the generic quiz editor page. If in future quiz.html supports
+  // a quiz_id param, it can be added here.
+  const params = new URLSearchParams();
+  if (COURSE_ID) params.set('course_id', COURSE_ID);
+  params.set('quiz_id', quizId);
+  const qs = params.toString();
+  const baseUrl = '{{ url_for("admin_bp.quiz_editor") }}';
+  window.location.href = `${baseUrl}?${qs}`;
+}
+
+// ========== QUIZ MODAL FUNCTIONS ==========
+
+let currentQuizModalMode = 'add'
+let currentQuizId = null
+
+function openQuizModal(mode, quizId = null) {
+
+  currentQuizModalMode = mode
+  currentQuizId = quizId
+
+  const modal = document.getElementById("quizModal")
+  const modalTitle = document.getElementById("quizModalTitle")
+
+  if (mode === "add") {
+
+    modalTitle.innerText = "➕ Add New Quiz"
+
+    document.getElementById("quizForm").reset()
+    document.getElementById("quizId").value = ""
+
+  }
+
+  else if (mode === "edit" && quizId) {
+
+    modalTitle.innerText = "✏️ Edit Quiz"
+
+    const quizElement = document.getElementById(`quiz-${quizId}`)
+
+    if (quizElement) {
+
+      const title = quizElement.querySelector(".quiz-title")?.textContent || ""
+      const time = quizElement.dataset.time || ""
+      const marks = quizElement.dataset.marks || ""
+      const descEl = quizElement.querySelector(".quiz-description")
+      const difficulty = quizElement.dataset.difficulty || ""
+      const questions = quizElement.dataset.questions || ""
+
+      document.getElementById("quizId").value = quizId
+      document.getElementById("quizTitle").value = title
+      document.getElementById("quizTime").value = time
+      document.getElementById("quizMarks").value = marks
+      document.getElementById("quizDescription").value = descEl ? descEl.textContent : ""
+      document.getElementById("quizDifficultyLevel").value = difficulty || ""
+      document.getElementById("quizQuestionsCount").value = questions || ""
+
+    }
+
+  }
+
+  modal.classList.add("active")
+  document.body.style.overflow = "hidden"
+
+}
+
+function closeQuizModal() {
+
+  document.getElementById("quizModal").classList.remove("active")
+  document.body.style.overflow = ""
+
+}
+
+function submitQuizForm(event) {
+
+  if (event) event.preventDefault()
+
+  const quizId = document.getElementById("quizId").value
+  const title = document.getElementById("quizTitle").value
+  const time = document.getElementById("quizTime").value
+  const marks = document.getElementById("quizMarks").value
+  const description = document.getElementById("quizDescription").value
+  const difficulty = document.getElementById("quizDifficultyLevel").value
+  const questions = document.getElementById("quizQuestionsCount").value
+
+  if (!title) {
+    showNotification("Please enter quiz title", "info")
+    return
+  }
+
+  if (currentQuizModalMode === "add") {
+
+    showNotification("Creating quiz...", "info")
+
+    const payload = {
+      name: title,
+      description: description || undefined,
+      time_limit: time ? parseInt(time, 10) : null,
+      total_marks: marks ? parseInt(marks, 10) : null,
+      questions_count: questions ? parseInt(questions, 10) : null,
+      difficulty: difficulty || undefined
+    }
+
+    fetch("/admin/create_quiz", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+
+      if (status >= 200 && status < 300 && body && body.success) {
+
+        showNotification("Quiz created successfully!", "success")
+        closeQuizModal()
+
+        // Optionally reload the page so the new quiz appears in the list
+        window.location.reload()
+
+      } else {
+
+        const msg = (body && body.error) ? body.error : "Failed to create quiz"
+        showNotification(msg, "error")
+
+      }
+
+    })
+    .catch(err => {
+      console.error("create_quiz error", err)
+      showNotification("Network error while creating quiz", "error")
+    })
+
+  }
+
+  else if (currentQuizModalMode === "edit" && quizId) {
+
+    showNotification("Updating quiz...", "info")
+
+    const payload = {
+      id: quizId,
+      name: title,
+      description: description || undefined,
+      time_limit: time ? parseInt(time, 10) : null,
+      total_marks: marks ? parseInt(marks, 10) : null,
+      questions_count: questions ? parseInt(questions, 10) : null,
+      difficulty: difficulty || undefined
+    }
+
+    fetch("/admin/update_quiz", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+
+      if (status >= 200 && status < 300 && body && body.success) {
+
+        const quizElement = document.getElementById(`quiz-${quizId}`)
+
+        if (quizElement) {
+
+          quizElement.querySelector(".quiz-title").textContent = title
+          quizElement.dataset.time = time
+          quizElement.dataset.marks = marks
+
+        }
+
+        closeQuizModal()
+        showNotification("Quiz updated successfully!", "success")
+
+        // Also refresh the page so the quiz list reflects latest values
+        window.location.reload()
+
+      } else {
+
+        const msg = (body && body.error) ? body.error : "Failed to update quiz"
+        showNotification(msg, "error")
+
+      }
+
+    })
+    .catch(err => {
+      console.error("update_quiz error", err)
+      showNotification("Network error while updating quiz", "error")
+    })
+
+  }
+
+}
+// Render initial quizzes list under "Quizzes in This Course"
+document.addEventListener('DOMContentLoaded', function () {
+  try {
+    const listEl = document.getElementById('quizList');
+    if (!listEl) return;
+
+    if (!Array.isArray(INITIAL_QUIZZES) || INITIAL_QUIZZES.length === 0) {
+      listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><h3>No quizzes for this course yet</h3><p>Create a quiz to get started.</p></div>';
+      return;
+    }
+
+    listEl.innerHTML = INITIAL_QUIZZES.map(function (q) {
+      const id = q.id;
+      const name = q.name || 'Untitled Quiz';
+      const time = q.time_limit || q.time || null;
+      const marks = q.total_marks || q.marks || null;
+      const diff = q.difficulty || 'beginner';
+      const questions = q.questions_count || 0;
+      const desc = q.description || '';
+
+      return `
+        <div class="lesson-item" id="quiz-${id}" data-time="${time || ''}" data-marks="${marks || ''}" data-difficulty="${diff}" data-questions="${questions}">
+          <div class="lesson-item-header">
+            <div class="lesson-main-info">
+              <div class="lesson-number">#${id}</div>
+              <div class="lesson-details">
+                <div class="lesson-title quiz-title">${name}</div>
+                <div class="lesson-meta">
+                  <span><span>⏱️</span> ${time ? time + ' min' : 'No time limit'}</span>
+                  <span><span>⭐</span> ${diff}</span>
+                  <span><span>❓</span> ${questions} questions</span>
+                  <span><span>📊</span> ${marks ? marks + ' marks' : 'Marks not set'}</span>
+                </div>
+                <div class="lesson-description quiz-description">${desc}</div>
+              </div>
+            </div>
+            <div class="lesson-actions">
+              <button class="btn btn-primary" onclick="openQuizQuestions(${id})"><span>🛠️</span> Manage</button>
+              <button class="btn btn-primary" onclick="openQuizModal('edit', ${id})"><span>✏️</span> Edit</button>
+              <button class="btn btn-danger" onclick="deleteQuiz(${id})"><span>🗑️</span> Delete</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    console.error('Failed to render initial quizzes list', e);
+  }
+});
+
+function deleteQuiz(id) {
+  if (!id) return;
+  if (!confirm('Are you sure you want to delete this quiz? This action cannot be undone.')) return;
+
+  showNotification('Deleting quiz...', 'info');
+
+  fetch('/admin/delete_quiz', {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify({ id: id })
+  })
+  .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+  .then(({ status, body }) => {
+    if (status >= 200 && status < 300 && body && body.success) {
+      showNotification('Quiz deleted successfully!', 'success');
+      window.location.reload();
+    } else {
+      const msg = (body && body.error) ? body.error : 'Failed to delete quiz';
+      showNotification(msg, 'error');
+    }
+  })
+  .catch(err => {
+    console.error('delete_quiz error', err);
+    showNotification('Failed to delete quiz (network error)', 'error');
+  });
+}
+// ========== TOPIC MODAL FUNCTIONS ==========
+function openTopicModal(mode, lessonId, topicId = null) {
+  currentTopicModalMode = mode;
+  currentTopicId = topicId;
+  currentParentLessonId = lessonId;
+  
+  const modal = document.getElementById('topicModal');
+  const modalTitle = document.getElementById('topicModalTitle');
+  const submitBtnText = document.getElementById('topicSubmitBtnText');
+  const deleteBtn = document.getElementById('deleteTopicBtn');
+  const parentLessonNameEl = document.getElementById('parentLessonName');
+  
+  // Get parent lesson name
+  const lessonElement = document.getElementById(`lesson-${lessonId}`);
+  if (lessonElement) {
+    const lessonName = lessonElement.querySelector('.lesson-title').textContent;
+    parentLessonNameEl.textContent = lessonName;
+  }
+  
+  if (mode === 'add') {
+    modalTitle.innerHTML = '<span>➕</span> Add New Topic';
+    submitBtnText.textContent = '✅ Create Topic';
+    deleteBtn.style.display = 'none';
+    resetTopicForm();
+
+    // Autofill next topic order within this lesson
+    try {
+      const lessonElement = document.getElementById(`lesson-${lessonId}`);
+      const topics = lessonElement ? Array.from(lessonElement.querySelectorAll('.topic-card')) : [];
+      let maxOrder = 0;
+      topics.forEach(el => {
+        const val = parseInt(el.dataset.order || '0', 10);
+        if (!isNaN(val) && val > maxOrder) maxOrder = val;
+      });
+      const nextOrder = (maxOrder || topics.length) + 1;
+      const orderInput = document.getElementById('topicOrder');
+      if (orderInput) orderInput.value = nextOrder;
+    } catch (e) {
+      // ignore autofill errors; user can still type manually
+    }
+  } else if (mode === 'edit' && topicId) {
+    modalTitle.innerHTML = '<span>✏️</span> Edit Topic';
+    submitBtnText.textContent = '✅ Update Topic';
+    deleteBtn.style.display = 'flex';
+    
+    // Get topic data from the DOM
+    const topicCard = findTopicCard(topicId);
+    if (topicCard) {
+      const title = topicCard.querySelector('h4').textContent;
+      const description = topicCard.querySelector('p').textContent;
+      const stats = topicCard.querySelectorAll('.topic-stat .value');
+      const points = stats[1]?.textContent || '150';
+      const icon = topicCard.querySelector('.topic-icon').textContent;
+      const difficulty = topicCard.dataset.difficulty || '';
+const time = topicCard.dataset.time || '';
+const order = topicCard.dataset.order || '';
+
+      
+      // Fill the form
+      
+      document.getElementById('topicId').value = topicId;
+      document.getElementById('topicTitle').value = title;
+      document.getElementById('topicDescription').value = description;
+      document.getElementById('parentLessonId').value = lessonId;
+
+
+      document.getElementById('difficultyLevel').value = topicCard.dataset.difficulty || 'medium';
+      document.getElementById('topicEstimatedTime').value = topicCard.dataset.time || '';
+      document.getElementById('topicOrder').value = topicCard.dataset.order || '';
+
+      
+      // Select icon
+      selectedIcon = icon;
+      updateIconSelection();
+    }
+  }
+  
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeTopicModal() {
+  document.getElementById('topicModal').classList.remove('active');
+  document.body.style.overflow = '';
+  resetTopicForm();
+}
+
+function resetTopicForm() {
+  document.getElementById('topicForm').reset();
+  document.getElementById('topicId').value = '';
+  document.getElementById('parentLessonId').value = '';
+  document.getElementById('difficultyLevel').value = '';
+document.getElementById('topicEstimatedTime').value = '';
+document.getElementById('topicOrder').value = '';
+
+  selectedIcon = '💡';
+  updateIconSelection();
+}
+
+function submitTopicForm(event) {
+  if (event) event.preventDefault();
+  
+  const topicId = document.getElementById('topicId').value;
+  const parentLessonId = document.getElementById('parentLessonId').value || currentParentLessonId;
+  const title = document.getElementById('topicTitle').value;
+  const description = document.getElementById('topicDescription').value;
+  const difficulty = document.getElementById('difficultyLevel').value;
+  const time = document.getElementById('topicEstimatedTime').value;
+  const order = document.getElementById('topicOrder').value;
+
+
+  
+  // Validation
+  if (!title) {
+    showNotification('Please enter a topic title', 'info');
+    return;
+  }
+  
+  if (!parentLessonId) {
+    showNotification('Parent lesson not found', 'info');
+    return;
+  }
+  
+  if (currentTopicModalMode === 'add') {
+    // CREATE NEW TOPIC ON SERVER
+    showNotification('Creating topic...', 'info');
+
+    const payload = {
+      title: title,
+      lesson_id: parentLessonId,
+      description: description || undefined,
+      estimated_time: time ? parseInt(time, 10) : undefined,
+      difficulty: difficulty || undefined,
+      order: order ? parseInt(order, 10) : undefined,
+      icon: selectedIcon
+    };
+
+    fetch('/admin/create_topic', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success && body.id) {
+        const newTopicId = body.id;
+        const lessonElement = document.getElementById(`lesson-${parentLessonId}`);
+
+        if (lessonElement) {
+          const topicsGrid = lessonElement.querySelector('.topics-grid');
+
+          const newTopicHTML = `
+          <div class="topic-card"
+            data-difficulty="${difficulty || 'medium'}"
+            data-time="${time || ''}"
+            data-order="${order || ''}"
+            onclick="openTopicEditor(${newTopicId})">
+
+            <div class="topic-card-header">
+              <div class="topic-icon">${selectedIcon}</div>
+              <div class="topic-card-info">
+                <h4>${title}</h4>
+                <p>${description || 'No description'}</p>
+              </div>
+            </div>
+            <div class="topic-card-body">
+              <div class="topic-stats">
+                <div class="topic-stat">
+                  <span class="value">0</span>
+                  <span class="label">Cards</span>
+                </div>
+              </div>
+              <div class="topic-card-footer">
+                <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(${parentLessonId}, ${newTopicId})">
+                  <span>🎴</span> Manage Cards
+                </button>
+                <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', ${parentLessonId}, ${newTopicId})">
+                  <span>✏️</span> Edit
+                </button>
+              </div>
+            </div>
+          </div>
+          `;
+
+          // Remove empty state if it exists
+          const emptyState = topicsGrid.querySelector('.empty-state');
+          if (emptyState) {
+            emptyState.remove();
+          }
+
+          // Add new topic
+          topicsGrid.insertBefore(createElementFromHTML(newTopicHTML), topicsGrid.firstChild);
+
+          // Update topic count
+          updateTopicCount(parentLessonId, 1);
+          updateTotalTopicCount(1);
+        }
+
+        closeTopicModal();
+        showNotification('Topic created successfully!', 'success');
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to create topic';
+        showNotification(msg, 'error');
+      }
+    })
+    .catch(err => {
+      console.error('create_topic error', err);
+      showNotification('Failed to create topic (network error)', 'error');
+    });
+    
+  } else if (currentTopicModalMode === 'edit' && topicId) {
+    // UPDATE EXISTING TOPIC
+    showNotification('Updating topic...', 'info');
+
+    const payload = {
+      id: topicId,
+      title: title,
+      description: description || undefined,
+      estimated_time: time ? parseInt(time, 10) : undefined,
+      difficulty: difficulty || undefined,
+      order: order ? parseInt(order, 10) : undefined,
+      icon: selectedIcon
+    };
+
+    fetch('/admin/update_topic', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success) {
+        const topicCard = findTopicCard(topicId);
+        if (topicCard) {
+          topicCard.querySelector('h4').textContent = title;
+          topicCard.querySelector('p').textContent = description || 'No description';
+          topicCard.querySelector('.topic-icon').textContent = selectedIcon;
+          topicCard.dataset.difficulty = difficulty || 'medium';
+          topicCard.dataset.time = time || '';
+          topicCard.dataset.order = order || '';
+        }
+
+        closeTopicModal();
+        showNotification('Topic updated successfully!', 'success');
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to update topic';
+        showNotification(msg, 'error');
+      }
+    })
+    .catch(err => {
+      console.error('update_topic error', err);
+      showNotification('Failed to update topic (network error)', 'error');
+    });
+  }
+}
+
+function deleteTopic() {
+  if (!currentTopicId || !currentParentLessonId) return;
+  
+  if (confirm(`Are you sure you want to delete this topic?\nThis action cannot be undone.`)) {
+    showNotification('Deleting topic...', 'info');
+
+    fetch('/admin/delete_topic', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ id: currentTopicId })
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success) {
+        const topicCard = findTopicCard(currentTopicId);
+        if (topicCard) {
+          const lessonElement = document.getElementById(`lesson-${currentParentLessonId}`);
+
+          // Remove topic card
+          topicCard.remove();
+
+          // Update counts
+          updateTopicCount(currentParentLessonId, -1);
+          updateTotalTopicCount(-1);
+
+          // Add empty state if no topics left
+          const topicsGrid = lessonElement?.querySelector('.topics-grid');
+          if (topicsGrid && topicsGrid.children.length === 0) {
+            const emptyStateHTML = `
+              <div class="empty-state">
+                <div class="empty-state-icon">🔭</div>
+                <p>No topics in this lesson yet.</p>
+                <p style="margin-top: 8px; color: #94a3b8;">
+                  Start by adding your first topic!
+                </p>
+              </div>
+            `;
+            topicsGrid.appendChild(createElementFromHTML(emptyStateHTML));
+          }
+        }
+
+        closeTopicModal();
+        showNotification('Topic deleted successfully!', 'success');
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to delete topic';
+        showNotification(msg, 'error');
+      }
+    })
+    .catch(err => {
+      console.error('delete_topic error', err);
+      showNotification('Failed to delete topic (network error)', 'error');
+    });
+  }
+}
+
+// ========== HELPER FUNCTIONS ==========
+function findTopicCard(topicId) {
+  return document.querySelector(`.topic-card[onclick*="openTopicEditor(${topicId})"]`);
+}
+
+function updateIconSelection() {
+  const iconGrid = document.getElementById('iconGrid');
+  iconGrid.innerHTML = '';
+  
+  topicIcons.forEach(icon => {
+    const iconElement = document.createElement('div');
+    iconElement.className = `icon-option ${icon === selectedIcon ? 'selected' : ''}`;
+    iconElement.textContent = icon;
+    iconElement.onclick = () => {
+      selectedIcon = icon;
+      updateIconSelection();
+    };
+    iconGrid.appendChild(iconElement);
+  });
+}
+
+function createElementFromHTML(htmlString) {
+  const div = document.createElement('div');
+  div.innerHTML = htmlString.trim();
+  return div.firstChild;
+}
+
+function renderInitialLessons() {
+  const lessonList = document.querySelector('.lesson-list');
+  if (!lessonList) return;
+
+  lessonList.innerHTML = '';
+
+  if (!Array.isArray(INITIAL_LESSONS) || INITIAL_LESSONS.length === 0) {
+    // Nothing to render; header count already shows 0
+    return;
+  }
+
+  INITIAL_LESSONS.forEach((lesson, index) => {
+    const lessonId = lesson.id;
+    const title = lesson.title || 'Untitled Lesson';
+    const duration = lesson.duration || 30;
+    const level = lesson.level || '';
+    const order = lesson.order || '';
+    const prerequisite = lesson.prerequisite || '';
+    const description = lesson.description || '';
+    const topics = Array.isArray(lesson.topics) ? lesson.topics : [];
+
+    const topicsCount = topics.length;
+    const cardsCount = topics.reduce((sum, topic) => {
+      const count = typeof topic.cards_count === 'number' ? topic.cards_count : (topic.cards_count || 0);
+      return sum + (isNaN(count) ? 0 : count);
+    }, 0);
+
+    // Build topics HTML
+    let topicsInnerHTML = '';
+    if (topicsCount === 0) {
+      topicsInnerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🔭</div>
+          <p>No topics in this lesson yet.</p>
+          <p style="margin-top: 8px; color: #94a3b8;">
+            Start by adding your first topic!
+          </p>
+        </div>
+      `;
+    } else {
+      topics.forEach((topic) => {
+        const topicId = topic.id;
+        const topicTitle = topic.title || 'Untitled Topic';
+        const topicDesc = topic.description || 'No description';
+        const rawIcon = topic.icon || '';
+        const topicIcon = (rawIcon === 'ðŸ’¡' || !rawIcon) ? '💡' : rawIcon;
+        const topicDifficulty = topic.difficulty || 'medium';
+        const topicTime = topic.estimated_time || '';
+        const topicOrder = topic.order || '';
+
+        topicsInnerHTML += `
+          <div class="topic-card"
+            data-difficulty="${topicDifficulty}"
+            data-time="${topicTime}"
+            data-order="${topicOrder}"
+            onclick="openTopicEditor(${topicId})">
+
+            <div class="topic-card-header">
+              <div class="topic-icon">${topicIcon}</div>
+              <div class="topic-card-info">
+                <h4>${topicTitle}</h4>
+                <p>${topicDesc}</p>
+              </div>
+            </div>
+            <div class="topic-card-body">
+              <div class="topic-stats">
+                <div class="topic-stat">
+                  <span class="value">${topic.cards_count || 0}</span>
+                  <span class="label">Cards</span>
+                </div>
+              </div>
+              <div class="topic-card-footer">
+                <button class="btn btn-primary" onclick="event.stopPropagation(); manageCards(${lessonId}, ${topicId})">
+                  <span>🎴</span> Manage Cards
+                </button>
+                <button class="btn btn-secondary" onclick="event.stopPropagation(); openTopicModal('edit', ${lessonId}, ${topicId})">
+                  <span>✏️</span> Edit
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    const lessonHTML = `
+      <div class="lesson-item" id="lesson-${lessonId}" data-level="${level}" data-order="${order}" data-prerequisite="${prerequisite}" data-description="${description.replace(/"/g, '&quot;')}">
+        <div class="lesson-item-header" onclick="toggleLesson('lesson-${lessonId}')">
+          <div class="lesson-main-info">
+            <div class="lesson-number">${index + 1}</div>
+            <div class="lesson-details">
+              <div class="lesson-title">${title}</div>
+              <div class="lesson-meta">
+                <span><span>⏱️</span> ${duration} min</span>
+                <span><span>📋</span> ${topicsCount} Topics</span>
+                <span><span>🎴</span> ${cardsCount} Cards</span>
+              </div>
+            </div>
+          </div>
+          <div class="lesson-actions">
+            <button class="btn btn-primary" onclick="event.stopPropagation(); openLessonModal('edit', ${lessonId})">
+              <span>✏️</span> Edit
+            </button>
+            <span class="expand-icon">▼</span>
+          </div>
+        </div>
+
+        <div class="topics-container">
+          <div class="topics-header">
+            <h3><span>📋</span> Topics in This Lesson (${topicsCount})</h3>
+            <div class="topics-header-actions">
+              <button class="btn" onclick="openTopicModal('add', ${lessonId})">
+                <span>➕</span> Add Topic
+              </button>
+            </div>
+          </div>
+
+          <div class="topics-grid">
+            ${topicsInnerHTML}
+          </div>
+        </div>
+      </div>
+    `;
+
+    lessonList.appendChild(createElementFromHTML(lessonHTML));
+  });
+
+  // Update lessons header count
+  const header = document.querySelector('.lessons-header h2');
+  if (header) {
+    header.innerHTML = header.innerHTML.replace(/\(\d+\)/, `(${INITIAL_LESSONS.length})`);
+  }
+
+}
+
+function toggleLesson(lessonId) {
+  const lesson = document.getElementById(lessonId);
+  if (!lesson) return;
+  
+  const isExpanded = lesson.classList.contains('expanded');
+  
+  // Close all other lessons if opening this one
+  if (!isExpanded) {
+    document.querySelectorAll('.lesson-item.expanded').forEach(item => {
+      if (item.id !== lessonId) {
+        item.classList.remove('expanded');
+      }
+    });
+  }
+  
+  // Toggle current lesson
+  lesson.classList.toggle('expanded');
+  
+  // Update expanded state
+  if (lesson.classList.contains('expanded')) {
+    expandedLesson = lessonId;
+  } else {
+    expandedLesson = null;
+  }
+}
+
+function updateLessonCount(change) {
+  const header = document.querySelector('.lessons-header h2');
+  const currentCount = parseInt(header.textContent.match(/\((\d+)\)/)?.[1] || 0);
+  header.innerHTML = header.innerHTML.replace(/\(\d+\)/, `(${currentCount + change})`);
+}
+
+function updateTopicCount(lessonId, change) {
+  const lessonElement = document.getElementById(`lesson-${lessonId}`);
+  if (!lessonElement) return;
+  
+  const topicsHeader = lessonElement.querySelector('.topics-header h3');
+  const currentCount = parseInt(topicsHeader.textContent.match(/\((\d+)\)/)?.[1] || 0);
+  topicsHeader.innerHTML = topicsHeader.innerHTML.replace(/\(\d+\)/, `(${currentCount + change})`);
+  
+  // Update lesson meta
+  const lessonMeta = lessonElement.querySelector('.lesson-meta');
+  const topicMeta = lessonMeta.querySelectorAll('span')[1];
+  const currentTopicCount = parseInt(topicMeta.textContent.match(/\d+/)?.[0] || 0);
+  topicMeta.innerHTML = `<span>📋</span> ${currentTopicCount + change} Topics`;
+}
+
+function updateTotalTopicCount(change) {
+  const totalTopicsStat = document.querySelector('.admin-stat:nth-child(2) .stat-value');
+  const currentTotal = parseInt(totalTopicsStat.textContent) || 0;
+  totalTopicsStat.textContent = currentTotal + change;
+}
+
+function renumberLessons() {
+  const lessons = document.querySelectorAll('.lesson-item');
+  lessons.forEach((lesson, index) => {
+    const numberElement = lesson.querySelector('.lesson-number');
+    if (numberElement) {
+      numberElement.textContent = index + 1;
+    }
+  });
+}
+
+function openTopicEditor(topicId) {
+  showNotification(`Opening topic editor for topic ${topicId}`, 'info');
+}
+
+function manageCards(lessonId, topicId) {
+  showNotification(`Opening card manager for Lesson ${lessonId}, Topic ${topicId}`, 'info');
+  const params = new URLSearchParams();
+  if (COURSE_ID) params.set('course_id', COURSE_ID);
+  if (lessonId) params.set('lesson_id', lessonId);
+  if (topicId) params.set('topic_id', topicId);
+  const qs = params.toString();
+  window.location.href = `/manage-cards.html${qs ? `?${qs}` : ''}`;
+}
+
+function editCourseSettings() {
+  showNotification('Opening course settings', 'info');
+  setTimeout(() => {
+    window.location.href = "coursesetting.html";
+  }, 300);
+}
+
+function saveAndPublish() {
+  if (confirm('Publish all changes to live course?\nThis will make changes visible to all students.')) {
+    if (!COURSE_ID) {
+      showNotification('Missing course information for publish', 'error');
+      return;
+    }
+
+    showNotification('Publishing changes...', 'info');
+
+    fetch('/admin/update_course', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ id: COURSE_ID, published: true })
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })).catch(() => ({ status: res.status, body: {} })))
+    .then(({ status, body }) => {
+      if (status >= 200 && status < 300 && body && body.success) {
+        showNotification('✔ Changes published successfully!', 'success');
+      } else {
+        const msg = (body && body.error) ? body.error : 'Failed to publish changes';
+        showNotification(msg, 'error');
+      }
+    })
+    .catch(err => {
+      console.error('publish_course error', err);
+      showNotification('Failed to publish changes (network error)', 'error');
+    });
+  }
+}
+
+function filterContent(searchTerm) {
+  const searchLower = searchTerm.toLowerCase();
+  const lessons = document.querySelectorAll('.lesson-item');
+  
+  lessons.forEach(lesson => {
+    const lessonTitle = lesson.querySelector('.lesson-title')?.textContent.toLowerCase() || '';
+    const topics = lesson.querySelectorAll('.topic-card h4');
+    let hasMatch = lessonTitle.includes(searchLower);
+    
+    topics.forEach(topic => {
+      if (topic.textContent.toLowerCase().includes(searchLower)) {
+        hasMatch = true;
+      }
+    });
+
+    // When visible, use default CSS display so structure/spacing stays normal
+    lesson.style.display = (searchTerm === '' || hasMatch) ? '' : 'none';
+  });
+}
+
+function showNotification(message, type = 'info') {
+  // Remove existing notifications
+  document.querySelectorAll('.notification').forEach(n => n.remove());
+  
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.innerHTML = `
+    <span>${type === 'success' ? '✔' : '💡'}</span> ${message}
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Remove after 3 seconds
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => {
+      notification.remove();
+    }, 300);
+  }, 3000);
+}
+
+// ========== EVENT LISTENERS ==========
+document.getElementById('lessonModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeLessonModal();
+  }
+});
+
+document.getElementById('topicModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeTopicModal();
+  }
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeLessonModal();
+    closeTopicModal();
+  }
+  if (e.ctrlKey && e.key === 'n') {
+    e.preventDefault();
+    openLessonModal('add');
+  }
+  if (e.ctrlKey && e.key === 't') {
+    e.preventDefault();
+    if (expandedLesson) {
+      const lessonId = expandedLesson.replace('lesson-', '');
+      openTopicModal('add', lessonId);
+    }
+  }
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize icon grid
+  updateIconSelection();
+  // Render lessons and topics from backend data
+  renderInitialLessons();
+
+  // Ensure all lessons start collapsed so topics are hidden initially
+  document.querySelectorAll('.lesson-item').forEach(item => {
+    item.classList.remove('expanded');
+  });
+
+  // If a specific lesson_id is provided in the URL, auto-expand and scroll to it
+  try {
+    const url = new URL(window.location.href);
+    const lessonIdParam = url.searchParams.get('lesson_id');
+    if (lessonIdParam) {
+      const targetId = `lesson-${lessonIdParam}`;
+      const el = document.getElementById(targetId);
+      if (el) {
+        // Expand this lesson if not already expanded
+        if (!el.classList.contains('expanded')) {
+          toggleLesson(targetId);
+        }
+        // Scroll it into view after layout is ready
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+  } catch (e) {
+    // Ignore URL/scroll errors; page still works normally
+  }
+});
+</script>
+
+  </main>
+</div>
+
+</body>
+</html>

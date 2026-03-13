@@ -686,6 +686,7 @@
                         </div>
                         
                         <div class="course-actions">
+                            <button class="btn btn-view" data-course-id="${course.id}" title="Manage practice quizzes for this course">Practice Quizzes</button>
                             <button class="btn btn-view" data-course-id="${course.id}" title="Manage Course Content">Manage</button>
                             <button class="btn btn-edit" data-course-id="${course.id}" title="Edit Course">Edit</button>
                             <button class="btn btn-delete" data-course-id="${course.id}" title="Delete Course">Delete</button>
@@ -977,8 +978,14 @@
                 if (!btn) return;
                 const id = parseInt(btn.getAttribute('data-course-id'));
                 if (btn.classList.contains('btn-view')) {
-                    // Navigate to the course content management page for this course
-                    window.location.href = '{{ url_for("admin_bp.course_content_page") }}' + '?course_id=' + encodeURIComponent(id);
+                    const label = (btn.textContent || '').toLowerCase();
+                    if (label.includes('practice')) {
+                        // Navigate to the Quiz Content Management page for this course
+                        window.location.href = '{{ url_for("admin_bp.quiz_content_page") }}' + '?course_id=' + encodeURIComponent(id);
+                    } else {
+                        // Navigate to the course content management page for this course
+                        window.location.href = '{{ url_for("admin_bp.course_content_page") }}' + '?course_id=' + encodeURIComponent(id);
+                    }
                     return;
                 }
                 if (btn.classList.contains('btn-edit')) return editCourse(id);

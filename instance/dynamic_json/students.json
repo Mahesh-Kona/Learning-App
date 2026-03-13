@@ -45,16 +45,38 @@
       "status": "active"
     },
     {
-      "id": 31,
-      "name": "Kona Naga Mahesh",
-      "email": "nagamaheshkona94@gmail.com",
-      "enrollmentDate": "2026-02-05",
-      "courses": "JS Flow Course",
+      "id": 32,
+      "name": "Unknown",
+      "email": "reset_invalid@example.com",
+      "enrollmentDate": "2026-03-05",
+      "courses": "",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 33,
+      "name": "Unknown",
+      "email": "reset_success@example.com",
+      "enrollmentDate": "2026-03-05",
+      "courses": "",
+      "progress": 0,
+      "xp": 0,
+      "lastLogin": "",
+      "status": "active"
+    },
+    {
+      "id": 34,
+      "name": "Unknown",
+      "email": "reset_expired@example.com",
+      "enrollmentDate": "2026-03-05",
+      "courses": "",
       "progress": 0,
       "xp": 0,
       "lastLogin": "",
       "status": "active"
     }
   ],
-  "total": 5
+  "total": 7
 }

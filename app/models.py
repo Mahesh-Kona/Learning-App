@@ -252,9 +252,14 @@ class PracticeQuiz(db.Model):  # type: ignore[name-defined]
         index=True,
     )
 
-    category = db.Column(db.String(100), nullable=True, index=True)
+    course = db.Column(db.String(100), nullable=True, index=True)
     class_name = db.Column(db.String(50), nullable=True, index=True)
     thumbnail_url = db.Column(db.String(1024), nullable=True)
+
+    # Optional JSON payload storing full question data for this practice quiz.
+    # This allows standalone practice quizzes to own their questions directly
+    # without going through the lesson/topic card system.
+    questions_json = db.Column(JSON_COL, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
@@ -280,7 +285,9 @@ class PracticeQuiz(db.Model):  # type: ignore[name-defined]
             'questions_count': self.total_questions or 0,
             'class_name': self.class_name or '',
             'description': self.description or '',
-            'category': self.category or '',
+            # expose both 'course' and legacy 'category' keys for UI compatibility
+            'course': self.course or '',
+            'category': self.course or '',
             'thumbnail_url': self.thumbnail_url or '',
         }
 

@@ -60,20 +60,24 @@ def upload():
 
     filename = secure_filename(f.filename)
 
-    # Prefer Cloudflare R2 for image uploads when configured, so that all
-    # quiz/concept images end up under file.edusaint.in/images/<name>.
+    # Prefer Cloudflare R2 for image and video uploads when configured, so that
+    # media ends up under the CDN (images/ or videos/ folders).
     size = None
     mime_type = None
     url = None
 
-    if (f.mimetype or "").startswith("image/") and R2_BUCKET and CDN_BASE:
+    is_image = (f.mimetype or "").startswith("image/")
+    is_video = (f.mimetype or "").startswith("video/")
+
+    if (R2_BUCKET and CDN_BASE) and (is_image or is_video):
         try:
             file_bytes = f.read()
             size = len(file_bytes)
             if max_len and size and size > max_len:
                 return {"success": False, "error": "file too large", "code": 413}, 413
 
-            key = f"images/{filename}"
+            folder = "images" if is_image else "videos"
+            key = f"{folder}/{filename}"
             s3.put_object(
                 Bucket=R2_BUCKET,
                 Key=key,
@@ -82,9 +86,9 @@ def upload():
             )
 
             mime_type = f.mimetype
-            url = f"{CDN_BASE}/images/{filename}"
+            url = f"{CDN_BASE}/{folder}/{filename}"
         except Exception:
-            current_app.logger.exception("R2 image upload failed")
+            current_app.logger.exception("R2 media upload failed")
             return {"success": False, "error": "upload failed", "code": 500}, 500
     else:
         upload_to_s3 = bool(current_app.config.get('S3_BUCKET'))

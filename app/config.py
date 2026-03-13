@@ -116,7 +116,9 @@ class Config:
     # you should tighten this and move third-party assets to trusted hosts.
     CONTENT_SECURITY_POLICY = os.getenv(
         'CONTENT_SECURITY_POLICY',
-        "default-src 'self'; img-src 'self' data: https:; "
+        "default-src 'self'; "
+        "img-src 'self' data: https:; "
+        "media-src 'self' https://file.edusaint.in blob:; "
         "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
         "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;"

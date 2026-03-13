@@ -117,6 +117,54 @@ def _compute_image_folder(topic_id=None, lesson_id=None) -> str:
     return "/".join(parts)
 
 
+def _compute_video_folder(topic_id=None, lesson_id=None) -> str:
+    """Return a videos/<course>/<lesson>/<topic> folder for storing video assets.
+
+    Mirrors _compute_image_folder but roots paths under "videos" so that
+    CDN URLs look like:
+        file.edusaint.in/videos/<course-name>/<lesson-name>/<topic-name>/...
+    """
+    course_slug = None
+    lesson_slug = None
+    topic_slug = None
+
+    try:
+        lesson = None
+        topic = None
+
+        if topic_id:
+            topic = Topic.query.get(topic_id)
+            if topic and getattr(topic, "title", None):
+                topic_slug = _slugify_title(topic.title, "topic")
+            if topic and getattr(topic, "lesson_id", None):
+                lesson = Lesson.query.get(topic.lesson_id)
+
+        if lesson_id and lesson is None:
+            lesson = Lesson.query.get(lesson_id)
+
+        if lesson is not None:
+            if getattr(lesson, "title", None):
+                lesson_slug = _slugify_title(lesson.title, "lesson")
+            if getattr(lesson, "course", None):
+                course = lesson.course
+                title = getattr(course, "title", None)
+                if title:
+                    course_slug = _slugify_title(title, "course")
+    except Exception:
+        # On any lookup/DB error, we'll fall back to a generic videos/ folder.
+        pass
+
+    parts = ["videos"]
+    if course_slug:
+        parts.append(course_slug)
+    if lesson_slug:
+        parts.append(lesson_slug)
+    if topic_slug:
+        parts.append(topic_slug)
+
+    return "/".join(parts)
+
+
 def _process_concept_blocks_and_collect_urls(blocks, image_folder: str = "images", filename_prefix: str | None = None):
     """Upload all base64 images in blocks to R2 and collect their URLs.
 
@@ -364,6 +412,92 @@ def _collect_quiz_image_urls(data_json, topic_id=None, lesson_id=None, card_id=N
     return deduped
 
 
+def _normalize_video_url_for_card(data_json, topic_id=None, lesson_id=None, card_id=None):
+    """Normalize video URL for a card and return (updated_data_json, image_url_norm).
+
+    - Expects data_json.url to contain the primary video URL.
+    - If the URL already points at our CDN under /videos/, we copy it into a
+      structured folder videos/<course>/<lesson>/<topic>/<card_id>-1.ext
+      using the same R2 bucket, and update data_json.url to the new CDN URL.
+    - Returns image_url_norm as a scheme-less host/path string suitable for
+      storing in Card.image_url (e.g. file.edusaint.in/videos/...).
+    """
+    if not isinstance(data_json, dict):
+        return data_json, None
+
+    raw_url = data_json.get("url")
+    if not isinstance(raw_url, str) or not raw_url.strip():
+        return data_json, None
+
+    raw_url = raw_url.strip()
+
+    # If R2 is not configured, just normalize whatever URL we have.
+    cdn_base = (os.getenv("R2_CDN_BASE", "") or CDN_BASE or "").strip()
+    bucket = (R2_BUCKET or "").strip() if isinstance(R2_BUCKET, str) else ""
+    if not bucket or not cdn_base:
+        norm = _normalize_url_for_storage(raw_url)
+        return data_json, norm or None
+
+    # Determine CDN host without scheme for comparison.
+    cdn_host = cdn_base
+    if "://" in cdn_host:
+        cdn_host = cdn_host.split("://", 1)[1]
+
+    # Strip scheme if present from the raw URL.
+    url_no_scheme = raw_url
+    if url_no_scheme.startswith("http://") or url_no_scheme.startswith("https://"):
+        url_no_scheme = url_no_scheme.split("://", 1)[1]
+
+    # Extract host/path.
+    parts = url_no_scheme.split("/", 1)
+    if len(parts) == 2:
+        host_part, path_part = parts[0], parts[1]
+    else:
+        host_part, path_part = "", parts[0]
+
+    # Only attempt R2 copy if this already points at our CDN and is under videos/.
+    new_cdn_url = None
+    if cdn_host and host_part == cdn_host and path_part.startswith("videos/") and bucket:
+        # Compute structured videos/<course>/<lesson>/<topic> folder.
+        try:
+            folder = _compute_video_folder(topic_id=topic_id, lesson_id=lesson_id)
+        except Exception:
+            folder = "videos"
+
+        # Derive extension from existing key; default to mp4.
+        ext = "mp4"
+        try:
+            last_segment = path_part.rsplit("/", 1)[-1]
+            if "." in last_segment:
+                ext = last_segment.rsplit(".", 1)[-1] or ext
+        except Exception:
+            pass
+
+        # Use a deterministic name based on card id.
+        filename_base = str(card_id) if card_id is not None else "video"
+        new_key = f"{folder}/{filename_base}-1.{ext}"
+
+        try:
+            s3.copy_object(
+                Bucket=bucket,
+                CopySource={"Bucket": bucket, "Key": path_part},
+                Key=new_key,
+            )
+            new_cdn_url = f"{cdn_base}/{new_key}"
+        except Exception:
+            # If copy fails, fall back to the original URL.
+            new_cdn_url = raw_url
+    else:
+        # Not our CDN videos path; just keep the original URL.
+        new_cdn_url = raw_url
+
+    # Update data_json.url with the (possibly rewritten) CDN URL.
+    data_json["url"] = new_cdn_url
+
+    norm = _normalize_url_for_storage(new_cdn_url)
+    return data_json, norm or None
+
+
 def _extract_r2_keys_from_image_url(image_url_value):
     """Given Card.image_url value, return a list of R2 object keys to delete.
 
@@ -605,6 +739,21 @@ def create_card():
             if quiz_urls:
                 new_card.image_url = json.dumps(quiz_urls)
             data_json = compress_images_in_json(data_json)
+        elif card_type == 'video':
+            # For video cards, normalize the video URL into a structured CDN
+            # videos/<course>/<lesson>/<topic>/<card_id>-1.ext path when
+            # possible, and store a scheme-less version in image_url.
+            data_json, video_norm = _normalize_video_url_for_card(
+                data_json,
+                topic_id=topic_id,
+                lesson_id=lesson_id,
+                card_id=new_card.id,
+            )
+            if video_norm:
+                new_card.image_url = video_norm
+            # Fallback to explicit image_url if provided.
+            if not new_card.image_url:
+                new_card.image_url = image_url
         else:
             # For other types, honor explicit image_url if provided.
             new_card.image_url = image_url
@@ -843,6 +992,18 @@ def update_card(card_id):
                 if quiz_urls:
                     card.image_url = json.dumps(quiz_urls)
                 payload = compress_images_in_json(payload)
+            elif card.card_type == 'video':
+                # For video cards, normalize the video URL into a structured
+                # CDN videos/<course>/<lesson>/<topic>/<card_id>-1.ext path
+                # when possible, updating both data_json.url and image_url.
+                payload, video_norm = _normalize_video_url_for_card(
+                    payload,
+                    topic_id=card.topic_id,
+                    lesson_id=card.lesson_id,
+                    card_id=card.id,
+                )
+                if video_norm:
+                    card.image_url = video_norm
             card.data_json = payload
         if 'image_url' in data:
             # Allow manual override only for non concept/quiz types; for

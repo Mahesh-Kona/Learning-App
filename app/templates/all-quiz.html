@@ -625,26 +625,19 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="quizCategory">Subject</label>
-                    <select id="quizCategory">
-                        <option value="">Select Subject</option>
-                        <option value="mathematics">Mathematics</option>
-                        <option value="science">Science</option>
-                        <option value="english">English</option>
-                        <option value="physics">Physics</option>
-                        <option value="chemistry">Chemistry</option>
-                        <option value="biology">Biology</option>
-                        <option value="computer">Computer Science</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
                     <label for="quizClass">Class</label>
                     <select id="quizClass">
                         <option value="">Select Class</option>
                         {% for i in range(1,13) %}
                         <option value="{{ i }}">Class {{ i }}</option>
                         {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="quizCategory">Course</label>
+                    <select id="quizCategory">
+                        <option value="">Select Course</option>
                     </select>
                 </div>
 
@@ -768,8 +761,15 @@ function editQuiz(id) {
     document.getElementById('quizQuestions').value = quiz.questions_count || '';
     document.getElementById('quizDifficulty').value = quiz.difficulty || '';
     document.getElementById('quizTotalMarks').value = quiz.total_marks || '';
-    document.getElementById('quizCategory').value = quiz.category || '';
-    document.getElementById('quizClass').value = quiz.class_name || '';
+    const classSelect = document.getElementById('quizClass');
+    const courseSelect = document.getElementById('quizCategory');
+    if (classSelect) classSelect.value = quiz.class_name || '';
+
+    // When opening for edit, load courses for the quiz's class
+    // and pre-select the current course title (quiz.category).
+    if (classSelect && courseSelect) {
+        loadCoursesForClassInModal(classSelect.value, quiz.category || '');
+    }
 
     document.getElementById('courseModal').classList.add('active');
 }
@@ -905,12 +905,102 @@ function capitalizeFirst(str) {
     return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
 }
 
+// Dynamically populate "Course" options in the modal based on selected class,
+// mirroring the behavior used on the dedicated create_quiz page.
+function populateCourseOptionsInModal(options, placeholderText) {
+    const courseSelect = document.getElementById('quizCategory');
+    if (!courseSelect) return;
+
+    courseSelect.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = placeholderText || 'Select Course';
+    courseSelect.appendChild(placeholder);
+
+    if (!options || !options.length) return;
+
+    options.forEach(function (c) {
+        const opt = document.createElement('option');
+        // Store course title in value so it fits PracticeQuiz.course/category
+        opt.value = c.title || '';
+        opt.textContent = c.title || ('Course ' + (c.id || ''));
+        if (c.class_name) opt.dataset.className = c.class_name;
+        courseSelect.appendChild(opt);
+    });
+}
+
+async function loadCoursesForClassInModal(classValue, selectedTitle) {
+    const courseSelect = document.getElementById('quizCategory');
+    if (!courseSelect) return;
+
+    const trimmed = (classValue || '').toString().trim();
+    if (!trimmed) {
+        populateCourseOptionsInModal([], 'Select Course');
+        return;
+    }
+
+    // Show loading state
+    populateCourseOptionsInModal([], 'Loading courses...');
+
+    try {
+        const resp = await fetch('/api/v1/classes/' + encodeURIComponent(trimmed) + '/courses?limit=200', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        });
+
+        if (!resp.ok) {
+            console.error('Failed to load courses for class', trimmed, resp.status);
+            populateCourseOptionsInModal([], 'Failed to load courses');
+            return;
+        }
+
+        const data = await resp.json();
+        const courses = (data && (data.data || data.courses)) || [];
+        const normalized = courses.map(function (c) {
+            return {
+                id: c.id,
+                title: c.title || c.name || '',
+                class_name: c.class_name || ''
+            };
+        }).filter(function (c) { return c.title; });
+
+        if (!normalized.length) {
+            populateCourseOptionsInModal([], 'No courses for this class');
+            return;
+        }
+
+        populateCourseOptionsInModal(normalized, 'Select Course');
+
+        // Auto-select course if editing an existing quiz
+        if (selectedTitle) {
+            const target = String(selectedTitle).trim().toLowerCase();
+            Array.from(courseSelect.options).forEach(function (opt) {
+                if (opt.value && opt.value.toLowerCase() === target) {
+                    courseSelect.value = opt.value;
+                }
+            });
+        }
+    } catch (err) {
+        console.error('Error loading courses for class', trimmed, err);
+        populateCourseOptionsInModal([], 'Failed to load courses');
+    }
+}
+
 /* ===============================
    INIT
 ================================ */
 document.addEventListener('DOMContentLoaded', function () {
     loadServerQuizzes();
     renderQuizzes();
+
+    // When class changes inside the modal, reload the course list
+    const modalClassSelect = document.getElementById('quizClass');
+    if (modalClassSelect) {
+        modalClassSelect.addEventListener('change', function (e) {
+            loadCoursesForClassInModal(e.target.value || '', null);
+        });
+    }
 
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('button[data-id]');

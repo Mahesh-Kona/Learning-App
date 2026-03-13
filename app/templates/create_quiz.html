@@ -142,25 +142,11 @@ style="width:100%;border-radius:6px;margin-bottom:8px;"/>
 </div>
 
 
-<!-- CATEGORY & CLASS -->
+<!-- CLASS & COURSE -->
 <div class="sidebar-section">
 <h3 class="sidebar-title">
-<i class="fas fa-layer-group"></i> Category & Class
+<i class="fas fa-layer-group"></i> Class & Course
 </h3>
-
-<div class="form-group">
-<label for="quizCategory">Subject *</label>
-<select id="quizCategory" name="category" required>
-<option value="">Select Subject</option>
-<option value="mathematics">Mathematics</option>
-<option value="science">Science</option>
-<option value="english">English</option>
-<option value="physics">Physics</option>
-<option value="chemistry">Chemistry</option>
-<option value="biology">Biology</option>
-<option value="computer">Computer Science</option>
-</select>
-</div>
 
 <div class="form-group">
 <label for="quizClass">Class *</label>
@@ -169,6 +155,20 @@ style="width:100%;border-radius:6px;margin-bottom:8px;"/>
 {% for i in range(1,13) %}
 <option value="{{ i }}">Class {{ i }}</option>
 {% endfor %}
+</select>
+</div>
+
+<div class="form-group">
+<label for="quizCategory">Course *</label>
+<select id="quizCategory" name="category" required>
+<option value="">Select Course</option>
+<option value="mathematics">Mathematics</option>
+<option value="science">Science</option>
+<option value="english">English</option>
+<option value="physics">Physics</option>
+<option value="chemistry">Chemistry</option>
+<option value="biology">Biology</option>
+<option value="computer">Computer Science</option>
 </select>
 </div>
 </div>
@@ -190,6 +190,8 @@ const uploadBtn = document.querySelector('.upload-btn');
 const thumbnailInput = document.getElementById('thumbnail');
 const previewImage = document.getElementById('previewImage');
 const cancelBtn = document.getElementById('cancelBtn');
+const classSelect = document.getElementById('quizClass');
+const courseSelect = document.getElementById('quizCategory');
 
 if (uploadBtn) {
 uploadBtn.addEventListener('click', function (e) {
@@ -212,9 +214,118 @@ reader.readAsDataURL(file);
 if (cancelBtn) {
 cancelBtn.addEventListener('click', function () {
 if (confirm('Discard changes?')) {
+{% if course_id %}
+window.location.href = '{{ url_for('admin_bp.quiz_content_page', course_id=course_id) }}';
+{% else %}
 window.location.href = '{{ url_for('admin_bp.quizzes_page') }}';
+{% endif %}
 }
 });
+}
+
+// Dynamically filter Course options based on selected Class
+function populateCourseOptions(options, placeholderText) {
+	if (!courseSelect) return;
+	courseSelect.innerHTML = '';
+	const placeholder = document.createElement('option');
+	placeholder.value = '';
+	placeholder.textContent = placeholderText || 'Select Course';
+	courseSelect.appendChild(placeholder);
+
+	if (!options || !options.length) {
+		return;
+	}
+
+	options.forEach(function (c) {
+		const opt = document.createElement('option');
+		// store course title in value so it fits existing PracticeQuiz.category
+		opt.value = c.title || '';
+		opt.textContent = c.title || ('Course ' + (c.id || ''));
+		if (c.class_name) {
+			opt.dataset.className = c.class_name;
+		}
+		courseSelect.appendChild(opt);
+	});
+}
+
+async function loadCoursesForClass(classValue, selectedTitle) {
+	if (!courseSelect) return;
+
+	const trimmed = (classValue || '').toString().trim();
+	if (!trimmed) {
+		populateCourseOptions([], 'Select Course');
+		return;
+	}
+
+	// Show loading state
+	populateCourseOptions([], 'Loading courses...');
+
+	try {
+		const resp = await fetch('/api/v1/classes/' + encodeURIComponent(trimmed) + '/courses?limit=200', {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			},
+			credentials: 'same-origin'
+		});
+
+		if (!resp.ok) {
+			console.error('Failed to load courses for class', trimmed, resp.status);
+			populateCourseOptions([], 'Failed to load courses');
+			return;
+		}
+
+		const data = await resp.json();
+		const courses = (data && (data.data || data.courses)) || [];
+		// Normalize to objects with id/title/class_name
+		const normalized = courses.map(function (c) {
+			return {
+				id: c.id,
+				title: c.title || c.name || '',
+				class_name: c.class_name || ''
+			};
+		}).filter(function (c) { return c.title; });
+
+		if (!normalized.length) {
+			populateCourseOptions([], 'No courses for this class');
+			return;
+		}
+
+		populateCourseOptions(normalized, 'Select Course');
+
+		// If a specific course title was requested (e.g. from quiz manager),
+		// auto-select it when present.
+		if (selectedTitle) {
+			const target = String(selectedTitle).trim().toLowerCase();
+			Array.from(courseSelect.options).forEach(function (opt) {
+				if (opt.value && opt.value.toLowerCase() === target) {
+					courseSelect.value = opt.value;
+				}
+			});
+		}
+	} catch (err) {
+		console.error('Error loading courses for class', trimmed, err);
+		populateCourseOptions([], 'Failed to load courses');
+	}
+}
+
+if (classSelect && courseSelect) {
+	classSelect.addEventListener('change', function () {
+		loadCoursesForClass(this.value);
+	});
+}
+
+// Auto-fill class & course when opened from Quiz Manager
+try {
+	const params = new URLSearchParams(window.location.search || '');
+	const fromClass = params.get('class');
+	const fromCourseTitle = params.get('course_title');
+	if (fromClass && classSelect) {
+		classSelect.value = fromClass;
+		loadCoursesForClass(fromClass, fromCourseTitle || undefined);
+	}
+} catch (e) {
+	console.error('Failed to apply prefilled class/course from URL', e);
 }
 
 });

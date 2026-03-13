@@ -840,6 +840,7 @@ function getQueryParam(n) {
 const lessonId = getQueryParam('lesson_id');
 const topicId = getQueryParam('topic_id');
 let cardId = getQueryParam('card_id');
+let quizId = getQueryParam('quiz_id');
 const displayOrderParam = getQueryParam('display_order');
 const courseId = getQueryParam('course_id');
 let currentCardTitle = 'Quiz';
@@ -2202,13 +2203,55 @@ async function loadQuizCardForEdit(cid) {
   }
 }
 
-async function saveQuiz(sl = false) {
-  if (!topicId) {
-    if (!sl) showAlert('Missing topic context. Please open from a topic.');
-    return;
+async function loadPracticeQuizForEdit(qid) {
+  showLoading('Loading quiz...');
+  try {
+    const params = new URLSearchParams({ id: String(qid) });
+    const r = await fetch(`/admin/get_quiz?${params.toString()}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
+    const d = await r.json().catch(() => null);
+    if (!r.ok || !d || !d.success || !d.quiz) {
+      const em = d?.error || 'Failed to load quiz';
+      throw new Error(em);
+    }
+    const q = d.quiz;
+    currentCardTitle = q.name || 'Quiz';
+    const payload = q.questions_json || {};
+    const lq = Array.isArray(payload.questions) ? payload.questions : [];
+    state.questions = lq.map(q => ({
+      ...q,
+      questionImageUrl: q.questionImageUrl || null,
+      mediaUrl: q.media ? (q.media.dataUrl || q.media.url) : q.mediaUrl || null,
+      mediaName: q.media ? q.media.name : q.mediaName || null,
+      mediaType: q.media ? q.media.type : q.mediaType || null
+    }));
+    renderQuestionsList();
+    updateQuestionCount();
+    if (state.questions.length) {
+      loadQuestionToEditor(0);
+      showAlert('Quiz loaded successfully!', 'success', 3000);
+    } else {
+      resetEditor();
+      showAlert('No questions yet. Start by adding one.', 'info');
+    }
+  } catch (e) {
+    showAlert(`Failed to load quiz: ${e.message}`);
+    console.error('Error loading practice quiz:', e);
+  } finally {
+    hideLoading();
   }
+}
+
+async function saveQuiz(sl = false) {
   if (!state.questions.length) {
     if (!sl) showAlert('Add at least one question before saving.');
+    return;
+  }
+  if (!topicId && !quizId) {
+    if (!sl) showAlert('Missing context. Please open from a topic or a quiz.');
     return;
   }
   const ot = saveQuizBtn.textContent;
@@ -2216,12 +2259,9 @@ async function saveQuiz(sl = false) {
     saveQuizBtn.textContent = 'Saving...';
     saveQuizBtn.disabled = true;
   }
-  if (!sl) showLoading(cardId ? 'Updating quiz...' : 'Creating quiz...');
+  if (!sl) showLoading(cardId || quizId ? 'Updating quiz...' : 'Creating quiz...');
   try {
-    const t = typeof getAdminToken === 'function' ? await getAdminToken() : null;
-    if (!t) throw new Error('Authentication required');
-    
-    // Fix 4: Use stored mediaType instead of guessing from URL
+    // Common payload for questions
     const qd = {
       questions: state.questions.map(q => ({
         ...q,
@@ -2233,58 +2273,84 @@ async function saveQuiz(sl = false) {
         } : null
       }))
     };
-    
-    let au, m, p;
-    if (cardId) {
-      // Use POST /update endpoint instead of PUT to support environments
-      // where PUT is blocked (mirrors video editor behavior)
-      au = `/api/v1/cards/${encodeURIComponent(cardId)}/update`;
-      m = 'POST';
-      p = { title: currentCardTitle || 'Quiz', data_json: qd };
-    } else {
-      let no = 1;
-      try {
-        const rc = await fetch(`/api/v1/topics/${encodeURIComponent(topicId)}/cards`, {
-          headers: { 'Authorization': 'Bearer ' + t }
-        });
-        if (rc.ok) {
-          const d = await rc.json();
-          if (d && Array.isArray(d.cards)) {
-            const mo = d.cards.reduce((mx, c) => Math.max(mx, c.display_order || 0), 0);
-            no = mo + 1;
-          }
-        }
-      } catch (e) {
-        console.warn('Could not fetch existing cards:', e);
-      }
-      const fq = state.questions[0]?.text || '';
-      const dt = fq ? fq.substring(0, 80) : 'Quiz';
-      au = '/api/v1/cards';
-      m = 'POST';
-      p = {
-        card_type: 'quiz',
-        title: dt,
-        data_json: qd,
-        topic_id: Number(topicId),
-        lesson_id: lessonId ? Number(lessonId) : null,
-        display_order: no
+
+    let r, d;
+
+    if (!topicId && quizId) {
+      // Practice quiz mode: store questions on PracticeQuiz via /admin/update_quiz
+      const payload = {
+        id: Number(quizId),
+        questions_json: qd,
+        questions_count: state.questions.length
       };
+
+      r = await fetch('/admin/update_quiz', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      d = await r.json().catch(() => null);
+    } else {
+      // Lesson/topic card mode (original behaviour)
+      const t = typeof getAdminToken === 'function' ? await getAdminToken() : null;
+      if (!t) throw new Error('Authentication required');
+
+      let au, m, p;
+      if (cardId) {
+        // Use POST /update endpoint instead of PUT to support environments
+        // where PUT is blocked (mirrors video editor behavior)
+        au = `/api/v1/cards/${encodeURIComponent(cardId)}/update`;
+        m = 'POST';
+        p = { title: currentCardTitle || 'Quiz', data_json: qd };
+      } else {
+        let no = 1;
+        try {
+          const rc = await fetch(`/api/v1/topics/${encodeURIComponent(topicId)}/cards`, {
+            headers: { 'Authorization': 'Bearer ' + t }
+          });
+          if (rc.ok) {
+            const jd = await rc.json();
+            if (jd && Array.isArray(jd.cards)) {
+              const mo = jd.cards.reduce((mx, c) => Math.max(mx, c.display_order || 0), 0);
+              no = mo + 1;
+            }
+          }
+        } catch (e) {
+          console.warn('Could not fetch existing cards:', e);
+        }
+        const fq = state.questions[0]?.text || '';
+        const dt = fq ? fq.substring(0, 80) : 'Quiz';
+        au = '/api/v1/cards';
+        m = 'POST';
+        p = {
+          card_type: 'quiz',
+          title: dt,
+          data_json: qd,
+          topic_id: Number(topicId),
+          lesson_id: lessonId ? Number(lessonId) : null,
+          display_order: no
+        };
+      }
+      r = await fetch(au, {
+        method: m,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + t
+        },
+        credentials: 'include',
+        body: JSON.stringify(p)
+      });
+      d = await r.json().catch(() => null);
     }
-    const r = await fetch(au, {
-      method: m,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + t
-      },
-      credentials: 'include',
-      body: JSON.stringify(p)
-    });
-    const d = await r.json().catch(() => null);
     if (!r.ok || !d || !d.success) {
       const em = d?.error || d?.detail || d?.msg || 'Unknown error';
       throw new Error(em);
     }
-    const sm = cardId ? 'Quiz updated successfully!' : 'Quiz created successfully!';
+    const sm = (cardId || quizId) ? 'Quiz updated successfully!' : 'Quiz created successfully!';
     if (!sl) {
       showAlert(sm, 'success', 5000);
       // If this was a newly created card and the backend returned
@@ -2328,6 +2394,17 @@ window.addEventListener('DOMContentLoaded', async () => {
       const cl = confirm('You have unsaved changes. Are you sure you want to leave?');
       if (!cl) return;
     }
+    // If we're managing a standalone practice quiz, go back to
+    // the Quiz Content Management page for this course.
+    if (quizId && courseId) {
+      const params = new URLSearchParams();
+      params.set('course_id', courseId);
+      const qs = params.toString();
+      window.location.href = '/admin/quiz-content' + (qs ? `?${qs}` : '');
+      return;
+    }
+
+    // Otherwise fall back to the original lesson/topic cards page.
     const ou = new URLSearchParams();
     if (courseId) ou.set('course_id', courseId);
     if (lessonId) ou.set('lesson_id', lessonId);
@@ -2474,6 +2551,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   updateQuestionCount();
   if (cardId) {
     await loadQuizCardForEdit(cardId);
+  } else if (quizId) {
+    await loadPracticeQuizForEdit(quizId);
   }
   showAlert('Quiz Builder ready! Press Ctrl+S to save.', 'success', 4000);
 });

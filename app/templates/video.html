@@ -327,7 +327,11 @@ let app = {
   videoType: null, // 'youtube' | 'vimeo' | 'direct'
   duration: 0,
   interactions: [], // {id, type, timestamp, data}
-  quizPoints: 0
+  quizPoints: 0,
+  // For direct MP4 uploads, keep CDN URL for saving
+  // and a local object URL for preview.
+  directUploadCdnUrl: null,
+  directUploadObjectUrl: null
 };
 
 /* ========= DOM refs ========= */
@@ -428,10 +432,29 @@ videoSourceType.addEventListener('change', ()=>{
           alert(msg);
           return;
         }
-        const url = upData.url; // e.g., /uploads/filename.mp4
-        videoUrlWrapper.innerHTML = `<input id="videoUrl" type="text" value="${url}" />`;
+        const url = upData.url; // CDN or uploads URL for the video
+
+        // Revoke any previous object URL if present
+        if (app.directUploadObjectUrl) {
+          try { URL.revokeObjectURL(app.directUploadObjectUrl); } catch(e) {}
+          app.directUploadObjectUrl = null;
+        }
+
+        // Use a local object URL for preview so we don't depend on CDN
+        // loading before the card is saved.
+        const objectUrl = URL.createObjectURL(file);
+        app.directUploadCdnUrl = url;
+        app.directUploadObjectUrl = objectUrl;
+
+        // Show the file name in the input instead of the CDN URL.
+        videoUrlWrapper.innerHTML = `<input id="videoUrl" type="text" value="${file.name}" readonly />`;
         videoUrlInput = document.getElementById('videoUrl');
-        loadVideo(url, 'direct');
+
+        // Immediately load preview from the local object URL for new uploads.
+        // When editing an existing card, the initial preview still comes from
+        // the stored CDN URL via loadVideoCardForEdit; selecting a new file
+        // here will show the new local preview, which is what the user expects.
+        loadVideo(objectUrl, 'direct');
       } catch(err){
         console.error('Upload error:', err);
         alert('Failed to upload video: ' + err.message);
@@ -439,14 +462,22 @@ videoSourceType.addEventListener('change', ()=>{
     });
   } else {
     // Restore text input for non-direct sources
-    videoUrlWrapper.innerHTML = `<input id=\"videoUrl\" type=\"text\" placeholder=\"Paste video URL here (YouTube, Vimeo, or direct video URL)\" />`;
+    videoUrlWrapper.innerHTML = `<input id="videoUrl" type="text" placeholder="Paste video URL here (YouTube, Vimeo, or direct video URL)" />`;
     videoUrlInput = document.getElementById('videoUrl');
+    app.directUploadCdnUrl = null;
+    app.directUploadObjectUrl = null;
   }
 });
 
 loadVideoBtn.addEventListener('click', ()=>{
-  const url = (videoUrlInput && videoUrlInput.value ? videoUrlInput.value : '').trim();
   const source = videoSourceType.value;
+  let url = (videoUrlInput && videoUrlInput.value ? videoUrlInput.value : '').trim();
+
+  // For direct uploads, prefer the local object URL for preview so we
+  // don't depend on the CDN before saving the card.
+  if (source === 'direct' && app.directUploadObjectUrl) {
+    url = app.directUploadObjectUrl;
+  }
   if(!url || !source){ alert('Please select source type and enter a URL'); return; }
   loadVideo(url, source);
 });
@@ -518,7 +549,8 @@ function loadVideo(url, source){
     // direct video file -> use <video>
     const video = document.createElement('video');
     video.src = url;
-    video.controls = false;
+    // Show native controls so it's obvious the video loaded
+    video.controls = true;
     video.width = videoPreview.clientWidth;
     video.height = 420;
     videoPreview.innerHTML = '';
@@ -812,7 +844,9 @@ exportBtn.addEventListener('click', ()=>{
   const payload = {
     title: videoTitleInput.value || '',
     sourceType: videoSourceType.value || '',
-    url: videoUrlInput.value || '',
+    url: (videoSourceType.value === 'direct' && app.directUploadCdnUrl)
+      ? app.directUploadCdnUrl
+      : (videoUrlInput.value || ''),
     duration: app.duration || null,
     interactions: app.interactions
   };
@@ -836,10 +870,13 @@ saveBtn.addEventListener('click', async ()=>{
   const lessonId = getLessonIdFromURL();
   const displayOrder = getDisplayOrderFromURL();
   const cardId = getCardIdFromURL();
+  const courseId = getCourseIdFromURL();
 
   const dataJson = {
     sourceType: videoSourceType.value || '',
-    url: videoUrlInput.value || '',
+    url: (videoSourceType.value === 'direct' && app.directUploadCdnUrl)
+      ? app.directUploadCdnUrl
+      : (videoUrlInput.value || ''),
     duration: app.duration || null,
     interactions: app.interactions
   };
@@ -917,10 +954,10 @@ saveBtn.addEventListener('click', async ()=>{
     const result = await resp.json().catch(() => null);
     if(result.success){
       if (cardId) {
-        alert('Video card updated successfully!');
-        const goBack = confirm('Return to Card Flow?');
+        const goBack = confirm('Video card saved successfully. Click OK if you want to go back.');
         if (goBack) {
           const out = new URLSearchParams();
+          if (courseId) out.set('course_id', courseId);
           if (lessonId) out.set('lesson_id', lessonId);
           if (topicId) out.set('topic_id', topicId);
           if (result.card && result.card.display_order != null) {
@@ -929,15 +966,15 @@ saveBtn.addEventListener('click', async ()=>{
             out.set('display_order', displayOrder);
           }
           const qs = out.toString();
-          const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
+          const target = '/manage-cards.html' + (qs ? `?${qs}` : '');
           window.location.href = target;
         }
       } else {
-        alert('Video card saved successfully!');
-        const goNow = confirm('Video card saved to topic. Open Card Flow now?');
+        const goNow = confirm('Video card saved successfully. Click OK if you want to go back.');
         if (!goNow) return;
 
         const out = new URLSearchParams();
+        if (courseId) out.set('course_id', courseId);
         if (lessonId) out.set('lesson_id', lessonId);
         if (topicId) out.set('topic_id', topicId);
         if (result.card && result.card.display_order != null) {
@@ -946,7 +983,7 @@ saveBtn.addEventListener('click', async ()=>{
           out.set('display_order', displayOrder);
         }
         const qs = out.toString();
-        const target = '/admin/cards_index' + (qs ? `?${qs}` : '');
+        const target = '/manage-cards.html' + (qs ? `?${qs}` : '');
         window.location.href = target;
       }
     } else {
@@ -982,6 +1019,7 @@ function getLessonIdFromURL(){ const params = new URLSearchParams(window.locatio
 function getDisplayOrderFromURL(){ const params = new URLSearchParams(window.location.search); return params.get('display_order') || '0'; }
 
 function getCardIdFromURL(){ const params = new URLSearchParams(window.location.search); return params.get('card_id'); }
+function getCourseIdFromURL(){ const params = new URLSearchParams(window.location.search); return params.get('course_id'); }
 
 // Load existing video card data when editing from cards_index
 async function loadVideoCardForEdit(cardId){
@@ -1004,9 +1042,54 @@ async function loadVideoCardForEdit(cardId){
       if (typeof updateSaveEnabled === 'function') updateSaveEnabled();
     }
 
-    const payload = card.data_json || card.data || {};
-    const srcType = payload.sourceType || '';
-    const url = payload.url || '';
+    // Prefer structured payload from data_json, but be resilient to
+    // legacy/alternate shapes and fall back to image_url when needed.
+    let payload = card.data_json || card.data || {};
+    if (typeof payload === 'string') {
+      try {
+        const parsed = JSON.parse(payload);
+        if (parsed && typeof parsed === 'object') {
+          payload = parsed;
+        }
+      } catch (e) {
+        console.warn('Failed to parse video card data_json string', e);
+        payload = {};
+      }
+    }
+
+    let srcType = payload.sourceType || '';
+    let url = payload.url || '';
+
+    // For some older video cards, the normalized video URL is stored only in
+    // card.image_url (as a scheme-less host/path string like
+    // "file.edusaint.in/videos/..."). In that case, use it as the URL so
+    // that the editor can still show a preview when editing.
+    if (!url && card.image_url) {
+      let imgUrl = card.image_url;
+      if (typeof imgUrl === 'string' && imgUrl.trim()) {
+        // If image_url accidentally contains a JSON array string, try to
+        // pick the first entry.
+        if (imgUrl.trim().startsWith('[')) {
+          try {
+            const parsedImg = JSON.parse(imgUrl);
+            if (Array.isArray(parsedImg) && parsedImg.length && typeof parsedImg[0] === 'string') {
+              imgUrl = parsedImg[0];
+            }
+          } catch (e) {
+            console.warn('Failed to parse image_url JSON for video card', e);
+          }
+        }
+
+        if (!/^https?:\/\//i.test(imgUrl)) {
+          imgUrl = window.location.protocol + '//' + imgUrl.replace(/^\/\//, '');
+        }
+
+        url = imgUrl;
+        if (!srcType) {
+          srcType = 'direct';
+        }
+      }
+    }
 
     if (srcType) {
       videoSourceType.value = srcType;
