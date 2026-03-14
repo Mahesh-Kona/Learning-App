@@ -14,7 +14,7 @@ from flask_jwt_extended import (
     verify_jwt_in_request
 )
 from app.extensions import db
-from app.models import User, Course, Lesson, Topic, Student
+from app.models import User, Course, Lesson, Topic, Student, PracticeQuiz
 from app.api.cards import _extract_r2_keys_from_image_url
 from r2_client import s3, R2_BUCKET
 from sqlalchemy import or_, text, func
@@ -2143,6 +2143,117 @@ def get_class_course_detail(class_id, course_id):
     # Delegate to the canonical course-detail API so the JSON structure is
     # identical to /api/v1/courses/<course_id>.
     return api_get_course(course_id)
+
+
+@api_bp.route('/classes/<class_id>/courses/<int:course_id>/practice_quizzes', methods=['GET'])
+def get_class_course_practice_quizzes(class_id, course_id):
+    """List standalone practice quizzes for a given class + course.
+
+    This endpoint mirrors the nested class/course style used by the other
+    class-scoped APIs and surfaces quizzes authored via the admin practice
+    quiz builder (PracticeQuiz model).
+
+    Example: ``GET /api/v1/classes/8/courses/4/practice_quizzes``.
+
+    The response returns a lightweight list suitable for mobile clients:
+
+    {
+        "success": true,
+        "quizzes": [
+            {
+                "id": 1,
+                "name": "Algebra Basics Quiz",
+                "time_limit": 20,
+                "difficulty": "beginner",
+                "total_marks": 50,
+                "questions_count": 10,
+                "class_name": "8",
+                "description": "",
+                "course": "Maths",
+                "category": "Maths",
+                "thumbnail_url": "..."
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        from sqlalchemy import func
+
+        # First, ensure the requested course exists under this class,
+        # mirroring the checks used in other nested class/course endpoints.
+        course = Course.query.filter(
+            Course.id == course_id,
+            Course.class_name.isnot(None),
+            func.trim(Course.class_name) == str(class_id)
+        ).first()
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found in class'}), 404
+
+        # PracticeQuiz.course stores the course title (same mapping used
+        # by the admin quiz-content page). We also constrain by class_name
+        # to keep results scoped to the requested class.
+        title_key = (course.title or '').strip()
+        if not title_key:
+            return jsonify({'success': True, 'quizzes': []}), 200
+
+        quizzes_q = PracticeQuiz.query.filter(
+            PracticeQuiz.course == title_key,
+            PracticeQuiz.class_name.isnot(None),
+            func.trim(PracticeQuiz.class_name) == str(class_id)
+        ).order_by(PracticeQuiz.created_at.desc())
+
+        quizzes = [q.to_list_card() for q in quizzes_q.all()]
+        return jsonify({'success': True, 'quizzes': quizzes}), 200
+    except Exception:
+        current_app.logger.exception('Get class course practice quizzes failed')
+        return jsonify({'success': False, 'quizzes': [], 'error': 'Failed to load practice quizzes'}), 500
+
+
+@api_bp.route('/classes/<class_id>/courses/<int:course_id>/practice_quizzes/<int:quiz_id>', methods=['GET'])
+def get_class_course_practice_quiz_detail(class_id, course_id, quiz_id):
+    """Get a single practice quiz under a specific class and course.
+
+    Example:
+      GET /api/v1/classes/10/courses/15/practice_quizzes/42
+
+    Returns a payload including the quiz metadata and embedded
+    ``questions_json`` so mobile clients can render and play the quiz.
+    """
+    try:
+        from sqlalchemy import func
+
+        # Validate the course belongs to the given class, mirroring
+        # the checks used in other class-scoped endpoints.
+        course = Course.query.filter(
+            Course.id == course_id,
+            Course.class_name.isnot(None),
+            func.trim(Course.class_name) == str(class_id)
+        ).first()
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found in class'}), 404
+
+        title_key = (course.title or '').strip()
+        if not title_key:
+            return jsonify({'success': False, 'error': 'Practice quiz not found for this course'}), 404
+
+        quiz = PracticeQuiz.query.filter(
+            PracticeQuiz.id == quiz_id,
+            PracticeQuiz.course == title_key,
+            PracticeQuiz.class_name.isnot(None),
+            func.trim(PracticeQuiz.class_name) == str(class_id)
+        ).first()
+        if not quiz:
+            return jsonify({'success': False, 'error': 'Practice quiz not found'}), 404
+
+        # Base card-style metadata plus embedded questions_json for players.
+        payload = quiz.to_list_card()
+        payload['questions_json'] = quiz.questions_json or {}
+
+        return jsonify({'success': True, 'quiz': payload}), 200
+    except Exception:
+        current_app.logger.exception('Get class course practice quiz detail failed')
+        return jsonify({'success': False, 'error': 'Failed to load practice quiz'}), 500
 
 
 @api_bp.route('/classes/<class_id>/courses/<int:course_id>/lessons', methods=['GET'])

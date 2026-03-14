@@ -401,19 +401,41 @@ window.renderTagsToHTML = function (text) {
     .replace(/\[\[diff\]\]([\s\S]*?)\[\[\/diff\]\]/g,'<span class="diff">$1</span>');
 
   // Lists with sequential numbering
-  const lines = html.split('\n');
+  const srcLines = html.split('\n');
+  const outLines = [];
   let numIdx = 1;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('[[li]]')) {
-      lines[i] = '• ' + lines[i].replace(/\[\[li\]\]/g,'').replace(/\[\[\/li\]\]/g,'');
-    } else if (lines[i].includes('[[nli]]')) {
-      lines[i] = (numIdx++) + '. ' + lines[i].replace(/\[\[nli\]\]/g,'').replace(/\[\[\/nli\]\]/g,'');
+  let blankRun = 0; // how many blank lines in a row
+
+  for (let i = 0; i < srcLines.length; i++) {
+    let line = srcLines[i];
+
+    if (line.trim() === '') {
+      // Single blank line: keep numbering so lists can span light gaps
+      // Two or more consecutive blanks: treat as a hard break between lists
+      blankRun++;
+      if (blankRun >= 2) {
+        numIdx = 1; // next numbered list starts from 1 again
+      }
+      // Don't render extra visual gaps for purely blank lines
+      continue;
+    }
+
+    // We hit non-blank content; reset blank run counter
+    blankRun = 0;
+
+    if (line.includes('[[li]]')) {
+      line = '• ' + line.replace(/\[\[li\]\]/g,'').replace(/\[\[\/li\]\]/g,'');
+    } else if (line.includes('[[nli]]')) {
+      line = (numIdx++) + '. ' + line.replace(/\[\[nli\]\]/g,'').replace(/\[\[\/nli\]\]/g,'');
     } else {
+      // non-list line resets numbering
       numIdx = 1;
     }
+
+    outLines.push(line);
   }
 
-  return lines.join('<br>');
+  return outLines.join('<br>');
 };
 
 // ─────────────────────────────────────────────

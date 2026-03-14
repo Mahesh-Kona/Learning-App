@@ -16,6 +16,8 @@ from types import SimpleNamespace
 from datetime import datetime
 import traceback
 from flask import jsonify
+from utils.upload import upload_base64_image_to_r2
+from r2_client import s3, R2_BUCKET, CDN_BASE
 from app.utils.category_store import read_categories, write_category, remove_category
 from app.utils.emailer import send_email
 from app.utils.dynamic_json import (
@@ -1439,6 +1441,143 @@ def notifications_api_create():
         return jsonify({'success': False, 'error': 'Failed to create'}), 500
 
 
+def _process_practice_quiz_images(questions_payload, quiz_id: int):
+    """Upload/normalize all practice quiz images under images/practice_quizzes.
+
+    This mirrors the quiz image handling for Card-based quizzes, but stores
+    media under a fixed folder so keys look like:
+        images/practice_quizzes/<quiz_id>.ext (first image)
+        images/practice_quizzes/<quiz_id>-N.ext (subsequent images)
+    """
+    if not isinstance(questions_payload, dict):
+        return questions_payload
+
+    questions = questions_payload.get('questions') or []
+    if not isinstance(questions, list):
+        return questions_payload
+
+    image_counter = 0
+
+    def _handle_image(raw_val):
+        nonlocal image_counter
+        if not isinstance(raw_val, str) or not raw_val:
+            return raw_val
+
+        # Ensure we have a usable R2 configuration before attempting any
+        # uploads or copies. If not configured, leave URLs as-is.
+        bucket = (R2_BUCKET or "").strip() if isinstance(R2_BUCKET, str) else ""
+        cdn_base = (CDN_BASE or "").strip() if isinstance(CDN_BASE, str) else ""
+        if not bucket or not cdn_base:
+            return raw_val
+
+        # Base64 data URL: upload directly to the practice_quizzes folder.
+        if raw_val.startswith('data:image'):
+            image_counter += 1
+            filename_base = str(quiz_id)
+            # First image uses just <quiz_id>.<ext>; later ones append a counter.
+            filename = filename_base if image_counter == 1 else f"{filename_base}-{image_counter}"
+
+            try:
+                cdn_url = upload_base64_image_to_r2(
+                    raw_val,
+                    folder="images/practice_quizzes",
+                    filename=filename,
+                )
+                return cdn_url
+            except Exception:
+                current_app.logger.exception('Failed to upload practice quiz image to R2')
+                raise
+
+        # Non-base64 URL: if it already points at our CDN under images/,
+        # copy it into images/practice_quizzes/<quiz_id>-N.ext and update
+        # the reference so practice_quizzes always use the dedicated folder.
+        url_no_scheme = raw_val.strip()
+        if url_no_scheme.startswith('http://') or url_no_scheme.startswith('https://'):
+            url_no_scheme = url_no_scheme.split('://', 1)[1]
+
+        parts = url_no_scheme.split('/', 1)
+        if len(parts) == 2:
+            host_part, path_part = parts[0], parts[1]
+        else:
+            host_part, path_part = "", parts[0]
+
+        cdn_host = cdn_base
+        if '://' in cdn_host:
+            cdn_host = cdn_host.split('://', 1)[1]
+
+        if host_part == cdn_host and path_part.startswith('images/'):
+            # Derive extension from existing key; default to jpg.
+            ext = 'jpg'
+            try:
+                last_segment = path_part.rsplit('/', 1)[-1]
+                if '.' in last_segment:
+                    ext = last_segment.rsplit('.', 1)[-1] or ext
+            except Exception:
+                pass
+
+            image_counter += 1
+            filename_base = str(quiz_id)
+            filename = filename_base if image_counter == 1 else f"{filename_base}-{image_counter}"
+            new_key = f"images/practice_quizzes/{filename}.{ext}"
+
+            try:
+                s3.copy_object(
+                    Bucket=bucket,
+                    CopySource={"Bucket": bucket, "Key": path_part},
+                    Key=new_key,
+                )
+                return f"{cdn_base}/{new_key}"
+            except Exception:
+                # If copy fails, keep the original URL.
+                current_app.logger.exception('Failed to copy practice quiz image within R2')
+                return raw_val
+
+        # Fallback: leave URL unchanged.
+        return raw_val
+
+    for q in questions:
+        if not isinstance(q, dict):
+            continue
+
+        # Question-level image
+        if 'questionImageUrl' in q:
+            q['questionImageUrl'] = _handle_image(q.get('questionImageUrl'))
+
+        # Option-level images
+        options = q.get('options') or []
+        if isinstance(options, list):
+            for opt in options:
+                if not isinstance(opt, dict):
+                    continue
+                if 'imageUrl' in opt:
+                    opt['imageUrl'] = _handle_image(opt.get('imageUrl'))
+
+        # Media object (only if it's an image)
+        media = q.get('media')
+        if isinstance(media, dict):
+            mu = media.get('url')
+            mtype = media.get('type') or ''
+            if isinstance(mu, str) and mu and (not mtype or str(mtype).startswith('image')):
+                new_mu = _handle_image(mu)
+                media['url'] = new_mu
+                # Keep any top-level mediaUrl in sync for clients that
+                # still read q.mediaUrl directly.
+                if new_mu:
+                    q['mediaUrl'] = new_mu
+
+        # 4) Backwards-compat: if a top-level mediaUrl exists *without* a
+        # media object, normalize/copy it as well. If a media dict is
+        # present, we've already handled it above and synced mediaUrl,
+        # so we must not process it a second time (which would create
+        # an extra copy like .../17-2 and .../17-3).
+        if not isinstance(media, dict) and isinstance(q.get('mediaUrl'), str):
+            new_mu2 = _handle_image(q['mediaUrl'])
+            if new_mu2:
+                q['mediaUrl'] = new_mu2
+
+    return questions_payload
+
+
 @admin_bp.route('/create_quiz', methods=['POST'])
 def practice_quiz_create_api():
     """JSON endpoint used by all-quiz.html modal to create a PracticeQuiz."""
@@ -1481,11 +1620,19 @@ def practice_quiz_create_api():
     )
 
     # Optional questions payload coming from quiz builder
-    if 'questions_json' in data:
-        quiz.questions_json = data.get('questions_json') or None
+    questions_payload = data.get('questions_json') if 'questions_json' in data else None
 
     try:
         db.session.add(quiz)
+        # Flush so quiz.id is available for image filenames
+        db.session.flush()
+
+        if questions_payload is not None:
+            if isinstance(questions_payload, dict):
+                quiz.questions_json = _process_practice_quiz_images(questions_payload, quiz.id)
+            else:
+                quiz.questions_json = questions_payload or None
+
         db.session.commit()
         return jsonify({'success': True, 'quiz': quiz.to_list_card()}), 201
     except Exception:
@@ -1558,8 +1705,11 @@ def practice_quiz_update_api():
 
     # Optional questions payload coming from quiz builder
     if 'questions_json' in data:
-        quiz.questions_json = data.get('questions_json') or None
-
+        qp = data.get('questions_json') or None
+        if isinstance(qp, dict):
+            quiz.questions_json = _process_practice_quiz_images(qp, quiz.id)
+        else:
+            quiz.questions_json = qp
 
     try:
         db.session.commit()
